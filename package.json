@@ -1,0 +1,56 @@
+{
+  "name": "local-listen",
+  "version": "1.0.0",
+  "main": "public/electron.js",
+  "scripts": {
+    "start": "NODE_ENV=development concurrently \"npm run webpack-dev\" \"npm run electron-dev\"",
+    "webpack-dev": "webpack serve --mode development",
+    "electron-dev": "wait-on http://localhost:9000 && electron . --no-sandbox",
+    "build": "webpack --mode production",
+    "electron": "electron . --no-sandbox",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "electron-rebuild",
+    "download-ffmpeg": "node scripts/download-ffmpeg.js"
+  },
+  "keywords": [
+    "electron",
+    "react",
+    "transcription",
+    "ai"
+  ],
+  "author": "Your Institution",
+  "license": "MIT",
+  "description": "AI-powered audio/video transcription and analysis desktop app",
+  "devDependencies": {
+    "@types/node": "^22.15.26",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "concurrently": "^9.1.2",
+    "css-loader": "^7.1.2",
+    "electron": "^36.3.2",
+    "electron-builder": "^26.0.12",
+    "electron-rebuild": "^3.2.9",
+    "electron-reload": "^2.0.0-alpha.1",
+    "html-webpack-plugin": "^5.6.3",
+    "postcss-loader": "^8.1.1",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.1"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.21",
+    "better-sqlite3": "^11.10.0",
+    "ffmpeg-static": "^5.2.0",
+    "postcss": "^8.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sqlite3": "^5.1.7",
+    "tailwindcss": "^3.4.17"
+  }
+}
