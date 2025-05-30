@@ -33,7 +33,31 @@
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
-    "entitlementsInherit": "build/entitlements.mac.plist"
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64", "arm64"]
+      }
+    ]
+  },
+  "mas": {
+    "category": "public.app-category.productivity",
+    "icon": "public/assets/icon.icns",
+    "entitlements": "build/entitlements.mas.plist",
+    "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+    "hardenedRuntime": false,
+    "type": "distribution",
+    "target": [
+      {
+        "target": "pkg",
+        "arch": ["universal"]
+      }
+    ]
   },
   "win": {
     "target": [
