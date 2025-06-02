@@ -29,7 +29,7 @@
   ],
   "mac": {
     "category": "public.app-category.productivity",
-    "icon": "public/assets/icon.icns",
+    "icon": "public/assets/icon.png",
     "hardenedRuntime": true,
     "gatekeeperAssess": false,
     "entitlements": "build/entitlements.mac.plist",
@@ -47,7 +47,7 @@
   },
   "mas": {
     "category": "public.app-category.productivity",
-    "icon": "public/assets/icon.icns",
+    "icon": "public/assets/icon.png",
     "entitlements": "build/entitlements.mas.plist",
     "entitlementsInherit": "build/entitlements.mas.inherit.plist",
     "hardenedRuntime": false,
