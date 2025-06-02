@@ -84,15 +84,12 @@ jobs:
           path: release-artifacts
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: LocalListen ${{ github.ref }}
-          body: |
-            ## LocalListen Release ${{ github.ref_name }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "LocalListen ${{ github.ref_name }}" \
+            --notes "## LocalListen Release ${{ github.ref_name }}
             
             ### Downloads
             
@@ -120,49 +117,11 @@ jobs:
             ### Requirements
             - No FFmpeg installation required - it's bundled!
             - Speaches service for transcription (optional)
-            - Ollama service for AI analysis (optional)
-          draft: true
-          prerelease: false
+            - Ollama service for AI analysis (optional)"
 
       - name: Upload Release Assets
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs').promises;
-            const path = require('path');
-            
-            const releaseId = '${{ steps.create_release.outputs.id }}';
-            
-            async function uploadReleaseAssets(dir) {
-              const files = await fs.readdir(dir);
-              
-              for (const file of files) {
-                const filePath = path.join(dir, file);
-                const stat = await fs.stat(filePath);
-                
-                if (stat.isDirectory()) {
-                  await uploadReleaseAssets(filePath);
-                } else if (
-                  file.endsWith('.exe') || 
-                  file.endsWith('.dmg') || 
-                  file.endsWith('.pkg') ||
-                  file.endsWith('.AppImage') || 
-                  file.endsWith('.deb') ||
-                  file.endsWith('.snap')
-                ) {
-                  console.log(`Uploading ${file}...`);
-                  const data = await fs.readFile(filePath);
-                  
-                  await github.rest.repos.uploadReleaseAsset({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    release_id: releaseId,
-                    name: file,
-                    data: data
-                  });
-                }
-              }
-            }
-            
-            await uploadReleaseAssets('release-artifacts');
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload all artifacts to the release
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.zip" \) -exec gh release upload "${{ github.ref_name }}" {} \;
