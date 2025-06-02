@@ -64,6 +64,77 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Analysis results (cached)
+  themes?: string[];
+  key_insights?: string[];
+  summary?: string;
+  last_analysis_at?: string;
+  
+  // Metadata
+  tags?: string[];
+  color?: string;
+  icon?: string;
+  
+  // Computed properties (not in DB, calculated on fetch)
+  transcript_count?: number;
+  total_duration?: number;
+  date_range?: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface ProjectTranscript {
+  project_id: string;
+  transcript_id: string;
+  added_at: string;
+  transcript?: Transcript; // Joined data
+}
+
+export interface ProjectChatConversation {
+  id: string;
+  project_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectChatMessage {
+  id?: number;
+  conversation_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export interface ProjectAnalysis {
+  id: string;
+  project_id: string;
+  analysis_type: 'theme_evolution' | 'speaker_comparison' | 'pattern_analysis' | 'consensus_divergence' | 'timeline_analysis';
+  results: any; // JSON data, structure depends on analysis_type
+  created_at: string;
+}
+
+export interface ThemeAnalysis {
+  theme: string;
+  occurrences: {
+    transcript_id: string;
+    transcript_title: string;
+    count: number;
+    quotes: string[];
+  }[];
+  evolution: {
+    date: string;
+    strength: number;
+  }[];
+}
+
 export interface Settings {
   speechToTextUrl: string;
   aiAnalysisUrl: string;
@@ -123,6 +194,18 @@ declare global {
           hasAudio?: boolean;
           error?: string;
         }>;
+      };
+      getDatabaseInfo: () => Promise<any>;
+      changeDatabaseLocation: (newPath: string) => Promise<{ success: boolean; error?: string }>;
+      backupDatabase: (backupPath: string) => Promise<{ success: boolean; error?: string }>;
+      shell: {
+        showItemInFolder: (fullPath: string) => void;
+      };
+      platform: NodeJS.Platform;
+      versions: {
+        electron: string;
+        node: string;
+        chrome: string;
       };
     };
   }

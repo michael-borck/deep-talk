@@ -21,6 +21,14 @@ export const TranscriptContext = createContext<TranscriptContextType>({
   searchTranscripts: async () => []
 });
 
+export const useTranscripts = () => {
+  const context = React.useContext(TranscriptContext);
+  if (!context) {
+    throw new Error('useTranscripts must be used within a TranscriptProvider');
+  }
+  return context;
+};
+
 interface TranscriptProviderProps {
   children: ReactNode;
 }

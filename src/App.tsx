@@ -1,49 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { HomePage } from './pages/HomePage';
+import { ProjectsPage } from './pages/ProjectsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { AboutPage } from './pages/AboutPage';
 import { ServiceProvider } from './contexts/ServiceContext';
 import { TranscriptProvider } from './contexts/TranscriptContext';
-
-type PageType = 'home' | 'library' | 'settings' | 'about';
+import { ProjectProvider } from './contexts/ProjectContext';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<PageType>('home');
-
-  useEffect(() => {
-    // Listen for navigation events from menu
-    window.electronAPI.onNavigate((page) => {
-      setCurrentPage(page as PageType);
-    });
-
-    return () => {
-      window.electronAPI.removeAllListeners('navigate');
-    };
-  }, []);
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <HomePage />;
-      case 'library':
-        return <LibraryPage />;
-      case 'settings':
-        return <SettingsPage />;
-      case 'about':
-        return <AboutPage />;
-      default:
-        return <HomePage />;
-    }
-  };
-
   return (
     <ServiceProvider>
       <TranscriptProvider>
-        <AppShell currentPage={currentPage} onPageChange={setCurrentPage}>
-          {renderPage()}
-        </AppShell>
+        <ProjectProvider>
+          <Router>
+            <AppShell>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/project/:id" element={<ProjectDetailPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Routes>
+            </AppShell>
+          </Router>
+        </ProjectProvider>
       </TranscriptProvider>
     </ServiceProvider>
   );

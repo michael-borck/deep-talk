@@ -18,16 +18,45 @@ let db;
 // }
 
 // Initialize database
-function initDatabase() {
-  const userDataPath = app.getPath('userData');
-  const dbPath = path.join(userDataPath, 'locallisten.db');
+async function initDatabase() {
+  // Check for custom database location in settings
+  let dbPath;
   
+  try {
+    // Try to read settings file first
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    if (fs.existsSync(settingsPath)) {
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      if (settings.databaseLocation) {
+        dbPath = path.join(settings.databaseLocation, 'locallisten.db');
+      }
+    }
+  } catch (error) {
+    console.log('No custom database location found, using default');
+  }
+  
+  // Default location if not set
+  if (!dbPath) {
+    const userDataPath = app.getPath('userData');
+    dbPath = path.join(userDataPath, 'locallisten.db');
+  }
+  
+  // Ensure directory exists
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  
+  console.log('Database location:', dbPath);
   db = new Database(dbPath);
   
   // Load and execute schema
   const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schema);
+  
+  // Store current db path in memory
+  global.dbPath = dbPath;
   
   return db;
 }
@@ -55,11 +84,22 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    // Open dev tools to debug the issue
+    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+  });
+
+  // Handle any loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+  });
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log('Console:', message);
   });
 
   mainWindow.on('closed', () => {
@@ -226,6 +266,64 @@ ipcMain.handle('dialog-save-file', async (event, { defaultPath, filters }) => {
 
 ipcMain.handle('get-app-path', async (event, type) => {
   return app.getPath(type);
+});
+
+ipcMain.handle('get-database-info', async () => {
+  const stats = fs.statSync(global.dbPath);
+  return {
+    path: global.dbPath,
+    size: stats.size,
+    modified: stats.mtime
+  };
+});
+
+ipcMain.handle('change-database-location', async (event, newPath) => {
+  try {
+    const oldDbPath = global.dbPath;
+    const newDbPath = path.join(newPath, 'locallisten.db');
+    
+    // Ensure new directory exists
+    if (!fs.existsSync(newPath)) {
+      fs.mkdirSync(newPath, { recursive: true });
+    }
+    
+    // Close current database
+    if (db) {
+      db.close();
+    }
+    
+    // Copy database to new location
+    fs.copyFileSync(oldDbPath, newDbPath);
+    
+    // Save settings
+    const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+    const settings = fs.existsSync(settingsPath) 
+      ? JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
+      : {};
+    
+    settings.databaseLocation = newPath;
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    
+    // Reinitialize with new location
+    await initDatabase();
+    
+    return { success: true, newPath: newDbPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('backup-database', async (event, backupPath) => {
+  try {
+    fs.copyFileSync(global.dbPath, backupPath);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.on('show-item-in-folder', (event, fullPath) => {
+  shell.showItemInFolder(fullPath);
 });
 
 ipcMain.handle('test-service-connection', async (event, { url, service }) => {

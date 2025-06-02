@@ -1,5 +1,64 @@
 -- LocalListen Database Schema
 
+-- Projects table
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Analysis results (cached)
+    themes TEXT, -- JSON array of themes
+    key_insights TEXT, -- JSON array
+    summary TEXT,
+    last_analysis_at DATETIME,
+    
+    -- Metadata
+    tags TEXT, -- JSON array
+    color TEXT, -- UI color for the project
+    icon TEXT -- emoji or icon identifier
+);
+
+-- Project-Transcript relationship
+CREATE TABLE IF NOT EXISTS project_transcripts (
+    project_id TEXT NOT NULL,
+    transcript_id TEXT NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, transcript_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
+);
+
+-- Project chat conversations
+CREATE TABLE IF NOT EXISTS project_chat_conversations (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+-- Project chat messages
+CREATE TABLE IF NOT EXISTS project_chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id TEXT NOT NULL,
+    role TEXT CHECK(role IN ('user', 'assistant')) NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES project_chat_conversations(id) ON DELETE CASCADE
+);
+
+-- Cross-transcript analysis results
+CREATE TABLE IF NOT EXISTS project_analysis (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    analysis_type TEXT NOT NULL, -- 'theme_evolution', 'speaker_comparison', 'pattern_analysis', etc.
+    results TEXT NOT NULL, -- JSON data
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
 -- Transcripts table
 CREATE TABLE IF NOT EXISTS transcripts (
     id TEXT PRIMARY KEY,
@@ -89,6 +148,15 @@ CREATE INDEX IF NOT EXISTS idx_chat_conversations_transcript_id ON chat_conversa
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_processing_queue_status ON processing_queue(status);
 
+-- Project indexes
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
+CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at);
+CREATE INDEX IF NOT EXISTS idx_project_transcripts_project_id ON project_transcripts(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_transcripts_transcript_id ON project_transcripts(transcript_id);
+CREATE INDEX IF NOT EXISTS idx_project_chat_conversations_project_id ON project_chat_conversations(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_chat_messages_conversation_id ON project_chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_project_analysis_project_id ON project_analysis(project_id);
+
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_transcript_timestamp 
 AFTER UPDATE ON transcripts
@@ -106,6 +174,18 @@ CREATE TRIGGER IF NOT EXISTS update_settings_timestamp
 AFTER UPDATE ON settings
 BEGIN
     UPDATE settings SET updated_at = CURRENT_TIMESTAMP WHERE key = NEW.key;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_project_timestamp 
+AFTER UPDATE ON projects
+BEGIN
+    UPDATE projects SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_project_chat_conversation_timestamp 
+AFTER UPDATE ON project_chat_conversations
+BEGIN
+    UPDATE project_chat_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- Default settings

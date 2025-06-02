@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ServiceContext } from '../contexts/ServiceContext';
+import { formatFileSize } from '../utils/helpers';
 
-type SettingsTab = 'services' | 'storage' | 'appearance' | 'privacy';
+type SettingsTab = 'services' | 'storage' | 'appearance' | 'privacy' | 'about';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('services');
@@ -14,9 +15,11 @@ export const SettingsPage: React.FC = () => {
   const [autoBackup, setAutoBackup] = useState(true);
   const [backupFrequency, setBackupFrequency] = useState('weekly');
   const [theme, setTheme] = useState('system');
+  const [databaseInfo, setDatabaseInfo] = useState<any>(null);
 
   useEffect(() => {
     loadSettings();
+    loadDatabaseInfo();
   }, []);
 
   const loadSettings = async () => {
@@ -38,6 +41,15 @@ export const SettingsPage: React.FC = () => {
       setTheme(settingsMap.theme || 'system');
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadDatabaseInfo = async () => {
+    try {
+      const info = await (window.electronAPI as any).getDatabaseInfo();
+      setDatabaseInfo(info);
+    } catch (error) {
+      console.error('Error loading database info:', error);
     }
   };
 
@@ -65,11 +77,53 @@ export const SettingsPage: React.FC = () => {
     await testConnections();
   };
 
+  const handleChangeLocation = async () => {
+    const result = await window.electronAPI.dialog.saveFile({
+      defaultPath: databaseInfo?.path,
+      filters: [{ name: 'Folders', extensions: ['*'] }]
+    });
+    
+    if (result) {
+      const newPath = result.replace(/[^/\\]*$/, ''); // Get directory part
+      const changeResult = await (window.electronAPI as any).changeDatabaseLocation(newPath);
+      
+      if (changeResult.success) {
+        alert('Database location changed successfully. The app will reload.');
+        window.location.reload();
+      } else {
+        alert(`Failed to change location: ${changeResult.error}`);
+      }
+    }
+  };
+
+  const handleOpenFolder = () => {
+    if (databaseInfo?.path) {
+      (window.electronAPI as any).shell.showItemInFolder(databaseInfo.path);
+    }
+  };
+
+  const handleBackupNow = async () => {
+    const result = await window.electronAPI.dialog.saveFile({
+      defaultPath: `locallisten-backup-${new Date().toISOString().split('T')[0]}.db`,
+      filters: [{ name: 'Database', extensions: ['db'] }]
+    });
+    
+    if (result) {
+      const backupResult = await (window.electronAPI as any).backupDatabase(result);
+      if (backupResult.success) {
+        alert('Database backed up successfully!');
+      } else {
+        alert(`Backup failed: ${backupResult.error}`);
+      }
+    }
+  };
+
   const tabs = [
     { id: 'services' as const, label: '🔌 Services', name: 'Services' },
     { id: 'storage' as const, label: '📁 Storage', name: 'Storage' },
     { id: 'appearance' as const, label: '🎨 Appearance', name: 'Appearance' },
-    { id: 'privacy' as const, label: '🔒 Privacy', name: 'Privacy' }
+    { id: 'privacy' as const, label: '🔒 Privacy', name: 'Privacy' },
+    { id: 'about' as const, label: 'ℹ️ About', name: 'About' }
   ];
 
   const renderTabContent = () => {
@@ -201,18 +255,33 @@ export const SettingsPage: React.FC = () => {
               </h3>
               
               <div className="space-y-4">
-                <div className="text-sm text-gray-600">
-                  /Users/john/Documents/LocalListen/
+                <div>
+                  <p className="text-sm text-gray-600 break-all">
+                    {databaseInfo?.path || 'Loading...'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Size: {databaseInfo ? formatFileSize(databaseInfo.size) : '...'} | 
+                    Modified: {databaseInfo ? new Date(databaseInfo.modified).toLocaleDateString() : '...'}
+                  </p>
                 </div>
                 
                 <div className="flex space-x-2">
-                  <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                  <button 
+                    onClick={handleChangeLocation}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
                     Change Location
                   </button>
-                  <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                  <button 
+                    onClick={handleOpenFolder}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
                     Open Folder
                   </button>
-                  <button className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">
+                  <button 
+                    onClick={handleBackupNow}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                  >
                     Backup Now
                   </button>
                 </div>
@@ -292,6 +361,120 @@ export const SettingsPage: React.FC = () => {
                 LocalListen stores all data locally on your computer. No data is sent to external services
                 except for transcription and analysis processing.
               </p>
+            </div>
+          </div>
+        );
+
+      case 'about':
+        return (
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900">About LocalListen</h2>
+            
+            {/* App Info */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-4">🎤</div>
+                <h3 className="text-2xl font-bold text-gray-900">LocalListen</h3>
+                <p className="text-lg text-gray-600 mt-2">Version 1.0.0</p>
+                <p className="text-gray-500 mt-1">AI-Powered Transcription & Analysis</p>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Platform:</span>
+                  <span className="text-gray-900">{window.electronAPI?.platform === 'darwin' ? 'macOS' : window.electronAPI?.platform === 'win32' ? 'Windows' : 'Linux'}</span>
+                </div>
+                
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Database:</span>
+                  <span className="text-gray-900">SQLite 3.42.0</span>
+                </div>
+                
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Electron:</span>
+                  <span className="text-gray-900">{window.electronAPI?.versions?.electron || 'N/A'}</span>
+                </div>
+                
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-600">Node.js:</span>
+                  <span className="text-gray-900">{window.electronAPI?.versions?.node || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Support & Help */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Support & Help</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => console.log('Open user guide')}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <span>📚</span>
+                  <span>User Guide</span>
+                </button>
+                
+                <button
+                  onClick={() => console.log('Report bug')}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <span>🐛</span>
+                  <span>Report Bug</span>
+                </button>
+                
+                <button
+                  onClick={() => console.log('Feature request')}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <span>💡</span>
+                  <span>Feature Request</span>
+                </button>
+                
+                <button
+                  onClick={() => console.log('Contact support')}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <span>📧</span>
+                  <span>Contact Support</span>
+                </button>
+              </div>
+              
+              <button
+                onClick={() => console.log('Check for updates')}
+                className="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                🔄 Check for Updates
+              </button>
+            </div>
+
+            {/* Legal */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal</h3>
+              
+              <div className="text-center space-y-4">
+                <div className="flex justify-center space-x-4 text-sm">
+                  <button className="text-blue-600 hover:text-blue-700">
+                    Privacy Policy
+                  </button>
+                  <span className="text-gray-400">•</span>
+                  <button className="text-blue-600 hover:text-blue-700">
+                    Terms of Service
+                  </button>
+                  <span className="text-gray-400">•</span>
+                  <button className="text-blue-600 hover:text-blue-700">
+                    Licenses
+                  </button>
+                </div>
+                
+                <p className="text-gray-600">
+                  © 2024 Your Institution
+                </p>
+                
+                <p className="text-gray-500 text-sm">
+                  Built with ❤️ for Academic Research
+                </p>
+              </div>
             </div>
           </div>
         );

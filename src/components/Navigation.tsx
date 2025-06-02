@@ -8,6 +8,7 @@ interface NavigationProps {
 export const Navigation: React.FC<NavigationProps> = ({ activePage, onPageChange }) => {
   const tabs = [
     { id: 'home', label: '🏠 Home', name: 'Home' },
+    { id: 'projects', label: '📁 Projects', name: 'Projects' },
     { id: 'library', label: '📋 Library', name: 'Library' },
     { id: 'settings', label: '⚙️ Settings', name: 'Settings' },
     { id: 'about', label: 'ℹ️ About', name: 'About' }

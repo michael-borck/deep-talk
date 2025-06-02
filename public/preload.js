@@ -50,5 +50,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('extract-audio', { inputPath, outputPath }),
     getMediaInfo: (filePath) => 
       ipcRenderer.invoke('get-media-info', { filePath })
+  },
+
+  // Database management
+  getDatabaseInfo: () => ipcRenderer.invoke('get-database-info'),
+  changeDatabaseLocation: (newPath) => ipcRenderer.invoke('change-database-location', newPath),
+  backupDatabase: (backupPath) => ipcRenderer.invoke('backup-database', backupPath),
+  
+  // Shell operations
+  shell: {
+    showItemInFolder: (fullPath) => ipcRenderer.send('show-item-in-folder', fullPath)
+  },
+  
+  // System information
+  platform: process.platform,
+  versions: {
+    electron: process.versions.electron,
+    node: process.versions.node,
+    chrome: process.versions.chrome
   }
 });

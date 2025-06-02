@@ -1,7 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
-import fs from 'fs';
 
 const execAsync = promisify(exec);
 
@@ -21,7 +20,9 @@ export class AudioExtractor {
     
     if (isPackaged) {
       // In production, use resourcesPath
-      return path.join(process.resourcesPath, 'bin', ffmpegName);
+      // Note: resourcesPath is only available in main process
+      // This will be handled by the main process via IPC
+      return path.join('resources', 'bin', ffmpegName);
     } else {
       // In development, use project directory
       return path.join(__dirname, '..', '..', '..', 'ffmpeg-binaries', platform, ffmpegName);

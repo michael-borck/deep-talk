@@ -1,5 +1,4 @@
 import path from 'path';
-import { generateId } from '../utils/helpers';
 
 interface ProcessingCallbacks {
   onProgress?: (stage: string, percent: number) => void;
@@ -87,10 +86,10 @@ export class FileProcessor {
         `UPDATE transcripts 
          SET status = ?, error_message = ?
          WHERE id = ?`,
-        ['error', error.message, transcriptId]
+        ['error', (error as Error).message, transcriptId]
       );
       
-      callbacks.onError?.(error);
+      callbacks.onError?.(error as Error);
     }
   }
 
