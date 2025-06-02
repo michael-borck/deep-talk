@@ -1,6 +1,11 @@
 {
   "name": "local-listen",
   "version": "1.0.0",
+  "description": "AI-powered local audio transcription desktop application",
+  "author": {
+    "name": "Michael Borck",
+    "email": "noreply@example.com"
+  },
   "main": "public/electron.js",
   "scripts": {
     "start": "NODE_ENV=development concurrently \"npm run webpack-dev\" \"npm run electron-dev\"",
