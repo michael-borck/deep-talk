@@ -6,46 +6,43 @@ from PIL import Image
 def create_icns_from_pngs(output_path):
     """Create ICNS file from PNG images (Linux compatible)"""
     
+    assets_path = '/home/michael/projects/local-listen/public/assets'
+    
     # ICNS file structure
     icns_header = b'icns'
     
-    # Icon types and their sizes
+    # Icon types and their sizes - use the PNG files we already generated
     icon_types = [
         (b'icp4', 16),    # 16x16
-        (b'icp5', 32),    # 32x32
+        (b'icp5', 32),    # 32x32  
         (b'icp6', 64),    # 64x64
         (b'ic07', 128),   # 128x128
         (b'ic08', 256),   # 256x256
         (b'ic09', 512),   # 512x512
-        (b'ic10', 1024),  # 1024x1024 (macOS 10.7+)
+        (b'ic10', 1024),  # 1024x1024
     ]
     
     # Collect all icon data
     icon_data = []
     total_size = 8  # Header size
     
-    iconset_path = '/home/michael/projects/local-listen/public/assets/icon.iconset'
-    
     for icon_type, size in icon_types:
-        # Find the appropriate PNG file
-        png_files = [
-            f'icon_{size}x{size}.png',
-            f'icon_{size}x{size}@2x.png'
-        ]
+        # Use our generated PNG files
+        png_path = os.path.join(assets_path, f'icon-{size}x{size}.png')
         
-        png_data = None
-        for png_file in png_files:
-            png_path = os.path.join(iconset_path, png_file)
-            if os.path.exists(png_path):
-                with open(png_path, 'rb') as f:
-                    png_data = f.read()
-                break
-        
-        if png_data:
+        if os.path.exists(png_path):
+            with open(png_path, 'rb') as f:
+                png_data = f.read()
+            
             # Each icon entry: 4 bytes type + 4 bytes size + data
             entry_size = 8 + len(png_data)
             icon_data.append((icon_type, entry_size, png_data))
             total_size += entry_size
+            print(f"Added {size}x{size} icon ({len(png_data)} bytes)")
+    
+    if not icon_data:
+        print("No icon files found!")
+        return
     
     # Write ICNS file
     with open(output_path, 'wb') as f:
@@ -59,7 +56,7 @@ def create_icns_from_pngs(output_path):
             f.write(struct.pack('>I', entry_size))
             f.write(png_data)
     
-    print(f"Created ICNS file: {output_path}")
+    print(f"Created ICNS file: {output_path} ({total_size} bytes)")
 
 if __name__ == "__main__":
     create_icns_from_pngs('/home/michael/projects/local-listen/public/assets/icon.icns')
