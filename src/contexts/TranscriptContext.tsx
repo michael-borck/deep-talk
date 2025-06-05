@@ -6,7 +6,8 @@ interface TranscriptContextType {
   recentTranscripts: Transcript[];
   loadTranscripts: () => Promise<void>;
   getTranscript: (id: string) => Promise<Transcript | null>;
-  updateTranscript: (id: string, updates: Partial<Transcript>) => Promise<void>;
+  getTranscriptById: (id: string) => Promise<Transcript | null>;
+  updateTranscript: (id: string, updates: Partial<Transcript>) => Promise<boolean>;
   deleteTranscript: (id: string) => Promise<void>;
   searchTranscripts: (query: string) => Promise<Transcript[]>;
 }
@@ -16,7 +17,8 @@ export const TranscriptContext = createContext<TranscriptContextType>({
   recentTranscripts: [],
   loadTranscripts: async () => {},
   getTranscript: async () => null,
-  updateTranscript: async () => {},
+  getTranscriptById: async () => null,
+  updateTranscript: async () => false,
   deleteTranscript: async () => {},
   searchTranscripts: async () => []
 });
@@ -49,6 +51,12 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
         action_items: t.action_items ? JSON.parse(t.action_items) : [],
         key_topics: t.key_topics ? JSON.parse(t.key_topics) : [],
         tags: t.tags ? JSON.parse(t.tags) : [],
+        speakers: t.speakers ? JSON.parse(t.speakers) : [],
+        emotions: t.emotions ? JSON.parse(t.emotions) : {},
+        notable_quotes: t.notable_quotes ? JSON.parse(t.notable_quotes) : [],
+        research_themes: t.research_themes ? JSON.parse(t.research_themes) : [],
+        qa_pairs: t.qa_pairs ? JSON.parse(t.qa_pairs) : [],
+        concept_frequency: t.concept_frequency ? JSON.parse(t.concept_frequency) : {},
         starred: !!t.starred
       }));
       
@@ -72,6 +80,12 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
           action_items: transcript.action_items ? JSON.parse(transcript.action_items) : [],
           key_topics: transcript.key_topics ? JSON.parse(transcript.key_topics) : [],
           tags: transcript.tags ? JSON.parse(transcript.tags) : [],
+          speakers: transcript.speakers ? JSON.parse(transcript.speakers) : [],
+          emotions: transcript.emotions ? JSON.parse(transcript.emotions) : {},
+          notable_quotes: transcript.notable_quotes ? JSON.parse(transcript.notable_quotes) : [],
+          research_themes: transcript.research_themes ? JSON.parse(transcript.research_themes) : [],
+          qa_pairs: transcript.qa_pairs ? JSON.parse(transcript.qa_pairs) : [],
+          concept_frequency: transcript.concept_frequency ? JSON.parse(transcript.concept_frequency) : {},
           starred: !!transcript.starred
         };
       }
@@ -83,13 +97,17 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
     }
   };
 
-  const updateTranscript = async (id: string, updates: Partial<Transcript>) => {
+  const getTranscriptById = getTranscript;
+
+  const updateTranscript = async (id: string, updates: Partial<Transcript>): Promise<boolean> => {
     try {
       const sets = [];
       const values = [];
       
       for (const [key, value] of Object.entries(updates)) {
-        if (key === 'action_items' || key === 'key_topics' || key === 'tags') {
+        if (key === 'action_items' || key === 'key_topics' || key === 'tags' || 
+            key === 'speakers' || key === 'emotions' || key === 'notable_quotes' ||
+            key === 'research_themes' || key === 'qa_pairs' || key === 'concept_frequency') {
           sets.push(`${key} = ?`);
           values.push(JSON.stringify(value));
         } else {
@@ -106,8 +124,10 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
       );
       
       await loadTranscripts();
+      return true;
     } catch (error) {
       console.error('Error updating transcript:', error);
+      return false;
     }
   };
 
@@ -138,6 +158,12 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
         action_items: t.action_items ? JSON.parse(t.action_items) : [],
         key_topics: t.key_topics ? JSON.parse(t.key_topics) : [],
         tags: t.tags ? JSON.parse(t.tags) : [],
+        speakers: t.speakers ? JSON.parse(t.speakers) : [],
+        emotions: t.emotions ? JSON.parse(t.emotions) : {},
+        notable_quotes: t.notable_quotes ? JSON.parse(t.notable_quotes) : [],
+        research_themes: t.research_themes ? JSON.parse(t.research_themes) : [],
+        qa_pairs: t.qa_pairs ? JSON.parse(t.qa_pairs) : [],
+        concept_frequency: t.concept_frequency ? JSON.parse(t.concept_frequency) : {},
         starred: !!t.starred
       }));
     } catch (error) {
@@ -157,6 +183,7 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
         recentTranscripts,
         loadTranscripts,
         getTranscript,
+        getTranscriptById,
         updateTranscript,
         deleteTranscript,
         searchTranscripts

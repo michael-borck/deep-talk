@@ -55,10 +55,49 @@ async function initDatabase() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schema);
   
+  // Run migrations to ensure all columns exist
+  runMigrations();
+  
   // Store current db path in memory
   global.dbPath = dbPath;
   
   return db;
+}
+
+// Function to check and add missing columns
+function runMigrations() {
+  try {
+    // Get existing columns for transcripts table
+    const columns = db.prepare("PRAGMA table_info(transcripts)").all();
+    const columnNames = columns.map(col => col.name);
+    
+    // Define required columns with their SQL definitions
+    const requiredColumns = [
+      { name: 'sentiment_overall', sql: 'ALTER TABLE transcripts ADD COLUMN sentiment_overall TEXT' },
+      { name: 'sentiment_score', sql: 'ALTER TABLE transcripts ADD COLUMN sentiment_score REAL' },
+      { name: 'emotions', sql: 'ALTER TABLE transcripts ADD COLUMN emotions TEXT' },
+      { name: 'speaker_count', sql: 'ALTER TABLE transcripts ADD COLUMN speaker_count INTEGER DEFAULT 1' },
+      { name: 'speakers', sql: 'ALTER TABLE transcripts ADD COLUMN speakers TEXT' },
+      { name: 'notable_quotes', sql: 'ALTER TABLE transcripts ADD COLUMN notable_quotes TEXT' },
+      { name: 'research_themes', sql: 'ALTER TABLE transcripts ADD COLUMN research_themes TEXT' },
+      { name: 'qa_pairs', sql: 'ALTER TABLE transcripts ADD COLUMN qa_pairs TEXT' },
+      { name: 'concept_frequency', sql: 'ALTER TABLE transcripts ADD COLUMN concept_frequency TEXT' },
+      { name: 'validated_text', sql: 'ALTER TABLE transcripts ADD COLUMN validated_text TEXT' },
+      { name: 'validation_changes', sql: 'ALTER TABLE transcripts ADD COLUMN validation_changes TEXT' }
+    ];
+    
+    // Add missing columns
+    for (const column of requiredColumns) {
+      if (!columnNames.includes(column.name)) {
+        console.log(`Adding missing column: ${column.name}`);
+        db.exec(column.sql);
+      }
+    }
+    
+    console.log('Database migrations completed');
+  } catch (error) {
+    console.error('Error running migrations:', error);
+  }
 }
 
 function createWindow() {
@@ -118,13 +157,6 @@ function createMenu() {
           accelerator: 'CmdOrCtrl+O',
           click: () => {
             mainWindow.webContents.send('menu-action', 'new-upload');
-          }
-        },
-        {
-          label: 'Start Recording',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            mainWindow.webContents.send('menu-action', 'start-recording');
           }
         },
         { type: 'separator' },
@@ -343,6 +375,124 @@ ipcMain.handle('test-service-connection', async (event, { url, service }) => {
     }
   } catch (error) {
     return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-ollama-models', async (event, { url }) => {
+  try {
+    const response = await fetch(`${url}/api/tags`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, models: data.models || [] };
+    } else {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('fs-read-file', async (event, filePath) => {
+  try {
+    const data = fs.readFileSync(filePath);
+    return data;
+  } catch (error) {
+    throw new Error(`Failed to read file: ${error.message}`);
+  }
+});
+
+ipcMain.handle('fs-write-file', async (event, { filePath, data }) => {
+  try {
+    fs.writeFileSync(filePath, data);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('fs-get-file-stats', async (event, filePath) => {
+  try {
+    const stats = fs.statSync(filePath);
+    return { size: stats.size, mtime: stats.mtime };
+  } catch (error) {
+    return { size: 0, error: error.message };
+  }
+});
+
+ipcMain.handle('fs-join-path', async (event, ...pathSegments) => {
+  return path.join(...pathSegments);
+});
+
+ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }) => {
+  try {
+    // Import fetch for Node.js
+    const { default: fetch } = await import('node-fetch');
+    const FormData = require('form-data');
+    
+    console.log('Transcription request details:', {
+      audioPath,
+      sttUrl,
+      sttModel,
+      fullUrl: `${sttUrl}/v1/audio/transcriptions`
+    });
+    
+    // Read audio file
+    const audioBuffer = fs.readFileSync(audioPath);
+    console.log('Audio file read successfully, size:', audioBuffer.length, 'bytes');
+    
+    // Create form data (OpenAI-compatible format)
+    const formData = new FormData();
+    formData.append('file', audioBuffer, {
+      filename: 'audio.wav',
+      contentType: 'audio/wav'
+    });
+    formData.append('model', sttModel);
+    formData.append('response_format', 'json');
+    formData.append('temperature', '0.0');
+    // Add parameters to prevent hallucination
+    formData.append('compression_ratio_threshold', '2.4');
+    formData.append('log_prob_threshold', '-1.0');
+    formData.append('no_speech_threshold', '0.6');
+    formData.append('condition_on_previous_text', 'false');
+    
+    console.log('Making request to:', `${sttUrl}/v1/audio/transcriptions`);
+    
+    // Make request to STT service (OpenAI-compatible API)
+    const response = await fetch(`${sttUrl}/v1/audio/transcriptions`, {
+      method: 'POST',
+      body: formData,
+      headers: formData.getHeaders()
+    });
+    
+    console.log('Response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      // Log response body for debugging
+      const errorText = await response.text();
+      console.error('Error response body:', errorText);
+      throw new Error(`STT service error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Transcription response:', result);
+    
+    return {
+      success: true,
+      text: result.text || result.transcription || ''
+    };
+  } catch (error) {
+    console.error('Transcription error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 });
 

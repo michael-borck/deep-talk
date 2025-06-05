@@ -21,12 +21,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fs: {
     readFile: (filePath) => ipcRenderer.invoke('fs-read-file', filePath),
     writeFile: (filePath, data) => ipcRenderer.invoke('fs-write-file', { filePath, data }),
-    getAppPath: (type) => ipcRenderer.invoke('get-app-path', type)
+    getAppPath: (type) => ipcRenderer.invoke('get-app-path', type),
+    getFileStats: (filePath) => ipcRenderer.invoke('fs-get-file-stats', filePath),
+    joinPath: (...pathSegments) => ipcRenderer.invoke('fs-join-path', ...pathSegments)
   },
 
   // Service operations
   services: {
-    testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service })
+    testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service }),
+    getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url })
   },
 
   // Navigation events
@@ -49,7 +52,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     extractAudio: (inputPath, outputPath) => 
       ipcRenderer.invoke('extract-audio', { inputPath, outputPath }),
     getMediaInfo: (filePath) => 
-      ipcRenderer.invoke('get-media-info', { filePath })
+      ipcRenderer.invoke('get-media-info', { filePath }),
+    transcribeAudio: (audioPath, sttUrl, sttModel) =>
+      ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel })
   },
 
   // Database management

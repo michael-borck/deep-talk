@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Transcript } from '../types';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
@@ -8,6 +9,7 @@ interface TranscriptCardProps {
 }
 
 export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) => {
+  const navigate = useNavigate();
   const { updateTranscript, deleteTranscript } = useContext(TranscriptContext);
 
   const handleToggleStar = async () => {
@@ -15,8 +17,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   };
 
   const handleView = () => {
-    // TODO: Implement view functionality
-    console.log('View transcript:', transcript.id);
+    navigate(`/transcript/${transcript.id}`);
   };
 
   const handleChat = () => {
@@ -25,8 +26,34 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   };
 
   const handleExport = () => {
-    // TODO: Implement export functionality
-    console.log('Export transcript:', transcript.id);
+    const content = `# ${transcript.title}
+
+**Date:** ${formatDate(transcript.created_at)}
+**Duration:** ${formatDuration(transcript.duration)}
+**File:** ${transcript.file_path?.split('/').pop() || transcript.filename}
+
+## Transcript
+
+${transcript.full_text || 'No transcript available.'}
+
+${transcript.summary ? `## Summary
+
+${transcript.summary}` : ''}
+
+${transcript.key_topics && transcript.key_topics.length > 0 ? `## Key Topics
+
+${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
+`;
+
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${transcript.title.replace(/[^a-z0-9]/gi, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleDelete = async () => {

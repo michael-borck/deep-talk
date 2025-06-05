@@ -9,13 +9,27 @@ export const SettingsPage: React.FC = () => {
   const { testConnections, serviceStatus } = useContext(ServiceContext);
   
   // Settings state
-  const [speechToTextUrl, setSpeechToTextUrl] = useState('http://localhost:8000');
+  const [speechToTextUrl, setSpeechToTextUrl] = useState('https://speaches.serveur.au');
+  const [speechToTextModel, setSpeechToTextModel] = useState('Systran/faster-distil-whisper-small.en');
   const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434');
   const [aiModel, setAiModel] = useState('llama2');
   const [autoBackup, setAutoBackup] = useState(true);
   const [backupFrequency, setBackupFrequency] = useState('weekly');
   const [theme, setTheme] = useState('system');
   const [databaseInfo, setDatabaseInfo] = useState<any>(null);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  
+  // Transcript processing settings
+  const [enableTranscriptValidation, setEnableTranscriptValidation] = useState(true);
+  const [validationOptions, setValidationOptions] = useState({
+    spelling: true,
+    grammar: true,
+    punctuation: true,
+    capitalization: true
+  });
+  const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
+  const [audioChunkSize, setAudioChunkSize] = useState(300); // in seconds
 
   useEffect(() => {
     loadSettings();
@@ -33,12 +47,25 @@ export const SettingsPage: React.FC = () => {
         return acc;
       }, {});
 
-      setSpeechToTextUrl(settingsMap.speechToTextUrl || 'http://localhost:8000');
+      setSpeechToTextUrl(settingsMap.speechToTextUrl || 'https://speaches.serveur.au');
+      setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-small.en');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
       setAiModel(settingsMap.aiModel || 'llama2');
       setAutoBackup(settingsMap.autoBackup === 'true');
       setBackupFrequency(settingsMap.backupFrequency || 'weekly');
       setTheme(settingsMap.theme || 'system');
+      
+      // Load transcript processing settings
+      setEnableTranscriptValidation(settingsMap.enableTranscriptValidation !== 'false');
+      if (settingsMap.validationOptions) {
+        try {
+          setValidationOptions(JSON.parse(settingsMap.validationOptions));
+        } catch (e) {
+          console.error('Error parsing validation options:', e);
+        }
+      }
+      setAnalyzeValidatedTranscript(settingsMap.analyzeValidatedTranscript !== 'false');
+      setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 300);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -75,6 +102,23 @@ export const SettingsPage: React.FC = () => {
     }
     
     await testConnections();
+  };
+
+  const fetchOllamaModels = async () => {
+    setLoadingModels(true);
+    try {
+      const result = await window.electronAPI.services.getOllamaModels(aiAnalysisUrl);
+      if (result.success && result.models) {
+        const modelNames = result.models.map((model: any) => model.name);
+        setAvailableModels(modelNames);
+      } else {
+        console.error('Failed to fetch models:', result.error);
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error);
+    } finally {
+      setLoadingModels(false);
+    }
   };
 
   const handleChangeLocation = async () => {
@@ -163,6 +207,49 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Speech-to-Text Model
+                  </label>
+                  <input
+                    type="text"
+                    value={speechToTextModel}
+                    onChange={(e) => {
+                      setSpeechToTextModel(e.target.value);
+                      saveSetting('speechToTextModel', e.target.value);
+                    }}
+                    placeholder="Enter model name (e.g., Systran/faster-distil-whisper-small.en)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  <div className="mt-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Common models:
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        'Systran/faster-distil-whisper-small.en',
+                        'Systran/faster-distil-whisper-medium.en',
+                        'Systran/faster-distil-whisper-large-v3',
+                        'openai/whisper-tiny',
+                        'openai/whisper-small',
+                        'openai/whisper-medium',
+                        'openai/whisper-large'
+                      ].map(model => (
+                        <button
+                          key={model}
+                          onClick={() => {
+                            setSpeechToTextModel(model);
+                            saveSetting('speechToTextModel', model);
+                          }}
+                          className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
+                        >
+                          {model.split('/').pop()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Status:</span>
                   <div className={`w-2 h-2 rounded-full ${
@@ -211,22 +298,45 @@ export const SettingsPage: React.FC = () => {
                     Model
                   </label>
                   <div className="flex space-x-2">
-                    <select
+                    <input
+                      type="text"
                       value={aiModel}
                       onChange={(e) => {
                         setAiModel(e.target.value);
                         saveSetting('aiModel', e.target.value);
                       }}
+                      placeholder="Enter model name (e.g., llama2, mistral, codellama)"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <button 
+                      onClick={fetchOllamaModels}
+                      disabled={loadingModels}
+                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                     >
-                      <option value="llama2">Llama 2</option>
-                      <option value="mistral">Mistral</option>
-                      <option value="codellama">Code Llama</option>
-                    </select>
-                    <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                      Refresh
+                      {loadingModels ? 'Loading...' : 'Refresh'}
                     </button>
                   </div>
+                  {availableModels.length > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Available models:
+                      </label>
+                      <div className="flex flex-wrap gap-1">
+                        {availableModels.map(model => (
+                          <button
+                            key={model}
+                            onClick={() => {
+                              setAiModel(model);
+                              saveSetting('aiModel', model);
+                            }}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
+                          >
+                            {model}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -239,6 +349,105 @@ export const SettingsPage: React.FC = () => {
                     {serviceStatus.aiAnalysis}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Transcript Processing Settings */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Transcript Processing
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Audio Chunk Size */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Audio Chunk Size (for long files)
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="30"
+                      max="300"
+                      step="30"
+                      value={audioChunkSize}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setAudioChunkSize(value);
+                        saveSetting('audioChunkSize', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-20 text-right">
+                      {audioChunkSize}s ({Math.floor(audioChunkSize / 60)}:{(audioChunkSize % 60).toString().padStart(2, '0')})
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Splits long audio into chunks for better transcription accuracy (30s to 5min)
+                  </p>
+                </div>
+
+                {/* Enable Validation */}
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={enableTranscriptValidation}
+                      onChange={(e) => {
+                        setEnableTranscriptValidation(e.target.checked);
+                        saveSetting('enableTranscriptValidation', e.target.checked.toString());
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Enable transcript validation</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6">
+                    Use AI to correct spelling, grammar, and punctuation errors
+                  </p>
+                </div>
+
+                {/* Validation Options */}
+                {enableTranscriptValidation && (
+                  <div className="ml-6 space-y-2">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Validation options:</p>
+                    {Object.entries(validationOptions).map(([key, value]) => (
+                      <label key={key} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={value}
+                          onChange={(e) => {
+                            const newOptions = { ...validationOptions, [key]: e.target.checked };
+                            setValidationOptions(newOptions);
+                            saveSetting('validationOptions', JSON.stringify(newOptions));
+                          }}
+                          className="rounded text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-600 capitalize">{key}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* Analyze Validated Transcript */}
+                {enableTranscriptValidation && (
+                  <div>
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={analyzeValidatedTranscript}
+                        onChange={(e) => {
+                          setAnalyzeValidatedTranscript(e.target.checked);
+                          saveSetting('analyzeValidatedTranscript', e.target.checked.toString());
+                        }}
+                        className="rounded text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">Analyze validated transcript</span>
+                    </label>
+                    <p className="text-xs text-gray-500 ml-6">
+                      Use the corrected transcript for AI analysis (unchecked uses original)
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

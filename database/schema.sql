@@ -72,10 +72,25 @@ CREATE TABLE IF NOT EXISTS transcripts (
     status TEXT CHECK(status IN ('processing', 'completed', 'error')) DEFAULT 'processing',
     
     -- Content fields
-    full_text TEXT,
+    full_text TEXT, -- Original transcript
+    validated_text TEXT, -- Corrected/validated transcript
+    validation_changes TEXT, -- JSON array of changes made
     summary TEXT,
     action_items TEXT, -- JSON array
     key_topics TEXT, -- JSON array
+    
+    -- Advanced analysis fields
+    sentiment_overall TEXT, -- 'positive', 'negative', 'neutral'
+    sentiment_score REAL, -- -1.0 to 1.0
+    emotions TEXT, -- JSON object with emotion scores
+    speaker_count INTEGER DEFAULT 1,
+    speakers TEXT, -- JSON array of speaker info
+    
+    -- Research analysis fields
+    notable_quotes TEXT, -- JSON array of quotable statements
+    research_themes TEXT, -- JSON array of research themes/categories
+    qa_pairs TEXT, -- JSON array of question-answer mappings
+    concept_frequency TEXT, -- JSON object with concept counts
     
     -- Metadata
     tags TEXT, -- JSON array
@@ -96,6 +111,8 @@ CREATE TABLE IF NOT EXISTS transcript_segments (
     end_time REAL NOT NULL,
     text TEXT NOT NULL,
     speaker TEXT,
+    sentiment TEXT, -- 'positive', 'negative', 'neutral' for this segment
+    emotions TEXT, -- JSON object with emotion scores for this segment
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
 );
 
@@ -190,11 +207,28 @@ END;
 
 -- Default settings
 INSERT OR IGNORE INTO settings (key, value) VALUES 
-    ('speechToTextUrl', 'http://localhost:8000'),
+    ('speechToTextUrl', 'https://speaches.serveur.au'),
+    ('speechToTextModel', 'Systran/faster-distil-whisper-small.en'),
     ('aiAnalysisUrl', 'http://localhost:11434'),
     ('aiModel', 'llama2'),
     ('autoBackup', 'true'),
     ('backupFrequency', 'weekly'),
     ('backupRetention', '5'),
     ('cleanupTempFiles', 'true'),
-    ('theme', 'system');
+    ('theme', 'system'),
+    ('enableTranscriptValidation', 'true'),
+    ('validationOptions', '{"spelling": true, "grammar": true, "punctuation": true, "capitalization": true}'),
+    ('analyzeValidatedTranscript', 'true'),
+    ('audioChunkSize', '300');
+
+-- Migration: Add missing columns to existing tables (safe to run multiple times)
+-- Check if columns exist before adding them (SQLite doesn't support IF NOT EXISTS for ALTER TABLE)
+
+-- First, create a temporary table to check if migration is needed
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Mark this migration
+INSERT OR IGNORE INTO schema_migrations (version) VALUES (1);

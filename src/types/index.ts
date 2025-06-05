@@ -15,6 +15,19 @@ export interface Transcript {
   action_items?: string[];
   key_topics?: string[];
   
+  // Advanced analysis
+  sentiment_overall?: string;
+  sentiment_score?: number;
+  emotions?: Record<string, number>;
+  speaker_count?: number;
+  speakers?: Array<{ id: string; name: string; segments: number }>;
+  
+  // Research analysis
+  notable_quotes?: Array<{ text: string; speaker?: string; timestamp?: number; relevance: number }>;
+  research_themes?: Array<{ theme: string; confidence: number; examples: string[] }>;
+  qa_pairs?: Array<{ question: string; answer: string; speaker?: string; timestamp?: number }>;
+  concept_frequency?: Record<string, { count: number; contexts: string[] }>;
+  
   // Metadata
   tags?: string[];
   starred: boolean;
@@ -29,6 +42,8 @@ export interface TranscriptSegment {
   end_time: number;
   text: string;
   speaker?: string;
+  sentiment?: string;
+  emotions?: Record<string, number>;
 }
 
 export interface ProcessingItem {
@@ -171,11 +186,18 @@ declare global {
         readFile: (filePath: string) => Promise<Buffer>;
         writeFile: (filePath: string, data: any) => Promise<void>;
         getAppPath: (type: string) => Promise<string>;
+        getFileStats: (filePath: string) => Promise<{ size: number; mtime?: Date; error?: string }>;
+        joinPath: (...pathSegments: string[]) => Promise<string>;
       };
       services: {
         testConnection: (url: string, service: string) => Promise<{
           success: boolean;
           status?: number;
+          error?: string;
+        }>;
+        getOllamaModels: (url: string) => Promise<{
+          success: boolean;
+          models?: any[];
           error?: string;
         }>;
       };
@@ -192,6 +214,11 @@ declare global {
           duration?: number;
           hasVideo?: boolean;
           hasAudio?: boolean;
+          error?: string;
+        }>;
+        transcribeAudio: (audioPath: string, sttUrl: string, sttModel: string) => Promise<{
+          success: boolean;
+          text?: string;
           error?: string;
         }>;
       };
