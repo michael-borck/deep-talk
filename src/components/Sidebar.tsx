@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
             <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
-            {!isCollapsed && <span className="ml-3 text-xl font-semibold">LocalListen</span>}
+            {!isCollapsed && <span className="ml-3 text-xl font-semibold">AudioScribe</span>}
           </div>
           <button
             onClick={() => onToggleCollapse(!isCollapsed)}
@@ -75,11 +75,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
       <div className="p-4 border-t border-gray-700">
         {!isCollapsed ? (
           <div className="text-xs text-gray-400">
-            <p>LocalListen v1.0.0</p>
+            <p>AudioScribe v1.0.0</p>
             <p className="mt-1">© 2024</p>
           </div>
         ) : (
-          <div title="LocalListen v1.0.0">
+          <div title="AudioScribe v1.0.0">
             <Info size={16} className="mx-auto text-gray-400" />
           </div>
         )}

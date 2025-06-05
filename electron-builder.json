@@ -1,6 +1,6 @@
 {
-  "appId": "com.yourinstitution.locallisten",
-  "productName": "LocalListen",
+  "appId": "com.yourinstitution.audioscribe",
+  "productName": "AudioScribe",
   "directories": {
     "output": "release"
   },

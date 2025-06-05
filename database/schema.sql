@@ -1,4 +1,4 @@
--- LocalListen Database Schema
+-- AudioScribe Database Schema
 
 -- Projects table
 CREATE TABLE IF NOT EXISTS projects (

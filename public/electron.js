@@ -208,7 +208,7 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'About LocalListen',
+          label: 'About AudioScribe',
           click: () => {
             mainWindow.webContents.send('navigate', 'about');
           }

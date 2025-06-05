@@ -1,8 +1,8 @@
-# LocalListen Electron App Specification
+# AudioScribe Electron App Specification
 
 ## 🎯 **Application Overview**
 
-LocalListen is a professional desktop application for AI-powered audio/video
+AudioScribe is a professional desktop application for AI-powered audio/video
 transcription, analysis, and interaction. Built with React + Electron, it
 provides a native desktop experience with local data storage and external AI
 service integration. This comprehensive specification gives you everything
@@ -99,7 +99,7 @@ locallisten/
 ### **Application Shell:**
 ```
 ┌─────────────────────────────────────────────────────┐
-│ [🎤] LocalListen                              [_][□][×] │
+│ [🎤] AudioScribe                              [_][□][×] │
 ├─────────────────────────────────────────────────────┤
 │ 🏠 Home    📋 Library    ⚙️ Settings    ℹ️ About      │
 ├─────────────────────────────────────────────────────┤
@@ -308,7 +308,7 @@ Configuration management with sane defaults and clear explanations for all optio
 │ 📁 STORAGE & DATA                                  │
 │ ┌─────────────────────────────────────────────────┐ │
 │ │ Database Location:                              │ │
-│ │ /Users/john/Documents/LocalListen/              │ │
+│ │ /Users/john/Documents/AudioScribe/              │ │
 │ │ [Change Location] [Open Folder] [Backup Now]   │ │
 │ │                                                 │ │
 │ │ Auto-backup: [✓] Every 7 days                  │ │
@@ -354,7 +354,7 @@ const servicesSettings = {
 ```javascript
 const storageSettings = {
   database: {
-    location: "~/Documents/LocalListen/",
+    location: "~/Documents/AudioScribe/",
     autoBackup: true,
     backupFrequency: "weekly", // daily, weekly, monthly
     backupRetention: 5 // number of backups to keep

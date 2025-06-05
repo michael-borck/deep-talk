@@ -1,4 +1,4 @@
-# LocalListen
+# AudioScribe
 
 Desktop app for AI-powered transcription and analysis of audio/video files with local processing and privacy-first design.
 
@@ -12,7 +12,7 @@ Desktop app for AI-powered transcription and analysis of audio/video files with 
 
 ## Installation
 
-Download the latest release for your platform from the [Releases](https://github.com/michael-borck/local-listen/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/michael-borck/audio-scribe/releases) page.
 
 ## Development
 
@@ -27,8 +27,8 @@ Download the latest release for your platform from the [Releases](https://github
 
 ```bash
 # Clone the repository
-git clone https://github.com/michael-borck/local-listen.git
-cd local-listen
+git clone https://github.com/michael-borck/audio-scribe.git
+cd audio-scribe
 
 # Install dependencies
 npm install
@@ -74,7 +74,7 @@ To enable automatic builds when you create a release tag, set up these GitHub se
 ## Architecture
 
 ```
-LocalListen/
+AudioScribe/
 ├── src/               # React TypeScript source
 ├── public/            # Electron main process
 ├── database/          # SQLite schema
