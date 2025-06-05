@@ -11,6 +11,9 @@ export interface Transcript {
   
   // Content
   full_text?: string;
+  validated_text?: string;
+  processed_text?: string;
+  validation_changes?: Array<{ type: string; original: string; corrected: string; position: number }>;
   summary?: string;
   action_items?: string[];
   key_topics?: string[];

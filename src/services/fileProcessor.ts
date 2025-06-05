@@ -80,7 +80,11 @@ export class FileProcessor {
       callbacks.onProgress?.('analyzing', 50);
       
       // Step 4.5: Advanced Analysis (sentiment, speakers, emotions)
-      const advancedAnalysisResult = await this.performAdvancedAnalysis(transcriptResult.text || '', callbacks.onProgress);
+      // Use validated text if available and setting is enabled
+      const textForAdvancedAnalysis = (analyzeValidatedSetting?.value === 'true' && validationResult.validatedText) 
+        ? validationResult.validatedText 
+        : transcriptResult.text || '';
+      const advancedAnalysisResult = await this.performAdvancedAnalysis(textForAdvancedAnalysis, callbacks.onProgress);
       
       callbacks.onProgress?.('analyzing', 75);
       
@@ -102,7 +106,7 @@ export class FileProcessor {
       
       const updateResult = await window.electronAPI.database.run(
         `UPDATE transcripts 
-         SET status = ?, duration = ?, full_text = ?, validated_text = ?, validation_changes = ?,
+         SET status = ?, duration = ?, full_text = ?, validated_text = ?, validation_changes = ?, processed_text = ?,
              summary = ?, key_topics = ?, action_items = ?, 
              sentiment_overall = ?, sentiment_score = ?, emotions = ?, speaker_count = ?, speakers = ?, 
              notable_quotes = ?, research_themes = ?, qa_pairs = ?, concept_frequency = ?,
@@ -114,6 +118,7 @@ export class FileProcessor {
           transcriptResult.text || '', 
           validationResult.validatedText || transcriptResult.text || '',
           JSON.stringify(validationResult.changes || []),
+          advancedAnalysisResult.processedText || transcriptResult.text || '',
           analysisResult.summary || '',
           JSON.stringify(analysisResult.keyTopics || []),
           JSON.stringify(analysisResult.actionItems || []),
@@ -318,37 +323,261 @@ Please format your response as JSON:
     return items.map(item => item.trim().replace(/\n/g, ' '));
   }
 
+  // Helper functions for AI service settings
+  async getAiUrl(): Promise<string> {
+    const aiUrlSetting = await window.electronAPI.database.get(
+      'SELECT value FROM settings WHERE key = ?',
+      ['aiAnalysisUrl']
+    );
+    return aiUrlSetting?.value || 'http://localhost:11434';
+  }
+
+  async getAiModel(): Promise<string> {
+    const aiModelSetting = await window.electronAPI.database.get(
+      'SELECT value FROM settings WHERE key = ?',
+      ['aiModel']
+    );
+    return aiModelSetting?.value || 'llama2';
+  }
+
+  async callAI(aiUrl: string, aiModel: string, prompt: string, expectJson: boolean = true): Promise<any> {
+    try {
+      const response = await fetch(`${aiUrl}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          prompt: prompt,
+          stream: false,
+          format: expectJson ? 'json' : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`AI service error: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (expectJson) {
+        try {
+          return { parsed: JSON.parse(result.response), raw: result.response };
+        } catch (parseError) {
+          console.warn('Failed to parse AI response as JSON:', result.response);
+          return { parsed: null, raw: result.response };
+        }
+      } else {
+        return result.response;
+      }
+    } catch (error) {
+      console.error('AI call error:', error);
+      return expectJson ? { parsed: null, raw: '' } : '';
+    }
+  }
+
+  async performSentimentAnalysis(transcriptText: string): Promise<{
+    sentiment: string;
+    sentimentScore: number;
+  }> {
+    try {
+      const aiUrl = await this.getAiUrl();
+      const aiModel = await this.getAiModel();
+      
+      const prompt = `Analyze the sentiment of this transcript. Provide:
+1. Overall sentiment: positive, negative, or neutral
+2. Sentiment score: -1.0 (very negative) to 1.0 (very positive)
+
+Transcript: ${transcriptText}
+
+Respond in JSON format:
+{"sentiment": "positive|negative|neutral", "sentimentScore": 0.0}`;
+
+      const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
+      const result = aiResponse.parsed || {};
+      return {
+        sentiment: result.sentiment || 'neutral',
+        sentimentScore: typeof result.sentimentScore === 'number' ? result.sentimentScore : 0
+      };
+    } catch (error) {
+      console.error('Sentiment analysis error:', error);
+      return { sentiment: 'neutral', sentimentScore: 0 };
+    }
+  }
+
+  async performEmotionAnalysis(transcriptText: string): Promise<Record<string, number>> {
+    try {
+      const aiUrl = await this.getAiUrl();
+      const aiModel = await this.getAiModel();
+      
+      const prompt = `Analyze the emotional content of this transcript. Rate each emotion from 0.0 to 1.0:
+
+Emotions to analyze: frustration, excitement, confusion, confidence, anxiety, satisfaction
+
+Transcript: ${transcriptText}
+
+Respond in JSON format:
+{"frustration": 0.0, "excitement": 0.0, "confusion": 0.0, "confidence": 0.0, "anxiety": 0.0, "satisfaction": 0.0}`;
+
+      const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
+      return aiResponse.parsed || {};
+    } catch (error) {
+      console.error('Emotion analysis error:', error);
+      return {};
+    }
+  }
+
+  async performSpeakerDetection(transcriptText: string): Promise<{
+    speakerCount: number;
+    speakers: Array<{ id: string; name: string; segments: number }>;
+  }> {
+    try {
+      const aiUrl = await this.getAiUrl();
+      const aiModel = await this.getAiModel();
+      
+      const prompt = `Identify distinct speakers in this transcript. Look for:
+- Speaker changes
+- Different speaking styles
+- Dialogue patterns
+- Use of "I", "you", "we" to identify speakers
+
+Transcript: ${transcriptText}
+
+Respond in JSON format:
+{
+  "speakerCount": 1,
+  "speakers": [
+    {"id": "Speaker 1", "name": "Speaker 1", "segments": 5}
+  ]
+}`;
+
+      const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
+      const result = aiResponse.parsed || {};
+      return {
+        speakerCount: typeof result.speakerCount === 'number' ? result.speakerCount : 1,
+        speakers: Array.isArray(result.speakers) ? result.speakers : []
+      };
+    } catch (error) {
+      console.error('Speaker detection error:', error);
+      return { speakerCount: 1, speakers: [] };
+    }
+  }
+
+  async performSpeakerTagging(transcriptText: string, speakers: Array<{ id: string; name: string; segments: number }>): Promise<string> {
+    try {
+      if (!speakers || speakers.length <= 1) {
+        return transcriptText; // No need to tag single speaker
+      }
+
+      const aiUrl = await this.getAiUrl();
+      const aiModel = await this.getAiModel();
+      
+      const prompt = `Tag this transcript with speaker labels. You have identified ${speakers.length} speakers: ${speakers.map(s => s.name).join(', ')}.
+
+Add speaker tags like "[Speaker 1]:" before each speaker's dialogue. Look for:
+- Natural conversation breaks
+- Change in speaking style or perspective
+- Use of personal pronouns
+
+Original transcript: ${transcriptText}
+
+Return only the tagged transcript (no JSON, just the tagged text):`;
+
+      const result = await this.callAI(aiUrl, aiModel, prompt, false); // false = expect text, not JSON
+      return typeof result === 'string' ? result : transcriptText;
+    } catch (error) {
+      console.error('Speaker tagging error:', error);
+      return transcriptText;
+    }
+  }
+
   async performAdvancedAnalysis(transcriptText: string, onProgress?: (stage: string, percent: number) => void): Promise<{
     sentiment: string;
     sentimentScore: number;
     emotions: Record<string, number>;
     speakerCount: number;
     speakers: Array<{ id: string; name: string; segments: number }>;
+    processedText: string;
   }> {
     try {
       if (!transcriptText || transcriptText.trim() === '') {
         console.warn('No transcript text for advanced analysis');
-        return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [] };
+        return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [], processedText: transcriptText };
       }
 
-      // Get AI service settings
-      const aiUrlSetting = await window.electronAPI.database.get(
+      // Check if we should use one-task-at-a-time approach
+      const oneTaskSetting = await window.electronAPI.database.get(
         'SELECT value FROM settings WHERE key = ?',
-        ['aiAnalysisUrl']
+        ['oneTaskAtATime']
       );
+      const useOneTaskAtATime = oneTaskSetting?.value === 'true';
+
+      if (useOneTaskAtATime) {
+        console.log('Using one-task-at-a-time analysis approach');
+        onProgress?.('analyzing', 60);
+        
+        // Step 1: Sentiment Analysis
+        const sentimentResult = await this.performSentimentAnalysis(transcriptText);
+        onProgress?.('analyzing', 65);
+        
+        // Step 2: Emotion Analysis
+        const emotionResult = await this.performEmotionAnalysis(transcriptText);
+        onProgress?.('analyzing', 70);
+        
+        // Step 3: Speaker Detection
+        const speakerResult = await this.performSpeakerDetection(transcriptText);
+        onProgress?.('analyzing', 75);
+        
+        // Step 4: Speaker Tagging (if enabled and multiple speakers detected)
+        let processedText = transcriptText;
+        const speakerTaggingSetting = await window.electronAPI.database.get(
+          'SELECT value FROM settings WHERE key = ?',
+          ['enableSpeakerTagging']
+        );
+        
+        if (speakerTaggingSetting?.value === 'true' && speakerResult.speakerCount > 1) {
+          processedText = await this.performSpeakerTagging(transcriptText, speakerResult.speakers);
+        }
+        onProgress?.('analyzing', 85);
+        
+        return {
+          sentiment: sentimentResult.sentiment,
+          sentimentScore: sentimentResult.sentimentScore,
+          emotions: emotionResult,
+          speakerCount: speakerResult.speakerCount,
+          speakers: speakerResult.speakers,
+          processedText
+        };
+      } else {
+        // Legacy monolithic approach
+        console.log('Using legacy monolithic analysis approach');
+        return this.performLegacyAdvancedAnalysis(transcriptText, onProgress);
+      }
       
-      const aiModelSetting = await window.electronAPI.database.get(
-        'SELECT value FROM settings WHERE key = ?',
-        ['aiModel']
-      );
-      
-      const aiUrl = aiUrlSetting?.value || 'http://localhost:11434';
-      const aiModel = aiModelSetting?.value || 'llama2';
-      
-      onProgress?.('analyzing', 60);
-      
-      // Create advanced analysis prompt
-      const advancedPrompt = `Please perform advanced analysis on the following transcript:
+    } catch (error) {
+      console.error('Advanced analysis error:', error);
+      // Return defaults rather than failing the entire process
+      return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [], processedText: transcriptText };
+    }
+  }
+
+  async performLegacyAdvancedAnalysis(transcriptText: string, onProgress?: (stage: string, percent: number) => void): Promise<{
+    sentiment: string;
+    sentimentScore: number;
+    emotions: Record<string, number>;
+    speakerCount: number;
+    speakers: Array<{ id: string; name: string; segments: number }>;
+    processedText: string;
+  }> {
+    // Get AI service settings
+    const aiUrl = await this.getAiUrl();
+    const aiModel = await this.getAiModel();
+    
+    onProgress?.('analyzing', 60);
+    
+    // Create advanced analysis prompt
+    const advancedPrompt = `Please perform advanced analysis on the following transcript:
 
 1. Sentiment Analysis: Determine the overall emotional tone (positive, negative, or neutral) and provide a sentiment score from -1.0 (very negative) to 1.0 (very positive).
 
@@ -387,59 +616,23 @@ Please format your response as JSON:
   ]
 }`;
 
-      onProgress?.('analyzing', 75);
-      
-      // Make request to AI service
-      const response = await fetch(`${aiUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: aiModel,
-          prompt: advancedPrompt,
-          stream: false,
-          format: 'json'
-        })
-      });
-      
-      onProgress?.('analyzing', 85);
-      
-      if (!response.ok) {
-        throw new Error(`AI service error: ${response.status} ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Parse the AI response
-      let analysisData;
-      try {
-        analysisData = JSON.parse(result.response);
-      } catch (parseError) {
-        console.warn('Failed to parse advanced analysis response as JSON, using fallback');
-        analysisData = this.parseAdvancedAnalysisText(result.response);
-      }
-      
-      console.log('Advanced analysis completed:', analysisData);
-      console.log('Raw AI response:', result.response);
-      
-      // Log what we're actually returning
-      const returnData = {
-        sentiment: analysisData.sentiment || 'neutral',
-        sentimentScore: typeof analysisData.sentimentScore === 'number' ? analysisData.sentimentScore : 0,
-        emotions: analysisData.emotions || {},
-        speakerCount: typeof analysisData.speakerCount === 'number' ? analysisData.speakerCount : 1,
-        speakers: Array.isArray(analysisData.speakers) ? analysisData.speakers : []
-      };
-      
-      console.log('Returning advanced analysis:', returnData);
-      return returnData;
-      
-    } catch (error) {
-      console.error('Advanced analysis error:', error);
-      // Return defaults rather than failing the entire process
-      return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [] };
-    }
+    onProgress?.('analyzing', 75);
+    
+    const aiResponse = await this.callAI(aiUrl, aiModel, advancedPrompt);
+    
+    onProgress?.('analyzing', 85);
+    
+    // Use parsed response if available, otherwise fall back to text parsing
+    const result = aiResponse.parsed || this.parseAdvancedAnalysisText(aiResponse.raw || '');
+    
+    return {
+      sentiment: result.sentiment || 'neutral',
+      sentimentScore: typeof result.sentimentScore === 'number' ? result.sentimentScore : 0,
+      emotions: result.emotions || {},
+      speakerCount: typeof result.speakerCount === 'number' ? result.speakerCount : 1,
+      speakers: Array.isArray(result.speakers) ? result.speakers : [],
+      processedText: transcriptText
+    };
   }
 
   private parseAdvancedAnalysisText(text: string): any {

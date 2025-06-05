@@ -13,6 +13,8 @@ export const TranscriptDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
+  const [showValidated, setShowValidated] = useState(true);
+  const [showValidationChanges, setShowValidationChanges] = useState(false);
 
   useEffect(() => {
     loadTranscript();
@@ -529,17 +531,69 @@ ${transcript.full_text || 'No transcript available.'}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Transcript</h2>
-          {transcript.full_text && (
-            <div className="text-sm text-gray-500">
-              {transcript.full_text.split(' ').length} words
-            </div>
-          )}
+          <div className="flex items-center space-x-4">
+            {/* Show transcript type toggle if validated text exists */}
+            {transcript.validated_text && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowValidated(false)}
+                  className={`px-3 py-1 text-sm rounded ${
+                    !showValidated ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Original
+                </button>
+                <button
+                  onClick={() => setShowValidated(true)}
+                  className={`px-3 py-1 text-sm rounded ${
+                    showValidated ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Validated
+                </button>
+                {transcript.validation_changes && transcript.validation_changes.length > 0 && (
+                  <button
+                    onClick={() => setShowValidationChanges(!showValidationChanges)}
+                    className="px-3 py-1 text-sm rounded text-purple-600 hover:bg-purple-100"
+                  >
+                    {showValidationChanges ? 'Hide' : 'Show'} Changes ({transcript.validation_changes.length})
+                  </button>
+                )}
+              </div>
+            )}
+            {/* Word count */}
+            {(transcript.full_text || transcript.validated_text) && (
+              <div className="text-sm text-gray-500">
+                {(showValidated && transcript.validated_text ? transcript.validated_text : transcript.full_text)?.split(' ').length} words
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Validation Changes */}
+        {showValidationChanges && transcript.validation_changes && transcript.validation_changes.length > 0 && (
+          <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <h3 className="text-sm font-medium text-purple-900 mb-2">Validation Changes:</h3>
+            <div className="space-y-2">
+              {transcript.validation_changes.slice(0, 10).map((change, idx) => (
+                <div key={idx} className="text-sm">
+                  <span className="font-medium text-purple-700 capitalize">{change.type}:</span>
+                  <span className="text-red-600 line-through ml-2">{change.original}</span>
+                  <span className="text-green-600 ml-2">→ {change.corrected}</span>
+                </div>
+              ))}
+              {transcript.validation_changes.length > 10 && (
+                <p className="text-xs text-purple-600">... and {transcript.validation_changes.length - 10} more changes</p>
+              )}
+            </div>
+          </div>
+        )}
         
-        {transcript.full_text ? (
+        {/* Transcript text */}
+        {(transcript.full_text || transcript.validated_text) ? (
           <div className="prose max-w-none">
             <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-              {transcript.full_text}
+              {showValidated && transcript.validated_text ? transcript.validated_text : transcript.full_text}
             </div>
           </div>
         ) : (
@@ -554,6 +608,68 @@ ${transcript.full_text || 'No transcript available.'}
           </div>
         )}
       </div>
+
+      {/* Debug Section - Analysis Data */}
+      <details className="bg-gray-50 rounded-lg p-4 mt-6">
+        <summary className="text-sm font-medium text-gray-700 cursor-pointer mb-2">
+          🔍 Debug: Analysis Data (Click to expand)
+        </summary>
+        <div className="space-y-4 text-xs text-gray-600">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Basic Info */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Basic Info:</h4>
+              <ul className="space-y-1">
+                <li><strong>Status:</strong> {transcript.status}</li>
+                <li><strong>Duration:</strong> {transcript.duration || 0} seconds</li>
+                <li><strong>File Size:</strong> {formatFileSize(transcript.file_size)}</li>
+                <li><strong>Original Text:</strong> {transcript.full_text ? `${transcript.full_text.length} chars` : 'None'}</li>
+                <li><strong>Validated Text:</strong> {transcript.validated_text ? `${transcript.validated_text.length} chars` : 'None'}</li>
+                <li><strong>Validation Changes:</strong> {transcript.validation_changes?.length || 0}</li>
+              </ul>
+            </div>
+
+            {/* Analysis Results */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Analysis Results:</h4>
+              <ul className="space-y-1">
+                <li><strong>Summary:</strong> {transcript.summary ? `${transcript.summary.length} chars` : 'None'}</li>
+                <li><strong>Key Topics:</strong> {transcript.key_topics?.length || 0}</li>
+                <li><strong>Action Items:</strong> {transcript.action_items?.length || 0}</li>
+                <li><strong>Sentiment:</strong> {transcript.sentiment_overall || 'None'} 
+                  {transcript.sentiment_score !== undefined && ` (${transcript.sentiment_score})`}</li>
+                <li><strong>Speaker Count:</strong> {transcript.speaker_count || 'None'}</li>
+                <li><strong>Speakers:</strong> {transcript.speakers?.length || 0}</li>
+                <li><strong>Notable Quotes:</strong> {transcript.notable_quotes?.length || 0}</li>
+                <li><strong>Research Themes:</strong> {transcript.research_themes?.length || 0}</li>
+                <li><strong>Q&A Pairs:</strong> {transcript.qa_pairs?.length || 0}</li>
+                <li><strong>Concepts:</strong> {transcript.concept_frequency ? Object.keys(transcript.concept_frequency).length : 0}</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Raw Data Preview */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Raw Analysis Data Preview:</h4>
+            <div className="bg-white p-2 rounded border max-h-96 overflow-auto">
+              <pre className="text-xs">
+                {JSON.stringify({
+                  sentiment_overall: transcript.sentiment_overall,
+                  sentiment_score: transcript.sentiment_score,
+                  emotions: transcript.emotions,
+                  speakers: transcript.speakers,
+                  notable_quotes: transcript.notable_quotes?.slice(0, 2),
+                  research_themes: transcript.research_themes?.slice(0, 2),
+                  qa_pairs: transcript.qa_pairs?.slice(0, 2),
+                  concept_frequency: transcript.concept_frequency ? 
+                    Object.fromEntries(Object.entries(transcript.concept_frequency).slice(0, 3)) : {}
+                }, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   );
 };

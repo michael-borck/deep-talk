@@ -167,12 +167,14 @@ export const UploadZone: React.FC = () => {
             status: stage === 'transcribing' ? 'transcribing' : 'analyzing'
           });
         },
-        onError: (error: Error) => {
+        onError: async (error: Error) => {
           console.error('Processing error:', error);
           updateProcessingItem(processingItemId, { 
             status: 'error',
             error_message: error.message
           });
+          // Reload transcripts to show the error state
+          await loadTranscripts();
         },
         onComplete: async () => {
           console.log('Processing completed for:', transcriptId);
@@ -190,6 +192,8 @@ export const UploadZone: React.FC = () => {
         status: 'error',
         error_message: (error as Error).message
       });
+      // Reload transcripts to show the error state
+      await loadTranscripts();
     }
   };
 

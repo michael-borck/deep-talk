@@ -83,7 +83,8 @@ function runMigrations() {
       { name: 'qa_pairs', sql: 'ALTER TABLE transcripts ADD COLUMN qa_pairs TEXT' },
       { name: 'concept_frequency', sql: 'ALTER TABLE transcripts ADD COLUMN concept_frequency TEXT' },
       { name: 'validated_text', sql: 'ALTER TABLE transcripts ADD COLUMN validated_text TEXT' },
-      { name: 'validation_changes', sql: 'ALTER TABLE transcripts ADD COLUMN validation_changes TEXT' }
+      { name: 'validation_changes', sql: 'ALTER TABLE transcripts ADD COLUMN validation_changes TEXT' },
+      { name: 'processed_text', sql: 'ALTER TABLE transcripts ADD COLUMN processed_text TEXT' }
     ];
     
     // Add missing columns
@@ -443,9 +444,272 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
       fullUrl: `${sttUrl}/v1/audio/transcriptions`
     });
     
+    // Get audio chunk size setting
+    const chunkSizeSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('audioChunkSize');
+    const chunkSizeSeconds = chunkSizeSetting ? parseInt(chunkSizeSetting.value) : 300; // Default 5 minutes
+    
+    console.log('=== AUDIO CHUNKING DEBUG ===');
+    console.log('Audio chunk size setting:', chunkSizeSeconds, 'seconds');
+    console.log('Audio file path:', audioPath);
+    
+    // Check if file exists and get file size
+    if (!fs.existsSync(audioPath)) {
+      console.error('ERROR: Audio file does not exist:', audioPath);
+      throw new Error(`Audio file not found: ${audioPath}`);
+    }
+    
+    const audioStats = fs.statSync(audioPath);
+    console.log('Audio file size:', (audioStats.size / 1024 / 1024).toFixed(2), 'MB');
+    
+    // Get media info to determine if we need to chunk
+    const ffmpegPath = getFFmpegPath();
+    console.log('FFmpeg path:', ffmpegPath);
+    
+    // Use ffmpeg to get duration (the -show_entries is actually an ffprobe option)
+    // We'll extract duration from ffmpeg stderr output instead
+    let totalDuration = 0;
+    try {
+      const durationCommand = `"${ffmpegPath}" -i "${audioPath}" -f null - 2>&1`;
+      console.log('Getting duration with command:', durationCommand);
+      
+      const { stdout, stderr } = await execAsync(durationCommand).catch(e => ({ 
+        stdout: e.stdout || '', 
+        stderr: e.stderr || e.message || ''
+      }));
+      
+      const output = stdout + stderr;
+      console.log('FFmpeg output sample:', output.substring(0, 500));
+      
+      // Extract duration from output
+      const durationMatch = output.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/);
+      if (durationMatch) {
+        const hours = parseInt(durationMatch[1]);
+        const minutes = parseInt(durationMatch[2]);
+        const seconds = parseFloat(durationMatch[3]);
+        totalDuration = hours * 3600 + minutes * 60 + seconds;
+        console.log('Extracted duration:', totalDuration, 'seconds', `(${Math.floor(totalDuration / 60)}:${Math.floor(totalDuration % 60).toString().padStart(2, '0')})`);
+      } else {
+        console.warn('WARNING: Could not extract duration from ffmpeg output');
+        console.log('Will process as single file without chunking');
+        totalDuration = chunkSizeSeconds - 1; // Force single file processing
+      }
+    } catch (error) {
+      console.error('Error getting media duration:', error);
+      console.log('Will process as single file without chunking');
+      totalDuration = chunkSizeSeconds - 1; // Force single file processing
+    }
+    
+    // If audio is shorter than chunk size, process as single file
+    if (totalDuration <= chunkSizeSeconds) {
+      console.log('>>> DECISION: Audio is shorter than chunk size, processing as SINGLE FILE');
+      console.log('=== END AUDIO CHUNKING DEBUG ===\n');
+      return transcribeSingleFile(audioPath, sttUrl, sttModel);
+    }
+    
+    // Otherwise, split into chunks and process
+    console.log('>>> DECISION: Audio is longer than chunk size, SPLITTING INTO CHUNKS');
+    const chunks = Math.ceil(totalDuration / chunkSizeSeconds);
+    console.log('Number of chunks to create:', chunks);
+    console.log('Chunk duration:', chunkSizeSeconds, 'seconds each (except possibly last chunk)');
+    
+    const transcriptions = [];
+    let chunksDir = '';
+    
+    // Add overlap to prevent cutting words (10 seconds overlap)
+    const overlapSeconds = 10;
+    console.log('Using overlap of', overlapSeconds, 'seconds between chunks');
+    
+    for (let i = 0; i < chunks; i++) {
+      // Add overlap for all chunks except the first
+      const startTime = i === 0 ? 0 : (i * chunkSizeSeconds) - overlapSeconds;
+      const remainingDuration = totalDuration - startTime;
+      const duration = Math.min(chunkSizeSeconds + (i === 0 ? 0 : overlapSeconds), remainingDuration);
+      
+      console.log(`\n--- CHUNK ${i + 1}/${chunks} ---`);
+      console.log(`Start time: ${startTime}s ${i > 0 ? '(includes ' + overlapSeconds + 's overlap)' : ''}`);
+      console.log(`End time: ${startTime + duration}s`);
+      console.log(`Chunk duration: ${duration}s`);
+      console.log(`Remaining audio: ${remainingDuration}s`);
+      
+      // For last chunk, ensure we capture everything
+      const isLastChunk = i === chunks - 1;
+      if (isLastChunk) {
+        console.log(`>>> LAST CHUNK - ensuring we capture remaining ${remainingDuration}s`);
+      }
+      
+      // Create chunk file in a dedicated chunks directory
+      if (i === 0) {
+        chunksDir = path.join(path.dirname(audioPath), 'audio_chunks', path.basename(audioPath, path.extname(audioPath)));
+        
+        // Create chunks directory if it doesn't exist
+        if (!fs.existsSync(chunksDir)) {
+          fs.mkdirSync(chunksDir, { recursive: true });
+          console.log('Created chunks directory:', chunksDir);
+        }
+      }
+      
+      const chunkPath = path.join(chunksDir, `chunk_${(i + 1).toString().padStart(3, '0')}_${startTime}s-${startTime + duration}s.wav`);
+      console.log('Chunk file path:', chunkPath);
+      
+      // Extract chunk using FFmpeg
+      // For the last chunk, we omit the -t duration flag to ensure we get everything to the end
+      let extractCommand;
+      if (isLastChunk && duration < chunkSizeSeconds) {
+        // Last chunk: extract from start time to end of file
+        extractCommand = `"${ffmpegPath}" -i "${audioPath}" -ss ${startTime} -acodec copy "${chunkPath}" -y`;
+        console.log('Extracting LAST chunk with FFmpeg (no duration limit, will extract to end)...');
+      } else {
+        // Regular chunk: extract specific duration
+        extractCommand = `"${ffmpegPath}" -i "${audioPath}" -ss ${startTime} -t ${duration} -acodec copy "${chunkPath}" -y`;
+        console.log('Extracting chunk with FFmpeg...');
+      }
+      console.log('Command:', extractCommand);
+      
+      const extractStart = Date.now();
+      await execAsync(extractCommand);
+      console.log(`Chunk extracted in ${Date.now() - extractStart}ms`);
+      
+      // Check chunk file size
+      const chunkStats = fs.statSync(chunkPath);
+      console.log('Chunk file size:', (chunkStats.size / 1024 / 1024).toFixed(2), 'MB');
+      
+      try {
+        // Transcribe chunk
+        console.log(`>>> SENDING CHUNK ${i + 1} TO STT SERVICE...`);
+        const transcribeStart = Date.now();
+        const chunkResult = await transcribeSingleFile(chunkPath, sttUrl, sttModel);
+        const transcribeTime = Date.now() - transcribeStart;
+        
+        if (chunkResult.success && chunkResult.text) {
+          transcriptions.push({
+            index: i,
+            text: chunkResult.text,
+            hasOverlap: i > 0
+          });
+          console.log(`✓ CHUNK ${i + 1} TRANSCRIBED SUCCESSFULLY`);
+          console.log(`  - Transcription time: ${transcribeTime}ms`);
+          console.log(`  - Text length: ${chunkResult.text.length} characters`);
+          console.log(`  - Preview: "${chunkResult.text.substring(0, 50)}..."`);
+          console.log(`  - Last 50 chars: "...${chunkResult.text.substring(chunkResult.text.length - 50)}"`);
+        } else {
+          console.error(`✗ FAILED TO TRANSCRIBE CHUNK ${i + 1}:`, chunkResult.error);
+          // Continue with other chunks even if one fails
+        }
+      } finally {
+        // Keep chunk files for debugging
+        console.log(`Chunk file saved at: ${chunkPath}`);
+        // Uncomment the following to delete chunks after processing:
+        // try {
+        //   fs.unlinkSync(chunkPath);
+        //   console.log('Chunk file deleted');
+        // } catch (e) {
+        //   console.error('Error deleting chunk file:', e);
+        // }
+      }
+      
+      // Send progress update
+      if (event.sender && !event.sender.isDestroyed()) {
+        event.sender.send('transcription-progress', {
+          current: i + 1,
+          total: chunks,
+          percent: Math.round(((i + 1) / chunks) * 100)
+        });
+      }
+    }
+    
+    // Combine all transcriptions with overlap removal
+    console.log('\n=== COMBINING TRANSCRIPTIONS ===');
+    console.log('Total chunks to combine:', transcriptions.length);
+    
+    let fullTranscription = '';
+    
+    if (transcriptions.length === 0) {
+      console.warn('WARNING: No transcriptions to combine!');
+    } else if (transcriptions.length === 1) {
+      fullTranscription = transcriptions[0].text;
+    } else {
+      // Process chunks with overlap removal
+      for (let i = 0; i < transcriptions.length; i++) {
+        const chunk = transcriptions[i];
+        
+        if (i === 0) {
+          // First chunk: use entire text
+          fullTranscription = chunk.text;
+          console.log(`Chunk 1: Using full text (${chunk.text.length} chars)`);
+        } else {
+          // Subsequent chunks: find overlap and merge
+          const prevChunkEnd = fullTranscription.substring(fullTranscription.length - 100);
+          const currChunkStart = chunk.text.substring(0, 100);
+          
+          console.log(`\nChunk ${i + 1} overlap detection:`);
+          console.log(`Previous chunk ends with: "...${prevChunkEnd}"`);
+          console.log(`Current chunk starts with: "${currChunkStart}..."`);
+          
+          // Try to find where the overlap starts in the current chunk
+          // Look for the last 50 characters of previous chunk in the start of current chunk
+          let overlapIndex = -1;
+          let searchText = '';
+          
+          for (let searchLen = 50; searchLen >= 10; searchLen -= 5) {
+            searchText = fullTranscription.substring(fullTranscription.length - searchLen);
+            overlapIndex = chunk.text.indexOf(searchText);
+            if (overlapIndex !== -1) {
+              console.log(`Found overlap of ${searchLen} chars at position ${overlapIndex}`);
+              break;
+            }
+          }
+          
+          if (overlapIndex > 0 && searchText) {
+            // Found overlap, skip it
+            const textToAdd = chunk.text.substring(overlapIndex + searchText.length);
+            fullTranscription += textToAdd;
+            console.log(`Added ${textToAdd.length} chars after removing overlap`);
+          } else {
+            // No clear overlap found, just add a space and append
+            fullTranscription += ' ' + chunk.text;
+            console.log(`No overlap found, added full chunk with space separator`);
+          }
+        }
+      }
+    }
+    
+    console.log('\n=== CHUNKING COMPLETE ===');
+    console.log('Expected chunks:', chunks);
+    console.log('Actual chunks processed:', transcriptions.length);
+    if (chunks !== transcriptions.length) {
+      console.warn('WARNING: Not all chunks were successfully transcribed!');
+    }
+    console.log('Combined transcription length:', fullTranscription.length, 'characters');
+    console.log('Total audio duration:', totalDuration, 'seconds');
+    console.log('Chunk files saved in:', chunksDir);
+    console.log('To delete chunks, navigate to the directory and remove them manually');
+    console.log('=== END AUDIO CHUNKING DEBUG ===\n');
+    
+    return {
+      success: true,
+      text: fullTranscription
+    };
+  } catch (error) {
+    console.error('Transcription error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
+// Helper function to transcribe a single audio file
+async function transcribeSingleFile(audioPath, sttUrl, sttModel) {
+  try {
+    const { default: fetch } = await import('node-fetch');
+    const FormData = require('form-data');
+    
+    console.log('\n>>> SINGLE FILE TRANSCRIPTION');
+    console.log('File path:', audioPath);
+    
     // Read audio file
     const audioBuffer = fs.readFileSync(audioPath);
-    console.log('Audio file read successfully, size:', audioBuffer.length, 'bytes');
+    console.log('Audio blob size:', (audioBuffer.length / 1024 / 1024).toFixed(2), 'MB', `(${audioBuffer.length} bytes)`);
     
     // Create form data (OpenAI-compatible format)
     const formData = new FormData();
@@ -462,7 +726,11 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
     formData.append('no_speech_threshold', '0.6');
     formData.append('condition_on_previous_text', 'false');
     
-    console.log('Making request to:', `${sttUrl}/v1/audio/transcriptions`);
+    console.log('STT Service URL:', `${sttUrl}/v1/audio/transcriptions`);
+    console.log('Model:', sttModel);
+    console.log('>>> SENDING BLOB TO STT SERVICE...');
+    
+    const sendStart = Date.now();
     
     // Make request to STT service (OpenAI-compatible API)
     const response = await fetch(`${sttUrl}/v1/audio/transcriptions`, {
@@ -471,6 +739,8 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
       headers: formData.getHeaders()
     });
     
+    const sendTime = Date.now() - sendStart;
+    console.log(`<<< RESPONSE RECEIVED in ${sendTime}ms`);
     console.log('Response status:', response.status, response.statusText);
     
     if (!response.ok) {
@@ -481,20 +751,26 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
     }
     
     const result = await response.json();
-    console.log('Transcription response:', result);
+    const resultText = result.text || result.transcription || '';
+    
+    console.log('✓ TRANSCRIPTION SUCCESSFUL');
+    console.log('Result text length:', resultText.length, 'characters');
+    console.log('Preview:', resultText ? `"${resultText.substring(0, 100)}..."` : 'No text');
+    console.log('<<< END SINGLE FILE TRANSCRIPTION\n');
     
     return {
       success: true,
-      text: result.text || result.transcription || ''
+      text: resultText
     };
   } catch (error) {
-    console.error('Transcription error:', error);
+    console.error('✗ SINGLE FILE TRANSCRIPTION ERROR:', error.message);
+    console.log('<<< END SINGLE FILE TRANSCRIPTION\n');
     return {
       success: false,
       error: error.message
     };
   }
-});
+}
 
 // App event handlers
 app.whenReady().then(() => {

@@ -5,11 +5,16 @@ import { SearchBar } from '../components/SearchBar';
 import { Transcript } from '../types';
 
 export const LibraryPage: React.FC = () => {
-  const { transcripts, searchTranscripts } = useContext(TranscriptContext);
+  const { transcripts, searchTranscripts, loadTranscripts } = useContext(TranscriptContext);
   const [filteredTranscripts, setFilteredTranscripts] = useState<Transcript[]>(transcripts);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<string>('all');
   const [sortBy] = useState<'date' | 'title' | 'duration'>('date');
+
+  // Reload transcripts when page is opened
+  useEffect(() => {
+    loadTranscripts();
+  }, []);
 
   useEffect(() => {
     filterAndSortTranscripts();

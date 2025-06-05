@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { TranscriptContext } from '../contexts/TranscriptContext';
@@ -11,8 +11,13 @@ import { Upload, Clock, FolderOpen, ArrowRight } from 'lucide-react';
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { serviceStatus, processingQueue } = useContext(ServiceContext);
-  const { recentTranscripts } = useContext(TranscriptContext);
+  const { recentTranscripts, loadTranscripts } = useContext(TranscriptContext);
   const { projects } = useProjects();
+
+  // Reload transcripts when page is opened
+  useEffect(() => {
+    loadTranscripts();
+  }, []);
 
   const getConnectionStatus = () => {
     if (serviceStatus.speechToText === 'connected' && serviceStatus.aiAnalysis === 'connected') {

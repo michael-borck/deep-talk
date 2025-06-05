@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS transcripts (
     -- Content fields
     full_text TEXT, -- Original transcript
     validated_text TEXT, -- Corrected/validated transcript
+    processed_text TEXT, -- Speaker-tagged and formatted transcript
     validation_changes TEXT, -- JSON array of changes made
     summary TEXT,
     action_items TEXT, -- JSON array
@@ -219,7 +220,9 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('enableTranscriptValidation', 'true'),
     ('validationOptions', '{"spelling": true, "grammar": true, "punctuation": true, "capitalization": true}'),
     ('analyzeValidatedTranscript', 'true'),
-    ('audioChunkSize', '300');
+    ('audioChunkSize', '300'),
+    ('enableSpeakerTagging', 'true'),
+    ('oneTaskAtATime', 'true');
 
 -- Migration: Add missing columns to existing tables (safe to run multiple times)
 -- Check if columns exist before adding them (SQLite doesn't support IF NOT EXISTS for ALTER TABLE)
