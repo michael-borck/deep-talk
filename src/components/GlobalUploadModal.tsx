@@ -2,6 +2,10 @@ import React, { useState, useContext } from 'react';
 import { X, Upload, FolderPlus } from 'lucide-react';
 import { ProcessingQueue } from './ProcessingQueue';
 import { ServiceContext } from '../contexts/ServiceContext';
+import { TranscriptContext } from '../contexts/TranscriptContext';
+import { useProjects } from '../contexts/ProjectContext';
+import { generateId } from '../utils/helpers';
+import { fileProcessor } from '../services/fileProcessor';
 
 interface GlobalUploadModalProps {
   isOpen: boolean;
@@ -12,53 +16,188 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { processingQueue } = useContext(ServiceContext);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const { processingQueue, addToProcessingQueue, updateProcessingItem } = useContext(ServiceContext);
+  const { loadTranscripts } = useContext(TranscriptContext);
+  const { projects, createProject, addTranscriptToProject } = useProjects();
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
-  // Mock project list - will be replaced with actual data
-  const projects = [
-    { id: '1', name: 'Customer Interviews' },
-    { id: '2', name: 'Q4 Analysis' },
-    { id: '3', name: 'Product Research' },
-  ];
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    setSelectedFiles(files);
+  const handleBrowseClick = async () => {
+    const filePaths = await window.electronAPI.dialog.openFile();
+    if (filePaths.length > 0) {
+      console.log('Selected files:', filePaths);
+      setSelectedFiles(filePaths);
+    }
   };
 
-  const handleUpload = () => {
-    if (!selectedFiles) return;
+  const checkForDuplicates = async (fileName: string): Promise<boolean> => {
+    try {
+      const existing = await window.electronAPI.database.all(
+        `SELECT id, title, created_at FROM transcripts 
+         WHERE filename = ? OR title = ?`,
+        [fileName, fileName]
+      );
+      
+      if (existing.length > 0) {
+        const existingFile = existing[0];
+        const existingDate = new Date(existingFile.created_at).toLocaleDateString();
+        
+        const shouldContinue = window.confirm(
+          `A file with this name already exists:\n\n` +
+          `"${existingFile.title}"\n` +
+          `Uploaded: ${existingDate}\n\n` +
+          `Do you want to upload this file anyway?`
+        );
+        
+        return !shouldContinue; // Return true if we should skip (user said no)
+      }
+      
+      return false; // No duplicates found
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      return false; // Continue on error
+    }
+  };
+
+  const startProcessing = async (processingItemId: string, transcriptId: string, filePath: string) => {
+    try {
+      updateProcessingItem(processingItemId, { status: 'transcribing' });
+      
+      await fileProcessor.processFile(filePath, transcriptId, {
+        onProgress: (stage: string, percent: number) => {
+          updateProcessingItem(processingItemId, { 
+            progress: percent,
+            status: stage === 'transcribing' ? 'transcribing' : 'analyzing'
+          });
+        },
+        onError: async (error: Error) => {
+          console.error('Processing error:', error);
+          updateProcessingItem(processingItemId, { 
+            status: 'error',
+            error_message: error.message
+          });
+          await loadTranscripts();
+        },
+        onComplete: async () => {
+          console.log('Processing completed for:', transcriptId);
+          updateProcessingItem(processingItemId, { 
+            status: 'completed',
+            progress: 100
+          });
+          
+          // Add transcript to project if one was selected
+          if (selectedProject) {
+            try {
+              await addTranscriptToProject(selectedProject, transcriptId);
+              console.log(`Added transcript ${transcriptId} to project ${selectedProject}`);
+            } catch (error) {
+              console.error('Error adding transcript to project:', error);
+            }
+          }
+          
+          await loadTranscripts();
+        }
+      });
+    } catch (error) {
+      console.error('Error starting processing:', error);
+      updateProcessingItem(processingItemId, { 
+        status: 'error',
+        error_message: (error as Error).message
+      });
+      await loadTranscripts();
+    }
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
     
-    // Handle upload logic here
-    console.log('Uploading files:', selectedFiles);
-    console.log('To project:', selectedProject);
+    for (const filePath of selectedFiles) {
+      const fileName = filePath.split('/').pop() || filePath;
+      
+      // Check file type by extension
+      if (!fileName.match(/\.(mp3|wav|mp4|avi|mov|m4a|webm|ogg)$/i)) {
+        alert(`File type not supported: ${fileName}`);
+        continue;
+      }
+      
+      // Check for duplicates
+      const shouldSkip = await checkForDuplicates(fileName);
+      if (shouldSkip) {
+        console.log(`Skipping duplicate file: ${fileName}`);
+        continue;
+      }
+      
+      // Create transcript record
+      const transcriptId = generateId();
+      const timestamp = new Date().toISOString();
+      
+      try {
+        // Get file stats
+        const fileStats = await window.electronAPI.fs.getFileStats(filePath);
+        
+        console.log(`Creating transcript record for: ${fileName}`);
+        
+        await window.electronAPI.database.run(
+          `INSERT INTO transcripts (id, title, filename, file_path, file_size, created_at, updated_at, status, starred) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [transcriptId, fileName, fileName, filePath, fileStats.size, timestamp, timestamp, 'processing', 0]
+        );
+
+        // Add to processing queue
+        const processingItemId = generateId();
+        addToProcessingQueue({
+          id: processingItemId,
+          transcript_id: transcriptId,
+          file_path: filePath,
+          status: 'queued',
+          progress: 0,
+          created_at: timestamp
+        });
+
+        // Start processing
+        await startProcessing(processingItemId, transcriptId, filePath);
+        
+      } catch (error) {
+        console.error('Error creating transcript:', error);
+        alert(`Error processing file ${fileName}: ${(error as Error).message}`);
+      }
+    }
     
     // Close modal after upload
     onClose();
     
     // Reset form
-    setSelectedFiles(null);
+    setSelectedFiles([]);
     setSelectedProject('');
     setShowNewProject(false);
     setNewProjectName('');
     setNewProjectDescription('');
   };
 
-  const handleCreateNewProject = () => {
+  const handleCreateNewProject = async () => {
     if (!newProjectName.trim()) return;
     
-    // Create new project logic here
-    console.log('Creating new project:', { name: newProjectName, description: newProjectDescription });
-    
-    // For now, just close the new project form
-    setShowNewProject(false);
-    setNewProjectName('');
-    setNewProjectDescription('');
+    try {
+      setIsCreatingProject(true);
+      const newProject = await createProject(newProjectName.trim(), newProjectDescription.trim() || undefined);
+      
+      // Select the newly created project
+      setSelectedProject(newProject.id);
+      
+      // Close the new project form
+      setShowNewProject(false);
+      setNewProjectName('');
+      setNewProjectDescription('');
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      alert('Failed to create project. Please try again.');
+    } finally {
+      setIsCreatingProject(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -87,37 +226,31 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                 <Upload className="mx-auto h-12 w-12 text-gray-400" />
                 <div className="mt-4">
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <span className="mt-2 block text-sm font-medium text-gray-900">
-                      Drop files here or click to browse
-                    </span>
-                    <input
-                      id="file-upload"
-                      name="file-upload"
-                      type="file"
-                      className="sr-only"
-                      multiple
-                      accept="audio/*,video/*"
-                      onChange={handleFileSelect}
-                    />
-                  </label>
+                  <button 
+                    onClick={handleBrowseClick}
+                    className="mt-2 block text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                  >
+                    Click to browse files
+                  </button>
                   <p className="mt-1 text-xs text-gray-500">
                     Supports MP3, WAV, MP4, MOV and other common formats
                   </p>
                 </div>
               </div>
               
-              {selectedFiles && (
+              {selectedFiles.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files:</h4>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    {Array.from(selectedFiles).map((file, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <span>📄</span>
-                        <span>{file.name}</span>
-                        <span className="text-gray-400">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
-                      </li>
-                    ))}
+                    {selectedFiles.map((filePath, index) => {
+                      const fileName = filePath.split('/').pop() || filePath;
+                      return (
+                        <li key={index} className="flex items-center space-x-2">
+                          <span>📄</span>
+                          <span>{fileName}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -135,11 +268,13 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">None (add to library only)</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
+                  {projects
+                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                    .map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.icon} {project.name} ({project.transcript_count || 0} transcripts)
+                      </option>
+                    ))}
                 </select>
                 
                 <button
@@ -183,10 +318,10 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
                 <div className="flex space-x-3">
                   <button
                     onClick={handleCreateNewProject}
-                    disabled={!newProjectName.trim()}
+                    disabled={!newProjectName.trim() || isCreatingProject}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Create Project
+                    {isCreatingProject ? 'Creating...' : 'Create Project'}
                   </button>
                   <button
                     onClick={() => setShowNewProject(false)}
@@ -216,7 +351,7 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
           </button>
           <button
             onClick={handleUpload}
-            disabled={!selectedFiles}
+            disabled={selectedFiles.length === 0}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Upload & Process

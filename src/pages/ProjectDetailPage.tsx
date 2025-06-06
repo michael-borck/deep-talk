@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../contexts/ProjectContext';
-import { useTranscripts } from '../contexts/TranscriptContext';
 import { Transcript } from '../types';
 import { formatDistanceToNow, formatDuration } from '../utils/helpers';
+import { AddExistingModal } from '../components/AddExistingModal';
 
 type TabType = 'overview' | 'transcripts' | 'analysis' | 'chat';
 
@@ -11,12 +11,10 @@ export const ProjectDetailPage: React.FC = () => {
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentProject, loadProject, getProjectTranscripts, updateProject, deleteProject, addTranscriptToProject, removeTranscriptFromProject, analyzeProject } = useProjects();
-  const { transcripts: allTranscripts } = useTranscripts();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [projectTranscripts, setProjectTranscripts] = useState<Transcript[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddTranscriptModal, setShowAddTranscriptModal] = useState(false);
-  const [selectedTranscripts, setSelectedTranscripts] = useState<string[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -42,14 +40,13 @@ export const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  const handleAddTranscripts = async () => {
+  const handleAddTranscripts = async (transcriptIds: string[]) => {
     try {
-      for (const transcriptId of selectedTranscripts) {
+      for (const transcriptId of transcriptIds) {
         await addTranscriptToProject(projectId!, transcriptId);
       }
       await loadProjectData();
       setShowAddTranscriptModal(false);
-      setSelectedTranscripts([]);
     } catch (err) {
       console.error('Failed to add transcripts:', err);
     }
@@ -114,10 +111,8 @@ export const ProjectDetailPage: React.FC = () => {
     );
   }
 
-  // Get available transcripts (not already in project)
-  const availableTranscripts = allTranscripts.filter(
-    (t: Transcript) => t.status === 'completed' && !projectTranscripts.find(pt => pt.id === t.id)
-  );
+  // Get transcript IDs already in project (for exclusion)
+  const existingTranscriptIds = projectTranscripts.map(t => t.id);
 
   return (
     <div className="h-full flex flex-col">
@@ -358,67 +353,13 @@ export const ProjectDetailPage: React.FC = () => {
         )}
       </div>
 
-      {/* Add Transcript Modal */}
-      {showAddTranscriptModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <h2 className="text-xl font-bold mb-4">Add Transcripts to Project</h2>
-            
-            <div className="flex-1 overflow-auto">
-              {availableTranscripts.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No available transcripts to add</p>
-              ) : (
-                <div className="space-y-2">
-                  {availableTranscripts.map((transcript: Transcript) => (
-                    <label
-                      key={transcript.id}
-                      className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedTranscripts.includes(transcript.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedTranscripts([...selectedTranscripts, transcript.id]);
-                          } else {
-                            setSelectedTranscripts(selectedTranscripts.filter(id => id !== transcript.id));
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium">{transcript.title}</div>
-                        <div className="text-sm text-gray-500">
-                          {new Date(transcript.created_at).toLocaleDateString()} • {formatDuration(transcript.duration)}
-                        </div>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-3 justify-end mt-4 pt-4 border-t">
-              <button
-                onClick={() => {
-                  setShowAddTranscriptModal(false);
-                  setSelectedTranscripts([]);
-                }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTranscripts}
-                disabled={selectedTranscripts.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add {selectedTranscripts.length} Transcript{selectedTranscripts.length !== 1 ? 's' : ''}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add Existing Modal */}
+      <AddExistingModal
+        isOpen={showAddTranscriptModal}
+        onClose={() => setShowAddTranscriptModal(false)}
+        onAdd={handleAddTranscripts}
+        excludeTranscriptIds={existingTranscriptIds}
+      />
 
       {/* Edit Project Modal */}
       {showEditModal && (

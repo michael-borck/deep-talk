@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TranscriptContext } from '../contexts/TranscriptContext';
-import { Transcript } from '../types';
+import { useProjects } from '../contexts/ProjectContext';
+import { Transcript, Project } from '../types';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
 import { ArrowLeft, Star, Download, Copy, Edit, Users } from 'lucide-react';
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
@@ -10,6 +11,7 @@ export const TranscriptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getTranscriptById, updateTranscript } = useContext(TranscriptContext);
+  const { projects } = useProjects();
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -18,10 +20,36 @@ export const TranscriptDetailPage: React.FC = () => {
   const [showValidationChanges, setShowValidationChanges] = useState(false);
   const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
   const [speakerAnonymized, setSpeakerAnonymized] = useState(false);
+  const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     loadTranscript();
   }, [id]);
+
+  useEffect(() => {
+    const loadTranscriptProjects = async () => {
+      if (!transcript?.id || projects.length === 0) return;
+      
+      try {
+        // Get project IDs that this transcript belongs to
+        const projectRelations = await window.electronAPI.database.all(
+          `SELECT project_id FROM project_transcripts WHERE transcript_id = ?`,
+          [transcript.id]
+        );
+        
+        // Find the corresponding project objects
+        const relatedProjects = projects.filter(project => 
+          projectRelations.some(relation => relation.project_id === project.id)
+        );
+        
+        setTranscriptProjects(relatedProjects);
+      } catch (error) {
+        console.error('Error loading transcript projects:', error);
+      }
+    };
+
+    loadTranscriptProjects();
+  }, [transcript?.id, projects]);
 
   const loadTranscript = async () => {
     if (!id) return;
@@ -333,6 +361,40 @@ ${transcript.full_text || 'No transcript available.'}
           <span>📄 {transcript.file_path?.split('/').pop() || transcript.filename}</span>
         </div>
       </div>
+
+      {/* Projects Section */}
+      {transcriptProjects.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Also in:</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {transcriptProjects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => navigate(`/project/${project.id}`)}
+                className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+              >
+                <span className="text-2xl">{project.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-gray-900 truncate">{project.name}</h3>
+                  {project.description && (
+                    <p className="text-sm text-gray-500 truncate">{project.description}</p>
+                  )}
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-xs text-gray-400">
+                      {project.transcript_count || 0} transcript{(project.transcript_count || 0) !== 1 ? 's' : ''}
+                    </span>
+                    {project.date_range && (
+                      <span className="text-xs text-gray-400">
+                        • {formatDate(project.date_range.start)} - {formatDate(project.date_range.end)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Summary Section */}
       {transcript.summary && (

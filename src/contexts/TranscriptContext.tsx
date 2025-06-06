@@ -42,7 +42,7 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
   const loadTranscripts = async () => {
     try {
       const allTranscripts = await window.electronAPI.database.all(
-        'SELECT * FROM transcripts ORDER BY created_at DESC'
+        'SELECT * FROM transcripts WHERE is_deleted != 1 OR is_deleted IS NULL ORDER BY created_at DESC'
       );
       
       // Parse JSON fields

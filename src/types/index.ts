@@ -36,6 +36,12 @@ export interface Transcript {
   starred: boolean;
   rating?: number;
   error_message?: string;
+  
+  // Data management
+  is_archived?: boolean;
+  archived_at?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
 }
 
 export interface TranscriptSegment {
@@ -99,6 +105,12 @@ export interface Project {
   tags?: string[];
   color?: string;
   icon?: string;
+  
+  // Data management
+  is_archived?: boolean;
+  archived_at?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
   
   // Computed properties (not in DB, calculated on fetch)
   transcript_count?: number;

@@ -5,7 +5,7 @@ import { formatDistanceToNow } from '../utils/helpers';
 
 export const ProjectsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { projects, createProject, isLoading, error } = useProjects();
+  const { projects, createProject, archiveProject, isLoading, error } = useProjects();
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
@@ -19,6 +19,18 @@ export const ProjectsPage: React.FC = () => {
         setNewProjectDescription('');
       } catch (err) {
         console.error('Failed to create project:', err);
+      }
+    }
+  };
+
+  const handleArchiveProject = async (projectId: string, projectName: string) => {
+    const confirmed = window.confirm(`Are you sure you want to archive the project "${projectName}"?\n\nArchived projects can be restored from the Archive page.`);
+    if (confirmed) {
+      try {
+        await archiveProject(projectId);
+      } catch (err) {
+        console.error('Failed to archive project:', err);
+        alert('Failed to archive project. Please try again.');
       }
     }
   };
@@ -143,6 +155,16 @@ export const ProjectsPage: React.FC = () => {
                   className="flex-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                 >
                   Analyze
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleArchiveProject(project.id, project.name);
+                  }}
+                  className="px-3 py-1 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors"
+                  title="Archive project"
+                >
+                  📦
                 </button>
               </div>
             </div>

@@ -1,8 +1,10 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Transcript } from '../types';
+import { Transcript, Project } from '../types';
 import { TranscriptContext } from '../contexts/TranscriptContext';
+import { useProjects } from '../contexts/ProjectContext';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
+import { EnhancedDeleteModal, DeleteAction } from './EnhancedDeleteModal';
 
 interface TranscriptCardProps {
   transcript: Transcript;
@@ -10,7 +12,35 @@ interface TranscriptCardProps {
 
 export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) => {
   const navigate = useNavigate();
-  const { updateTranscript, deleteTranscript } = useContext(TranscriptContext);
+  const { updateTranscript } = useContext(TranscriptContext);
+  const { projects, removeTranscriptFromProject } = useProjects();
+  const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  useEffect(() => {
+    const loadTranscriptProjects = async () => {
+      try {
+        // Get project IDs that this transcript belongs to
+        const projectRelations = await window.electronAPI.database.all(
+          `SELECT project_id FROM project_transcripts WHERE transcript_id = ?`,
+          [transcript.id]
+        );
+        
+        // Find the corresponding project objects
+        const relatedProjects = projects.filter(project => 
+          projectRelations.some(relation => relation.project_id === project.id)
+        );
+        
+        setTranscriptProjects(relatedProjects);
+      } catch (error) {
+        console.error('Error loading transcript projects:', error);
+      }
+    };
+
+    if (transcript.id && projects.length > 0) {
+      loadTranscriptProjects();
+    }
+  }, [transcript.id, projects]);
 
   const handleToggleStar = async () => {
     await updateTranscript(transcript.id, { starred: !transcript.starred });
@@ -23,6 +53,22 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   const handleChat = () => {
     // TODO: Implement chat functionality
     console.log('Chat with transcript:', transcript.id);
+  };
+
+  const handleArchive = async () => {
+    try {
+      const now = new Date().toISOString();
+      await window.electronAPI.database.run(
+        'UPDATE transcripts SET is_archived = 1, archived_at = ? WHERE id = ?',
+        [now, transcript.id]
+      );
+      
+      // Trigger a reload of transcripts
+      window.location.reload(); // Simple approach for now
+    } catch (error) {
+      console.error('Error archiving transcript:', error);
+      alert('Failed to archive transcript. Please try again.');
+    }
   };
 
   const handleExport = () => {
@@ -56,9 +102,51 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
     URL.revokeObjectURL(url);
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this transcript?')) {
-      await deleteTranscript(transcript.id);
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleEnhancedDelete = async (action: DeleteAction, projectIds?: string[]) => {
+    try {
+      switch (action) {
+        case 'remove-from-selected':
+          if (projectIds) {
+            for (const projectId of projectIds) {
+              await removeTranscriptFromProject(projectId, transcript.id);
+            }
+          }
+          break;
+        case 'remove-from-all':
+          // Remove from all projects but keep the transcript
+          for (const project of transcriptProjects) {
+            await removeTranscriptFromProject(project.id, transcript.id);
+          }
+          break;
+        case 'move-to-trash':
+          // Move to trash (soft delete)
+          await moveTranscriptToTrash(transcript.id);
+          break;
+      }
+      setShowDeleteModal(false);
+    } catch (error) {
+      console.error('Error performing delete action:', error);
+      alert('Failed to perform the action. Please try again.');
+    }
+  };
+
+  const moveTranscriptToTrash = async (transcriptId: string) => {
+    try {
+      const now = new Date().toISOString();
+      await window.electronAPI.database.run(
+        'UPDATE transcripts SET is_deleted = 1, deleted_at = ? WHERE id = ?',
+        [now, transcriptId]
+      );
+      
+      // Trigger a reload of transcripts
+      window.location.reload(); // Simple approach for now
+    } catch (error) {
+      console.error('Error moving transcript to trash:', error);
+      throw error;
     }
   };
 
@@ -117,6 +205,27 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
               </div>
             </div>
           )}
+          
+          {transcriptProjects.length > 0 && (
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-sm text-gray-500">Projects:</span>
+              <div className="flex flex-wrap gap-2">
+                {transcriptProjects.slice(0, 2).map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => navigate(`/project/${project.id}`)}
+                    className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                  >
+                    <span>{project.icon}</span>
+                    <span>{project.name}</span>
+                  </button>
+                ))}
+                {transcriptProjects.length > 2 && (
+                  <span className="text-xs text-gray-500">+{transcriptProjects.length - 2} more</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -146,6 +255,14 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
         </button>
         
         <button
+          onClick={handleArchive}
+          className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700"
+        >
+          <span>📦</span>
+          <span>Archive</span>
+        </button>
+        
+        <button
           onClick={handleDelete}
           className="flex items-center space-x-1 text-sm text-red-600 hover:text-red-700 ml-auto"
         >
@@ -153,6 +270,15 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
           <span>Delete</span>
         </button>
       </div>
+      
+      {/* Enhanced Delete Modal */}
+      <EnhancedDeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        item={transcript}
+        itemType="transcript"
+        onDelete={handleEnhancedDelete}
+      />
     </div>
   );
 };

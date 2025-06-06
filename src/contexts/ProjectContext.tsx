@@ -12,6 +12,7 @@ interface ProjectContextType {
   createProject: (name: string, description?: string) => Promise<Project>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  archiveProject: (id: string) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
   
   // Transcript management
@@ -55,7 +56,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           MAX(t.created_at) as latest_transcript
         FROM projects p
         LEFT JOIN project_transcripts pt ON p.id = pt.project_id
-        LEFT JOIN transcripts t ON pt.transcript_id = t.id
+        LEFT JOIN transcripts t ON pt.transcript_id = t.id AND (t.is_deleted != 1 OR t.is_deleted IS NULL)
+        WHERE (p.is_deleted != 1 OR p.is_deleted IS NULL)
         GROUP BY p.id
         ORDER BY p.updated_at DESC
       `);
@@ -200,6 +202,25 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Archive a project
+  const archiveProject = async (id: string) => {
+    try {
+      const now = new Date().toISOString();
+      await window.electronAPI.database.run(
+        'UPDATE projects SET is_archived = 1, archived_at = ? WHERE id = ?',
+        [now, id]
+      );
+      await loadProjects();
+      
+      if (currentProject?.id === id) {
+        setCurrentProject(null);
+      }
+    } catch (err) {
+      console.error('Failed to archive project:', err);
+      throw new Error('Failed to archive project');
+    }
+  };
+
   // Load a specific project
   const loadProject = async (id: string) => {
     try {
@@ -331,6 +352,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       createProject,
       updateProject,
       deleteProject,
+      archiveProject,
       loadProject,
       addTranscriptToProject,
       removeTranscriptFromProject,

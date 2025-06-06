@@ -17,7 +17,13 @@ CREATE TABLE IF NOT EXISTS projects (
     -- Metadata
     tags TEXT, -- JSON array
     color TEXT, -- UI color for the project
-    icon TEXT -- emoji or icon identifier
+    icon TEXT, -- emoji or icon identifier
+    
+    -- Data management
+    is_archived BOOLEAN DEFAULT 0,
+    archived_at DATETIME,
+    is_deleted BOOLEAN DEFAULT 0,
+    deleted_at DATETIME
 );
 
 -- Project-Transcript relationship
@@ -101,7 +107,13 @@ CREATE TABLE IF NOT EXISTS transcripts (
     -- Processing metadata
     error_message TEXT,
     processing_started_at DATETIME,
-    processing_completed_at DATETIME
+    processing_completed_at DATETIME,
+    
+    -- Data management
+    is_archived BOOLEAN DEFAULT 0,
+    archived_at DATETIME,
+    is_deleted BOOLEAN DEFAULT 0,
+    deleted_at DATETIME
 );
 
 -- Transcript segments for timestamps
@@ -161,6 +173,9 @@ CREATE TABLE IF NOT EXISTS processing_queue (
 CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts(status);
 CREATE INDEX IF NOT EXISTS idx_transcripts_created_at ON transcripts(created_at);
 CREATE INDEX IF NOT EXISTS idx_transcripts_starred ON transcripts(starred);
+CREATE INDEX IF NOT EXISTS idx_transcripts_archived ON transcripts(is_archived);
+CREATE INDEX IF NOT EXISTS idx_transcripts_deleted ON transcripts(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_transcripts_deleted_at ON transcripts(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_transcript_segments_transcript_id ON transcript_segments(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_transcript_id ON chat_conversations(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
@@ -169,6 +184,9 @@ CREATE INDEX IF NOT EXISTS idx_processing_queue_status ON processing_queue(statu
 -- Project indexes
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at);
+CREATE INDEX IF NOT EXISTS idx_projects_archived ON projects(is_archived);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_project_transcripts_project_id ON project_transcripts(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_transcripts_transcript_id ON project_transcripts(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_project_chat_conversations_project_id ON project_chat_conversations(project_id);

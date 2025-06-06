@@ -28,7 +28,7 @@ async function initDatabase() {
     if (fs.existsSync(settingsPath)) {
       const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
       if (settings.databaseLocation) {
-        dbPath = path.join(settings.databaseLocation, 'locallisten.db');
+        dbPath = path.join(settings.databaseLocation, 'audio-scribe.db');
       }
     }
   } catch (error) {
@@ -38,7 +38,7 @@ async function initDatabase() {
   // Default location if not set
   if (!dbPath) {
     const userDataPath = app.getPath('userData');
-    dbPath = path.join(userDataPath, 'locallisten.db');
+    dbPath = path.join(userDataPath, 'audio-scribe.db');
   }
   
   // Ensure directory exists
