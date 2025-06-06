@@ -5,6 +5,7 @@ import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
 import { EnhancedDeleteModal, DeleteAction } from './EnhancedDeleteModal';
+import { TranscriptChatModal } from './TranscriptChatModal';
 
 interface TranscriptCardProps {
   transcript: Transcript;
@@ -16,6 +17,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   const { projects, removeTranscriptFromProject } = useProjects();
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
 
   useEffect(() => {
     const loadTranscriptProjects = async () => {
@@ -51,8 +53,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   };
 
   const handleChat = () => {
-    // TODO: Implement chat functionality
-    console.log('Chat with transcript:', transcript.id);
+    setShowChatModal(true);
   };
 
   const handleArchive = async () => {
@@ -278,6 +279,13 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
         item={transcript}
         itemType="transcript"
         onDelete={handleEnhancedDelete}
+      />
+
+      {/* Chat Modal */}
+      <TranscriptChatModal
+        transcript={transcript}
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
       />
     </div>
   );

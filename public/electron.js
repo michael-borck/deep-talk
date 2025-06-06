@@ -400,6 +400,58 @@ ipcMain.handle('get-ollama-models', async (event, { url }) => {
   }
 });
 
+ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) => {
+  try {
+    // Get AI analysis settings from database
+    const aiUrlSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiAnalysisUrl');
+    const aiModelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiModel');
+    
+    const aiUrl = aiUrlSetting ? aiUrlSetting.value : 'http://localhost:11434';
+    const model = aiModelSetting ? aiModelSetting.value : 'llama2';
+
+    console.log('Chat request:', { aiUrl, model, promptLength: prompt.length, messageLength: message.length });
+
+    const response = await fetch(`${aiUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          num_predict: 2048,
+          top_p: 0.9,
+          top_k: 40
+        }
+      }),
+      signal: AbortSignal.timeout(120000) // 2 minute timeout for chat
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { 
+        success: true, 
+        response: data.response || 'No response generated',
+        model: model,
+        totalDuration: data.total_duration,
+        loadDuration: data.load_duration,
+        promptEvalDuration: data.prompt_eval_duration,
+        evalDuration: data.eval_duration
+      };
+    } else {
+      const errorText = await response.text();
+      console.error('Ollama API error:', response.status, errorText);
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    }
+  } catch (error) {
+    console.error('Failed to chat with Ollama:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('fs-read-file', async (event, filePath) => {
   try {
     const data = fs.readFileSync(filePath);

@@ -148,6 +148,15 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
 );
 
+-- Conversation memory (for compacted summaries)
+CREATE TABLE IF NOT EXISTS conversation_memory (
+    conversation_id TEXT PRIMARY KEY,
+    compacted_summary TEXT,
+    total_exchanges INTEGER DEFAULT 0,
+    last_compaction_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE
+);
+
 -- Settings
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
@@ -179,6 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_transcripts_deleted_at ON transcripts(deleted_at)
 CREATE INDEX IF NOT EXISTS idx_transcript_segments_transcript_id ON transcript_segments(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_transcript_id ON chat_conversations(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_memory_conversation_id ON conversation_memory(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_processing_queue_status ON processing_queue(status);
 
 -- Project indexes
@@ -240,7 +250,12 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('analyzeValidatedTranscript', 'true'),
     ('audioChunkSize', '60'),
     ('enableSpeakerTagging', 'true'),
-    ('oneTaskAtATime', 'true');
+    ('oneTaskAtATime', 'true'),
+    ('chatContextChunks', '4'),
+    ('chatMemoryLimit', '20'),
+    ('chatChunkingMethod', 'speaker'),
+    ('chatMaxChunkSize', '60'),
+    ('chatChunkOverlap', '10');
 
 -- Migration: Add missing columns to existing tables (safe to run multiple times)
 -- Check if columns exist before adding them (SQLite doesn't support IF NOT EXISTS for ALTER TABLE)

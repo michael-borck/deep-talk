@@ -34,8 +34,16 @@ module.exports = {
       "os": false,
       "stream": false,
       "buffer": false,
-      "events": false
+      "events": false,
+      "child_process": false,
+      "net": false,
+      "tls": false,
+      "perf_hooks": false
     }
+  },
+  externals: {
+    '@lancedb/lancedb': 'null',
+    '@xenova/transformers': 'null'
   },
   plugins: [
     new HtmlWebpackPlugin({

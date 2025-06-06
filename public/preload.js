@@ -29,7 +29,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Service operations
   services: {
     testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service }),
-    getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url })
+    getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
+    chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data)
+  },
+
+  // Vector store operations (delegated to main process)
+  vectorStore: {
+    initialize: (dbPath) => ipcRenderer.invoke('vector-store-initialize', dbPath),
+    storeChunks: (chunks, embeddings) => ipcRenderer.invoke('vector-store-store-chunks', { chunks, embeddings }),
+    searchSimilar: (queryEmbedding, options) => ipcRenderer.invoke('vector-store-search-similar', { queryEmbedding, options }),
+    deleteTranscriptChunks: (transcriptId) => ipcRenderer.invoke('vector-store-delete-transcript-chunks', transcriptId),
+    getTranscriptChunks: (transcriptId) => ipcRenderer.invoke('vector-store-get-transcript-chunks', transcriptId),
+    updateChunks: (chunks, embeddings) => ipcRenderer.invoke('vector-store-update-chunks', { chunks, embeddings }),
+    getStats: () => ipcRenderer.invoke('vector-store-get-stats'),
+    close: () => ipcRenderer.invoke('vector-store-close')
+  },
+
+  // Embedding operations (delegated to main process)
+  embedding: {
+    initialize: (onProgress) => ipcRenderer.invoke('embedding-initialize', onProgress),
+    embedText: (text, metadata) => ipcRenderer.invoke('embedding-embed-text', { text, metadata }),
+    embedBatch: (texts, metadata) => ipcRenderer.invoke('embedding-embed-batch', { texts, metadata }),
+    updateConfig: (config) => ipcRenderer.invoke('embedding-update-config', config)
   },
 
   // Navigation events

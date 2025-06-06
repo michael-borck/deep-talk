@@ -35,6 +35,13 @@ export const SettingsPage: React.FC = () => {
   const [enableSpeakerTagging, setEnableSpeakerTagging] = useState(false);
   const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
   const [audioChunkSize, setAudioChunkSize] = useState(60); // in seconds
+  
+  // Chat settings
+  const [chatContextChunks, setChatContextChunks] = useState(4);
+  const [chatMemoryLimit, setChatMemoryLimit] = useState(20);
+  const [chatChunkingMethod, setChatChunkingMethod] = useState('speaker');
+  const [chatMaxChunkSize, setChatMaxChunkSize] = useState(60);
+  const [chatChunkOverlap, setChatChunkOverlap] = useState(10);
 
   useEffect(() => {
     loadSettings();
@@ -74,6 +81,13 @@ export const SettingsPage: React.FC = () => {
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
       setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
       setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 60);
+      
+      // Load chat settings
+      setChatContextChunks(parseInt(settingsMap.chatContextChunks) || 4);
+      setChatMemoryLimit(parseInt(settingsMap.chatMemoryLimit) || 20);
+      setChatChunkingMethod(settingsMap.chatChunkingMethod || 'speaker');
+      setChatMaxChunkSize(parseInt(settingsMap.chatMaxChunkSize) || 60);
+      setChatChunkOverlap(parseInt(settingsMap.chatChunkOverlap) || 10);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -538,6 +552,148 @@ export const SettingsPage: React.FC = () => {
                   </label>
                   <p className="text-xs text-gray-500 ml-6">
                     Run individual analysis tasks separately for better accuracy and reliability. Fixes speaker detection issues.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Chat Settings */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Chat with Transcripts
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Context Chunks */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Context Chunks
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={chatContextChunks}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setChatContextChunks(value);
+                        saveSetting('chatContextChunks', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-12 text-right">
+                      {chatContextChunks}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Number of relevant transcript chunks to include in chat context (1-10)
+                  </p>
+                </div>
+
+                {/* Chunking Method */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chunking Method
+                  </label>
+                  <select
+                    value={chatChunkingMethod}
+                    onChange={(e) => {
+                      setChatChunkingMethod(e.target.value);
+                      saveSetting('chatChunkingMethod', e.target.value);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="speaker">Speaker-based (recommended)</option>
+                    <option value="time">Time-based</option>
+                    <option value="hybrid">Hybrid (speaker + time limits)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    How to split transcripts for chat analysis
+                  </p>
+                </div>
+
+                {/* Max Chunk Size */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Max Chunk Size (for chat)
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="30"
+                      max="180"
+                      step="15"
+                      value={chatMaxChunkSize}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setChatMaxChunkSize(value);
+                        saveSetting('chatMaxChunkSize', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-20 text-right">
+                      {chatMaxChunkSize}s ({Math.floor(chatMaxChunkSize / 60)}:{(chatMaxChunkSize % 60).toString().padStart(2, '0')})
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum duration for each chat chunk (30s to 3min)
+                  </p>
+                </div>
+
+                {/* Chunk Overlap */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Chunk Overlap
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      step="5"
+                      value={chatChunkOverlap}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setChatChunkOverlap(value);
+                        saveSetting('chatChunkOverlap', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-12 text-right">
+                      {chatChunkOverlap}s
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Overlap between chunks for better context continuity (0-30s)
+                  </p>
+                </div>
+
+                {/* Memory Limit */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Conversation Memory Limit
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="5"
+                      max="50"
+                      step="5"
+                      value={chatMemoryLimit}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setChatMemoryLimit(value);
+                        saveSetting('chatMemoryLimit', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-20 text-right">
+                      {chatMemoryLimit} msgs
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Number of messages to remember before compacting conversation history
                   </p>
                 </div>
               </div>
