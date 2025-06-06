@@ -7,6 +7,9 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { TranscriptDetailPage } from './pages/TranscriptDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SearchPage } from './pages/SearchPage';
+import { TrashPage } from './pages/TrashPage';
+import { ArchivePage } from './pages/ArchivePage';
 import { ServiceProvider } from './contexts/ServiceContext';
 import { TranscriptProvider } from './contexts/TranscriptContext';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -24,6 +27,9 @@ const App: React.FC = () => {
                 <Route path="/project/:id" element={<ProjectDetailPage />} />
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/transcript/:id" element={<TranscriptDetailPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/trash" element={<TrashPage />} />
+                <Route path="/archive" element={<ArchivePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AppShell>

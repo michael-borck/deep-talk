@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { StatusBar } from './StatusBar';
+import { GlobalUploadModal } from './GlobalUploadModal';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved ? JSON.parse(saved) : false;
   });
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
@@ -19,7 +21,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={setIsSidebarCollapsed} />
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggleCollapse={setIsSidebarCollapsed}
+        onUploadClick={() => setShowUploadModal(true)}
+      />
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
@@ -36,6 +42,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         {/* Status bar */}
         <StatusBar />
       </div>
+
+      {/* Global Upload Modal */}
+      <GlobalUploadModal 
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };

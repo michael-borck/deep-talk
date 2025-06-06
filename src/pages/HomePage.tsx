@@ -3,14 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
-import { UploadZone } from '../components/UploadZone';
-import { ProcessingQueue } from '../components/ProcessingQueue';
 import { formatDistanceToNow, formatDuration } from '../utils/helpers';
-import { Upload, Clock, FolderOpen, ArrowRight } from 'lucide-react';
+import { Clock, FolderOpen, ArrowRight, Activity, TrendingUp } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { serviceStatus, processingQueue } = useContext(ServiceContext);
+  const { serviceStatus } = useContext(ServiceContext);
   const { recentTranscripts, loadTranscripts } = useContext(TranscriptContext);
   const { projects } = useProjects();
 
@@ -31,10 +29,13 @@ export const HomePage: React.FC = () => {
 
   const connectionStatus = getConnectionStatus();
   
-  // Get recent projects (last 3)
-  const recentProjects = projects
+  // Get 3 most active projects (sorted by last used, not created)
+  const mostActiveProjects = projects
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     .slice(0, 3);
+
+  // Get 5 most recent transcripts
+  const mostRecentTranscripts = recentTranscripts.slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto p-8">
@@ -44,7 +45,7 @@ export const HomePage: React.FC = () => {
           <h1 className="text-3xl font-semibold text-gray-900">
             Welcome to AudioScribe 👋
           </h1>
-          <p className="text-gray-600 mt-1">Transform your audio and video into insights</p>
+          <p className="text-gray-600 mt-1">Your recent activity and quick access</p>
         </div>
         <div className={`flex items-center space-x-2 ${connectionStatus.color}`}>
           <span>{connectionStatus.icon}</span>
@@ -52,32 +53,23 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Quick Upload */}
-        <div className="bg-white rounded-lg border shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Quick Upload</h2>
-            <Upload className="text-blue-600" size={24} />
-          </div>
-          <p className="text-gray-600 text-sm mb-4">
-            Drag and drop or click to upload audio/video files for transcription
-          </p>
-          <UploadZone />
-        </div>
-
-        {/* Recent Transcripts */}
+      {/* Recent Activity Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Recent Transcripts - Now showing 5 */}
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Recent Transcripts</h2>
-            <Clock className="text-green-600" size={24} />
+            <div className="flex items-center space-x-2">
+              <Activity className="text-green-600" size={20} />
+              <span className="text-sm text-gray-500">{mostRecentTranscripts.length} of {recentTranscripts.length}</span>
+            </div>
           </div>
-          {recentTranscripts.length > 0 ? (
+          {mostRecentTranscripts.length > 0 ? (
             <div className="space-y-3">
-              {recentTranscripts.slice(0, 3).map((transcript) => (
+              {mostRecentTranscripts.map((transcript) => (
                 <div
                   key={transcript.id}
-                  className="cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded transition-colors"
+                  className="cursor-pointer hover:bg-gray-50 p-3 -m-3 rounded-lg transition-colors border border-transparent hover:border-gray-200"
                   onClick={() => navigate(`/transcript/${transcript.id}`)}
                 >
                   <h3 className="font-medium text-gray-900 text-sm truncate">
@@ -87,68 +79,85 @@ export const HomePage: React.FC = () => {
                     <span>{formatDistanceToNow(new Date(transcript.created_at))} ago</span>
                     <span>•</span>
                     <span>{formatDuration(transcript.duration)}</span>
+                    <span>•</span>
+                    <span className={`capitalize ${
+                      transcript.status === 'completed' ? 'text-green-600' :
+                      transcript.status === 'processing' ? 'text-blue-600' :
+                      transcript.status === 'error' ? 'text-red-600' : 'text-gray-500'
+                    }`}>
+                      {transcript.status}
+                    </span>
                     {transcript.starred && <span>⭐</span>}
                   </div>
                 </div>
               ))}
               <button
                 onClick={() => navigate('/library')}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-3"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-4 w-full justify-center py-2 border border-blue-200 hover:border-blue-300 rounded-lg"
               >
-                View all transcripts
+                View all transcripts ({recentTranscripts.length})
                 <ArrowRight size={16} />
               </button>
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">
-              <p>No transcripts yet.</p>
-              <p className="mt-2">Upload a file to get started!</p>
+            <div className="text-center text-gray-500 text-sm py-8">
+              <Clock className="mx-auto mb-3 text-gray-400" size={32} />
+              <p className="font-medium">No transcripts yet</p>
+              <p className="mt-1">Use the Upload & Process button in the sidebar to get started!</p>
             </div>
           )}
         </div>
 
-        {/* Recent Projects */}
+        {/* Most Active Projects - Now labeled as such */}
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Projects</h2>
-            <FolderOpen className="text-purple-600" size={24} />
+            <h2 className="text-lg font-semibold text-gray-900">Most Active Projects</h2>
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="text-purple-600" size={20} />
+              <span className="text-sm text-gray-500">{mostActiveProjects.length} of {projects.length}</span>
+            </div>
           </div>
-          {recentProjects.length > 0 ? (
+          {mostActiveProjects.length > 0 ? (
             <div className="space-y-3">
-              {recentProjects.map((project) => (
+              {mostActiveProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded transition-colors"
+                  className="cursor-pointer hover:bg-gray-50 p-3 -m-3 rounded-lg transition-colors border border-transparent hover:border-gray-200"
                   onClick={() => navigate(`/project/${project.id}`)}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{project.icon || '📁'}</span>
-                    <h3 className="font-medium text-gray-900 text-sm truncate flex-1">
-                      {project.name}
-                    </h3>
-                  </div>
-                  <div className="text-xs text-gray-500 flex items-center gap-2 mt-1 ml-7">
-                    <span>{project.transcript_count || 0} transcripts</span>
-                    {project.total_duration && project.total_duration > 0 && (
-                      <>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{project.icon || '📁'}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-900 text-sm truncate">
+                        {project.name}
+                      </h3>
+                      <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                        <span>{project.transcript_count || 0} transcripts</span>
+                        {project.total_duration && project.total_duration > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{formatDuration(project.total_duration)}</span>
+                          </>
+                        )}
                         <span>•</span>
-                        <span>{formatDuration(project.total_duration)}</span>
-                      </>
-                    )}
+                        <span>Updated {formatDistanceToNow(new Date(project.updated_at))} ago</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
               <button
                 onClick={() => navigate('/projects')}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-3"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-4 w-full justify-center py-2 border border-blue-200 hover:border-blue-300 rounded-lg"
               >
-                View all projects
+                View all projects ({projects.length})
                 <ArrowRight size={16} />
               </button>
             </div>
           ) : (
-            <div className="text-gray-500 text-sm">
-              <p>No projects yet.</p>
+            <div className="text-center text-gray-500 text-sm py-8">
+              <FolderOpen className="mx-auto mb-3 text-gray-400" size={32} />
+              <p className="font-medium">No projects yet</p>
               <button
                 onClick={() => navigate('/projects')}
                 className="text-blue-600 hover:text-blue-700 font-medium mt-2"
@@ -159,14 +168,6 @@ export const HomePage: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Processing Queue */}
-      {processingQueue.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Processing Queue</h2>
-          <ProcessingQueue items={processingQueue} />
-        </div>
-      )}
 
       {/* Quick Stats */}
       <div className="bg-gray-50 rounded-lg p-6">

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive } from 'lucide-react';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: (collapsed: boolean) => void;
+  onUploadClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUploadClick }) => {
   const location = useLocation();
 
   const menuItems = [
@@ -17,10 +18,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
+  const actionItems = [
+    { action: 'upload', icon: Upload, label: 'Upload & Process', color: 'bg-blue-600 hover:bg-blue-700' },
+  ];
+
+  const dataItems = [
+    { path: '/search', icon: Search, label: 'Search & Filter' },
+    { path: '/trash', icon: Trash, label: 'Trash' },
+    { path: '/archive', icon: Archive, label: 'Archive' },
+  ];
+
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
+  };
+
+  const handleUploadClick = () => {
+    onUploadClick?.();
   };
 
   return (
@@ -47,28 +62,80 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-blue-600 text-white'
-                      : 'hover:bg-gray-700 text-gray-300'
-                  }`}
-                  title={isCollapsed ? item.label : ''}
-                >
-                  <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                  {!isCollapsed && <span className="ml-3">{item.label}</span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <nav className="flex-1 p-4 space-y-6">
+        {/* Main Navigation */}
+        <div>
+          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigation</h3>}
+          <ul className="space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                      isActive(item.path)
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
+                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Action Items */}
+        <div>
+          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Actions</h3>}
+          <ul className="space-y-2">
+            {actionItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.action}>
+                  <button
+                    onClick={handleUploadClick}
+                    className={`w-full flex items-center px-3 py-2 rounded-lg transition-colors text-white ${item.color}`}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
+                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Data Management */}
+        <div>
+          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Data</h3>}
+          <ul className="space-y-2">
+            {dataItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                      isActive(item.path)
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
+                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
 
       {/* Bottom section - version info */}
