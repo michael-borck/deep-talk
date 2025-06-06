@@ -690,6 +690,10 @@ Please format your response as JSON:
     validatedText: string;
     changes: Array<{ type: string; original: string; corrected: string; position: number }>;
   }> {
+    // Initialize variables outside try block for catch block access
+    let processedText = transcriptText;
+    let duplicateRemovalChanges: any[] = [];
+    
     try {
       // Get validation settings
       const validationEnabledSetting = await window.electronAPI.database.get(
@@ -707,6 +711,26 @@ Please format your response as JSON:
       );
       
       const options = validationOptionsSetting?.value ? JSON.parse(validationOptionsSetting.value) : {};
+      
+      // First, remove duplicate sentences if enabled (separate setting)
+      const duplicateRemovalSetting = await window.electronAPI.database.get(
+        'SELECT value FROM settings WHERE key = ?',
+        ['enableDuplicateRemoval']
+      );
+      
+      if (duplicateRemovalSetting?.value !== 'false') {
+        const duplicateResult = await this.removeDuplicateSentences(transcriptText);
+        processedText = duplicateResult.cleanedText;
+        
+        if (duplicateResult.removedCount > 0) {
+          duplicateRemovalChanges = duplicateResult.removedSentences.map(sentence => ({
+            type: 'duplicate_removal',
+            original: sentence,
+            corrected: '[REMOVED]',
+            position: -1
+          }));
+        }
+      }
       
       // Get AI service settings
       const aiUrlSetting = await window.electronAPI.database.get(
@@ -735,7 +759,7 @@ Important:
 - Return the corrected text and a list of changes made
 
 Original transcript:
-${transcriptText}
+${processedText}
 
 Please format your response as JSON:
 {
@@ -749,6 +773,18 @@ Please format your response as JSON:
     }
   ]
 }`;
+
+      console.log(`Validation input length: ${processedText.length} characters`);
+      
+      // For very long transcripts, use chunked validation
+      if (processedText.length > 4000) {
+        console.log('Using chunked validation for long transcript');
+        const chunkResult = await this.performChunkedValidation(processedText, options, aiUrl, aiModel);
+        return {
+          validatedText: chunkResult.validatedText,
+          changes: [...duplicateRemovalChanges, ...chunkResult.changes]
+        };
+      }
 
       // Make request to AI service
       const response = await fetch(`${aiUrl}/api/generate`, {
@@ -769,6 +805,7 @@ Please format your response as JSON:
       }
       
       const result = await response.json();
+      console.log(`Validation output length: ${result.response?.length || 0} characters`);
       
       // Parse the AI response
       let validationData;
@@ -776,19 +813,274 @@ Please format your response as JSON:
         validationData = JSON.parse(result.response);
       } catch (parseError) {
         console.warn('Failed to parse validation response as JSON');
-        return { validatedText: transcriptText, changes: [] };
+        return { 
+          validatedText: processedText, // Use duplicate-cleaned text as fallback
+          changes: duplicateRemovalChanges 
+        };
+      }
+      
+      // Check if AI returned full text (within 10% of original length)
+      const originalLength = processedText.length;
+      const validatedLength = validationData.validatedText?.length || 0;
+      const lengthRatio = validatedLength / originalLength;
+      
+      if (lengthRatio < 0.9) {
+        console.warn(`AI validation may have truncated text. Original: ${originalLength}, Validated: ${validatedLength}`);
+        // Return original text with duplicate removal only
+        return {
+          validatedText: processedText,
+          changes: duplicateRemovalChanges
+        };
       }
       
       return {
-        validatedText: validationData.validatedText || transcriptText,
-        changes: Array.isArray(validationData.changes) ? validationData.changes : []
+        validatedText: validationData.validatedText || processedText,
+        changes: [
+          ...duplicateRemovalChanges,
+          ...(Array.isArray(validationData.changes) ? validationData.changes : [])
+        ]
       };
       
     } catch (error) {
       console.error('Validation error:', error);
-      // Return original text if validation fails
-      return { validatedText: transcriptText, changes: [] };
+      // Return duplicate-cleaned text if validation fails, or original if duplicate removal also failed
+      return { 
+        validatedText: processedText || transcriptText, 
+        changes: duplicateRemovalChanges || [] 
+      };
     }
+  }
+
+  async performChunkedValidation(text: string, options: any, aiUrl: string, aiModel: string): Promise<{
+    validatedText: string;
+    changes: Array<{ type: string; original: string; corrected: string; position: number }>;
+  }> {
+    const CHUNK_SIZE = 3500; // Safe size for most models
+    const chunks = [];
+    let currentPos = 0;
+    
+    // Split into chunks at sentence boundaries
+    while (currentPos < text.length) {
+      let chunkEnd = currentPos + CHUNK_SIZE;
+      
+      if (chunkEnd >= text.length) {
+        chunks.push(text.substring(currentPos));
+        break;
+      }
+      
+      // Find the last sentence ending within chunk size
+      const chunk = text.substring(currentPos, chunkEnd);
+      const lastSentenceEnd = Math.max(
+        chunk.lastIndexOf('.'),
+        chunk.lastIndexOf('!'),
+        chunk.lastIndexOf('?')
+      );
+      
+      if (lastSentenceEnd > 0) {
+        chunkEnd = currentPos + lastSentenceEnd + 1;
+      }
+      
+      chunks.push(text.substring(currentPos, chunkEnd));
+      currentPos = chunkEnd;
+    }
+    
+    console.log(`Processing ${chunks.length} chunks for validation`);
+    
+    const validatedChunks: string[] = [];
+    const allChanges: Array<{ type: string; original: string; corrected: string; position: number }> = [];
+    
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      console.log(`Validating chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`);
+      
+      try {
+        const validationPrompt = `Please validate and correct the following text segment. Focus on:
+${options.spelling !== false ? '- Spelling errors' : ''}
+${options.grammar !== false ? '- Grammar mistakes' : ''}
+${options.punctuation !== false ? '- Punctuation' : ''}
+${options.capitalization !== false ? '- Proper capitalization' : ''}
+
+Important: 
+- Preserve the original meaning and speaker intent
+- Do not change technical terms or proper nouns unless clearly misspelled
+- Return the corrected text and a list of changes made
+
+Text segment:
+${chunk}
+
+Please format your response as JSON:
+{
+  "validatedText": "The corrected text segment",
+  "changes": [
+    {
+      "type": "spelling|grammar|punctuation|capitalization",
+      "original": "original text",
+      "corrected": "corrected text",
+      "position": 0
+    }
+  ]
+}`;
+
+        const response = await fetch(`${aiUrl}/api/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: aiModel,
+            prompt: validationPrompt,
+            stream: false,
+            format: 'json'
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const chunkData = JSON.parse(result.response);
+          validatedChunks.push(chunkData.validatedText || chunk);
+          
+          if (Array.isArray(chunkData.changes)) {
+            // Adjust positions for the full text
+            const adjustedChanges = chunkData.changes.map((change: any) => ({
+              ...change,
+              position: change.position + (i > 0 ? validatedChunks.slice(0, i).join('').length : 0)
+            }));
+            allChanges.push(...adjustedChanges);
+          }
+        } else {
+          console.warn(`Failed to validate chunk ${i + 1}, using original`);
+          validatedChunks.push(chunk);
+        }
+      } catch (error) {
+        console.warn(`Error validating chunk ${i + 1}:`, error);
+        validatedChunks.push(chunk);
+      }
+      
+      // Small delay to be nice to the AI service
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    return {
+      validatedText: validatedChunks.join(''),
+      changes: allChanges
+    };
+  }
+
+  async removeDuplicateSentences(transcriptText: string): Promise<{ 
+    cleanedText: string; 
+    removedCount: number;
+    removedSentences: string[];
+  }> {
+    try {
+      if (!transcriptText || transcriptText.trim() === '') {
+        return { cleanedText: transcriptText, removedCount: 0, removedSentences: [] };
+      }
+
+      // Split into sentences
+      const sentences = transcriptText
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      if (sentences.length <= 1) {
+        return { cleanedText: transcriptText, removedCount: 0, removedSentences: [] };
+      }
+
+      const uniqueSentences: string[] = [];
+      const removedSentences: string[] = [];
+      const seenSentences = new Set<string>();
+
+      for (let i = 0; i < sentences.length; i++) {
+        let sentence = sentences[i].trim();
+        
+        // Normalize sentence for comparison (lowercase, remove extra spaces, common words)
+        const normalized = sentence
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .replace(/[^\w\s]/g, '')
+          .trim();
+
+        // Skip very short sentences (likely fragments)
+        if (normalized.length < 10) {
+          uniqueSentences.push(sentence);
+          continue;
+        }
+
+        // Check for exact or near-exact duplicates
+        let isDuplicate = false;
+
+        // Check against all previously seen sentences
+        for (const seenNormalized of seenSentences) {
+          const similarity = this.calculateSimilarity(normalized, seenNormalized);
+          
+          // Consider duplicates if >85% similar
+          if (similarity > 0.85) {
+            isDuplicate = true;
+            removedSentences.push(sentence);
+            break;
+          }
+        }
+
+        if (!isDuplicate) {
+          seenSentences.add(normalized);
+          uniqueSentences.push(sentence);
+        }
+      }
+
+      // Rebuild text with proper punctuation
+      const cleanedText = uniqueSentences
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .join('. ')
+        .replace(/\.\s*\./g, '.') // Remove double periods
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .trim();
+
+      console.log(`Removed ${removedSentences.length} duplicate sentences from transcript`);
+
+      return {
+        cleanedText: cleanedText + (cleanedText.endsWith('.') ? '' : '.'),
+        removedCount: removedSentences.length,
+        removedSentences
+      };
+
+    } catch (error) {
+      console.error('Error removing duplicate sentences:', error);
+      return { cleanedText: transcriptText, removedCount: 0, removedSentences: [] };
+    }
+  }
+
+  private calculateSimilarity(str1: string, str2: string): number {
+    // Simple similarity calculation using Levenshtein distance
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const distance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - distance) / longer.length;
+  }
+
+  private levenshteinDistance(str1: string, str2: string): number {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 
   async performResearchAnalysis(transcriptText: string, onProgress?: (stage: string, percent: number) => void): Promise<{

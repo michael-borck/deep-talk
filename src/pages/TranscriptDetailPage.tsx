@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { Transcript } from '../types';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
-import { ArrowLeft, Star, Download, Copy, Edit } from 'lucide-react';
+import { ArrowLeft, Star, Download, Copy, Edit, Users } from 'lucide-react';
+import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
 
 export const TranscriptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +16,8 @@ export const TranscriptDetailPage: React.FC = () => {
   const [editedTitle, setEditedTitle] = useState('');
   const [showValidated, setShowValidated] = useState(true);
   const [showValidationChanges, setShowValidationChanges] = useState(false);
+  const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
+  const [speakerAnonymized, setSpeakerAnonymized] = useState(false);
 
   useEffect(() => {
     loadTranscript();
@@ -173,6 +176,38 @@ ${transcript.full_text || 'No transcript available.'}
     URL.revokeObjectURL(url);
   };
 
+  const handleSpeakerTaggingSave = async (taggedText: string, speakers: Array<{ id: string; name: string; segments: number }>) => {
+    if (!transcript) return;
+    
+    try {
+      const success = await updateTranscript(transcript.id, {
+        processed_text: taggedText,
+        speakers: speakers,
+        speaker_count: speakers.length
+      });
+      
+      if (success) {
+        // Reload the transcript to show updated data
+        await loadTranscript();
+      }
+    } catch (error) {
+      console.error('Error saving speaker tags:', error);
+      alert('Failed to save speaker tags. Please try again.');
+    }
+  };
+
+  const getAnonymizedSpeakerName = (speaker: { id: string; name: string }, index: number) => {
+    if (!speakerAnonymized) return speaker.name;
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return `Speaker ${letters[index % letters.length]}`;
+  };
+
+  const toggleAnonymization = () => {
+    setSpeakerAnonymized(!speakerAnonymized);
+  };
+
+
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto p-8">
@@ -226,6 +261,18 @@ ${transcript.full_text || 'No transcript available.'}
           >
             <Copy size={16} />
             <span>Copy</span>
+          </button>
+          
+          <button
+            onClick={() => setShowSpeakerTagging(true)}
+            className="flex items-center space-x-1 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 border border-purple-300 rounded-md hover:bg-purple-50"
+          >
+            <Users size={16} />
+            <span>
+              {transcript.speaker_count && transcript.speaker_count > 1 
+                ? `Edit Speakers (${transcript.speaker_count} detected)`
+                : 'Tag Speakers'}
+            </span>
           </button>
           
           <button
@@ -395,24 +442,88 @@ ${transcript.full_text || 'No transcript available.'}
             )}
           </div>
 
-          {/* Speakers List */}
+          {/* Visual Speaker Breakdown */}
           {transcript.speakers && transcript.speakers.length > 0 && (
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Speaker Breakdown</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {transcript.speakers.map((speaker, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary-700">
-                          {speaker.id.replace('Speaker ', '')}
-                        </span>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Speaker Breakdown</h3>
+              
+              {/* Visual Bar Chart */}
+              <div className="space-y-3">
+                {transcript.speakers && Array.isArray(transcript.speakers) ? transcript.speakers.map((speaker, idx) => {
+                  // Defensive check for speaker object structure
+                  if (!speaker || typeof speaker !== 'object' || typeof speaker.segments !== 'number') {
+                    console.warn('Invalid speaker object:', speaker);
+                    return null;
+                  }
+                  
+                  const totalSegments = transcript.speakers?.reduce((sum, s) => sum + (s?.segments || 0), 0) ?? 0;
+                  const percentage = totalSegments > 0 ? (speaker.segments / totalSegments) * 100 : 0;
+                  const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500'];
+                  const color = colors[idx % colors.length];
+                  
+                  return (
+                    <div key={`speaker-chart-${idx}`} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 rounded-full ${color}`}></div>
+                          <span className="text-sm font-medium text-gray-900">{getAnonymizedSpeakerName(speaker, idx)}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {speaker.segments} segments ({Math.round(percentage)}%)
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{speaker.name}</span>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${color} transition-all duration-500`}
+                          style={{ width: `${Math.max(percentage, 3)}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <span className="text-xs text-gray-500">{speaker.segments} segments</span>
+                  );
+                }).filter(Boolean) : <div>No speakers to display</div>}
+              </div>
+
+              {/* Summary Stats */}
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {transcript.speakers?.reduce((sum, s) => sum + s.segments, 0) ?? 0}
+                    </div>
+                    <div className="text-xs text-gray-500">Total Segments</div>
                   </div>
-                ))}
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {transcript.speakers?.length ?? 0}
+                    </div>
+                    <div className="text-xs text-gray-500">Speakers</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {transcript.speakers?.filter(s => s.segments > 0).length ?? 0}
+                    </div>
+                    <div className="text-xs text-gray-500">Active Speakers</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Anonymization Toggle */}
+              <div className="mt-4">
+                <button
+                  onClick={toggleAnonymization}
+                  className={`text-sm font-medium transition-colors ${
+                    speakerAnonymized 
+                      ? 'text-green-600 hover:text-green-700' 
+                      : 'text-purple-600 hover:text-purple-700'
+                  }`}
+                >
+                  {speakerAnonymized ? '👤 Show Real Names' : '🎭 Anonymize Speaker Names'}
+                </button>
+                {speakerAnonymized && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Speaker names are now anonymized (Speaker A, Speaker B, etc.)
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -561,6 +672,8 @@ ${transcript.full_text || 'No transcript available.'}
                 )}
               </div>
             )}
+            
+            
             {/* Word count */}
             {(transcript.full_text || transcript.validated_text) && (
               <div className="text-sm text-gray-500">
@@ -670,6 +783,15 @@ ${transcript.full_text || 'No transcript available.'}
           </div>
         </div>
       </details>
+
+      {/* Speaker Tagging Modal */}
+      <SpeakerTaggingModal
+        isOpen={showSpeakerTagging}
+        onClose={() => setShowSpeakerTagging(false)}
+        transcriptText={transcript.processed_text || transcript.full_text || ''}
+        existingSpeakers={transcript.speakers}
+        onSave={handleSpeakerTaggingSave}
+      />
     </div>
   );
 };

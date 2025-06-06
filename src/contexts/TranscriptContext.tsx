@@ -82,6 +82,7 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
           action_items: transcript.action_items ? JSON.parse(transcript.action_items) : [],
           key_topics: transcript.key_topics ? JSON.parse(transcript.key_topics) : [],
           tags: transcript.tags ? JSON.parse(transcript.tags) : [],
+          validation_changes: transcript.validation_changes ? JSON.parse(transcript.validation_changes) : [],
           speakers: transcript.speakers ? JSON.parse(transcript.speakers) : [],
           emotions: transcript.emotions ? JSON.parse(transcript.emotions) : {},
           notable_quotes: transcript.notable_quotes ? JSON.parse(transcript.notable_quotes) : [],

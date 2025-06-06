@@ -42,7 +42,7 @@ export const HomePage: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">
-            Welcome to LocalListen 👋
+            Welcome to AudioScribe 👋
           </h1>
           <p className="text-gray-600 mt-1">Transform your audio and video into insights</p>
         </div>

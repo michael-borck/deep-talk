@@ -28,7 +28,10 @@ export const SettingsPage: React.FC = () => {
     punctuation: true,
     capitalization: true
   });
+  const [enableDuplicateRemoval, setEnableDuplicateRemoval] = useState(true);
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
+  const [enableSpeakerTagging, setEnableSpeakerTagging] = useState(false);
+  const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
   const [audioChunkSize, setAudioChunkSize] = useState(300); // in seconds
 
   useEffect(() => {
@@ -65,6 +68,9 @@ export const SettingsPage: React.FC = () => {
         }
       }
       setAnalyzeValidatedTranscript(settingsMap.analyzeValidatedTranscript !== 'false');
+      setEnableSpeakerTagging(settingsMap.enableSpeakerTagging === 'true');
+      setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
+      setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
       setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 300);
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -214,10 +220,8 @@ export const SettingsPage: React.FC = () => {
                   <input
                     type="text"
                     value={speechToTextModel}
-                    onChange={(e) => {
-                      setSpeechToTextModel(e.target.value);
-                      saveSetting('speechToTextModel', e.target.value);
-                    }}
+                    onChange={(e) => setSpeechToTextModel(e.target.value)}
+                    onBlur={(e) => saveSetting('speechToTextModel', e.target.value)}
                     placeholder="Enter model name (e.g., Systran/faster-distil-whisper-small.en)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
@@ -301,10 +305,8 @@ export const SettingsPage: React.FC = () => {
                     <input
                       type="text"
                       value={aiModel}
-                      onChange={(e) => {
-                        setAiModel(e.target.value);
-                        saveSetting('aiModel', e.target.value);
-                      }}
+                      onChange={(e) => setAiModel(e.target.value)}
+                      onBlur={(e) => saveSetting('aiModel', e.target.value)}
                       placeholder="Enter model name (e.g., llama2, mistral, codellama)"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                     />
@@ -448,6 +450,63 @@ export const SettingsPage: React.FC = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Automatic Speaker Tagging */}
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={enableSpeakerTagging}
+                      onChange={(e) => {
+                        setEnableSpeakerTagging(e.target.checked);
+                        saveSetting('enableSpeakerTagging', e.target.checked.toString());
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Automatic speaker tagging</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6">
+                    Automatically add speaker labels like "[Speaker 1]:" when multiple speakers are detected
+                  </p>
+                </div>
+
+                {/* Remove Duplicate Sentences */}
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={enableDuplicateRemoval}
+                      onChange={(e) => {
+                        setEnableDuplicateRemoval(e.target.checked);
+                        saveSetting('enableDuplicateRemoval', e.target.checked.toString());
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Remove duplicate sentences</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6">
+                    Automatically detect and remove repeated sentences during processing
+                  </p>
+                </div>
+
+                {/* Analysis Mode */}
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={oneTaskAtATime}
+                      onChange={(e) => {
+                        setOneTaskAtATime(e.target.checked);
+                        saveSetting('oneTaskAtATime', e.target.checked.toString());
+                      }}
+                      className="rounded text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">One-task-at-a-time analysis (recommended)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 ml-6">
+                    Run individual analysis tasks separately for better accuracy and reliability. Fixes speaker detection issues.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
