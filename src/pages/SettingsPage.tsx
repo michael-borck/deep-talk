@@ -19,6 +19,8 @@ export const SettingsPage: React.FC = () => {
   const [databaseInfo, setDatabaseInfo] = useState<any>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [availableSttModels, setAvailableSttModels] = useState<string[]>([]);
+  const [loadingSttModels, setLoadingSttModels] = useState(false);
   
   // Transcript processing settings
   const [enableTranscriptValidation, setEnableTranscriptValidation] = useState(true);
@@ -32,7 +34,7 @@ export const SettingsPage: React.FC = () => {
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
   const [enableSpeakerTagging, setEnableSpeakerTagging] = useState(false);
   const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
-  const [audioChunkSize, setAudioChunkSize] = useState(300); // in seconds
+  const [audioChunkSize, setAudioChunkSize] = useState(60); // in seconds
 
   useEffect(() => {
     loadSettings();
@@ -51,7 +53,7 @@ export const SettingsPage: React.FC = () => {
       }, {});
 
       setSpeechToTextUrl(settingsMap.speechToTextUrl || 'https://speaches.serveur.au');
-      setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-small.en');
+      setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-medium.en');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
       setAiModel(settingsMap.aiModel || 'llama2');
       setAutoBackup(settingsMap.autoBackup === 'true');
@@ -71,7 +73,7 @@ export const SettingsPage: React.FC = () => {
       setEnableSpeakerTagging(settingsMap.enableSpeakerTagging === 'true');
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
       setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
-      setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 300);
+      setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 60);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -124,6 +126,34 @@ export const SettingsPage: React.FC = () => {
       console.error('Error fetching models:', error);
     } finally {
       setLoadingModels(false);
+    }
+  };
+
+  const fetchSttModels = async () => {
+    setLoadingSttModels(true);
+    try {
+      const response = await fetch(`${speechToTextUrl}/v1/models`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+          // Filter for whisper models only
+          const whisperModels = data.data
+            .map((model: any) => model.id || model.name)
+            .filter((modelName: string) => 
+              modelName.toLowerCase().includes('whisper') || 
+              modelName.toLowerCase().includes('systran')
+            );
+          setAvailableSttModels(whisperModels);
+        } else {
+          console.error('Unexpected response format:', data);
+        }
+      } else {
+        console.error('Failed to fetch STT models:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching STT models:', error);
+    } finally {
+      setLoadingSttModels(false);
     }
   };
 
@@ -217,41 +247,44 @@ export const SettingsPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Speech-to-Text Model
                   </label>
-                  <input
-                    type="text"
-                    value={speechToTextModel}
-                    onChange={(e) => setSpeechToTextModel(e.target.value)}
-                    onBlur={(e) => saveSetting('speechToTextModel', e.target.value)}
-                    placeholder="Enter model name (e.g., Systran/faster-distil-whisper-small.en)"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                  <div className="mt-2">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Common models:
-                    </label>
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        'Systran/faster-distil-whisper-small.en',
-                        'Systran/faster-distil-whisper-medium.en',
-                        'Systran/faster-distil-whisper-large-v3',
-                        'openai/whisper-tiny',
-                        'openai/whisper-small',
-                        'openai/whisper-medium',
-                        'openai/whisper-large'
-                      ].map(model => (
-                        <button
-                          key={model}
-                          onClick={() => {
-                            setSpeechToTextModel(model);
-                            saveSetting('speechToTextModel', model);
-                          }}
-                          className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
-                        >
-                          {model.split('/').pop()}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={speechToTextModel}
+                      onChange={(e) => setSpeechToTextModel(e.target.value)}
+                      onBlur={(e) => saveSetting('speechToTextModel', e.target.value)}
+                      placeholder="Enter model name (e.g., Systran/faster-distil-whisper-medium.en)"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
+                    <button 
+                      onClick={fetchSttModels}
+                      disabled={loadingSttModels}
+                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {loadingSttModels ? 'Loading...' : 'Refresh'}
+                    </button>
                   </div>
+                  {availableSttModels.length > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Available whisper models:
+                      </label>
+                      <div className="flex flex-wrap gap-1">
+                        {availableSttModels.map(model => (
+                          <button
+                            key={model}
+                            onClick={() => {
+                              setSpeechToTextModel(model);
+                              saveSetting('speechToTextModel', model);
+                            }}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
+                          >
+                            {model.split('/').pop() || model}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -782,12 +815,6 @@ export const SettingsPage: React.FC = () => {
       <div className="mt-8 flex space-x-3">
         <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
           Reset to Defaults
-        </button>
-        <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-          Import Settings
-        </button>
-        <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-          Export Settings
         </button>
       </div>
     </div>

@@ -57,7 +57,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         FROM projects p
         LEFT JOIN project_transcripts pt ON p.id = pt.project_id
         LEFT JOIN transcripts t ON pt.transcript_id = t.id AND (t.is_deleted != 1 OR t.is_deleted IS NULL)
-        WHERE (p.is_deleted != 1 OR p.is_deleted IS NULL)
+        WHERE (p.is_deleted != 1 OR p.is_deleted IS NULL) 
+          AND (p.is_archived != 1 OR p.is_archived IS NULL)
         GROUP BY p.id
         ORDER BY p.updated_at DESC
       `);

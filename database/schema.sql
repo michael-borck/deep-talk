@@ -227,7 +227,7 @@ END;
 -- Default settings
 INSERT OR IGNORE INTO settings (key, value) VALUES 
     ('speechToTextUrl', 'https://speaches.serveur.au'),
-    ('speechToTextModel', 'Systran/faster-distil-whisper-small.en'),
+    ('speechToTextModel', 'Systran/faster-distil-whisper-medium.en'),
     ('aiAnalysisUrl', 'http://localhost:11434'),
     ('aiModel', 'llama2'),
     ('autoBackup', 'true'),
@@ -238,7 +238,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('enableTranscriptValidation', 'true'),
     ('validationOptions', '{"spelling": true, "grammar": true, "punctuation": true, "capitalization": true}'),
     ('analyzeValidatedTranscript', 'true'),
-    ('audioChunkSize', '300'),
+    ('audioChunkSize', '60'),
     ('enableSpeakerTagging', 'true'),
     ('oneTaskAtATime', 'true');
 
