@@ -42,12 +42,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getTranscriptChunks: (transcriptId) => ipcRenderer.invoke('vector-store-get-transcript-chunks', transcriptId),
     updateChunks: (chunks, embeddings) => ipcRenderer.invoke('vector-store-update-chunks', { chunks, embeddings }),
     getStats: () => ipcRenderer.invoke('vector-store-get-stats'),
-    close: () => ipcRenderer.invoke('vector-store-close')
+    close: () => ipcRenderer.invoke('vector-store-close'),
+    reset: () => ipcRenderer.invoke('vector-store-reset')
   },
 
   // Embedding operations (delegated to main process)
   embedding: {
-    initialize: (onProgress) => ipcRenderer.invoke('embedding-initialize', onProgress),
+    initialize: () => ipcRenderer.invoke('embedding-initialize'),
     embedText: (text, metadata) => ipcRenderer.invoke('embedding-embed-text', { text, metadata }),
     embedBatch: (texts, metadata) => ipcRenderer.invoke('embedding-embed-batch', { texts, metadata }),
     updateConfig: (config) => ipcRenderer.invoke('embedding-update-config', config)

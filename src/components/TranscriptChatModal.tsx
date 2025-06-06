@@ -7,12 +7,14 @@ interface TranscriptChatModalProps {
   transcript: Transcript;
   isOpen: boolean;
   onClose: () => void;
+  existingConversationId?: string;
 }
 
 export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
   transcript,
   isOpen,
-  onClose
+  onClose,
+  existingConversationId
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -53,7 +55,7 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
       }
 
       // Create or load conversation
-      const newConvId = await chatService.getOrCreateConversation(transcript.id);
+      const newConvId = existingConversationId || await chatService.getOrCreateConversation(transcript.id);
       setConversationId(newConvId);
 
       // Check if transcript has been processed for chat

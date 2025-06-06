@@ -10,6 +10,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { SearchPage } from './pages/SearchPage';
 import { TrashPage } from './pages/TrashPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { ChatHistoryPage } from './pages/ChatHistoryPage';
 import { ServiceProvider } from './contexts/ServiceContext';
 import { TranscriptProvider } from './contexts/TranscriptContext';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -30,6 +31,7 @@ const App: React.FC = () => {
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/trash" element={<TrashPage />} />
                 <Route path="/archive" element={<ArchivePage />} />
+                <Route path="/chat-history" element={<ChatHistoryPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AppShell>

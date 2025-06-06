@@ -82,16 +82,10 @@ export class ChatService {
       onProgress?.({ stage: 'embedding', progress: 0, total: 100, message: 'Initializing embedding model...' });
       
       // Initialize embedding service
-      await embeddingService.initialize((progress) => {
-        onProgress?.({ 
-          stage: 'embedding', 
-          progress: progress.loaded, 
-          total: progress.total, 
-          message: progress.status 
-        });
-      });
-
-      onProgress?.({ stage: 'storing', progress: 50, total: 100, message: 'Initializing vector database...' });
+      await embeddingService.initialize();
+      
+      onProgress?.({ stage: 'embedding', progress: 100, total: 100, message: 'Embedding model ready' });
+      onProgress?.({ stage: 'storing', progress: 0, total: 100, message: 'Initializing vector database...' });
       
       // Initialize vector store
       await vectorStoreService.initialize(vectorDbPath);
@@ -123,6 +117,10 @@ export class ChatService {
     }
 
     try {
+      // Ensure embedding service is initialized before processing
+      onProgress?.({ stage: 'embedding', progress: 0, total: 100, message: 'Ensuring embedding service is ready...' });
+      await embeddingService.initialize();
+      
       // Step 1: Chunking
       onProgress?.({ stage: 'chunking', progress: 0, total: 100, message: 'Analyzing transcript structure...' });
       
@@ -145,12 +143,22 @@ export class ChatService {
       const embeddings = [];
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        const embedding = await embeddingService.embedText(chunk.text, {
+        
+        // Enhanced metadata including transcript context
+        const enhancedMetadata = {
           chunkId: chunk.id,
           transcriptId: chunk.transcriptId,
           startTime: chunk.startTime,
-          endTime: chunk.endTime
-        });
+          endTime: chunk.endTime,
+          transcriptTitle: transcript.title,
+          transcriptSummary: transcript.summary,
+          keyTopics: transcript.key_topics,
+          actionItems: transcript.action_items,
+          speakers: chunk.metadata?.speakers,
+          totalSpeakers: transcript.speaker_count
+        };
+        
+        const embedding = await embeddingService.embedText(chunk.text, enhancedMetadata);
         
         embeddings.push(embedding);
         
@@ -192,13 +200,16 @@ export class ChatService {
     const startTime = Date.now();
 
     try {
-      // 1. Manage conversation memory (compact if needed)
+      // 1. Ensure embedding service is ready
+      await embeddingService.initialize();
+      
+      // 2. Manage conversation memory (compact if needed)
       const memory = await this.manageConversationMemory(conversationId, conversationHistory);
 
-      // 2. Generate embedding for user question
+      // 3. Generate embedding for user question
       const questionEmbedding = await embeddingService.embedText(userMessage);
 
-      // 3. Search for relevant chunks
+      // 4. Search for relevant chunks
       const searchResults = await vectorStoreService.searchSimilar(
         questionEmbedding.embedding,
         {
@@ -208,13 +219,13 @@ export class ChatService {
         }
       );
 
-      // 4. Build context from relevant chunks and managed memory
+      // 5. Build context from relevant chunks and managed memory
       const context = this.buildContextWithMemory(searchResults, memory);
 
-      // 5. Generate response using Ollama
+      // 6. Generate response using Ollama
       const response = await this.generateResponse(context, userMessage, transcriptId);
 
-      // 6. Create assistant message
+      // 7. Create assistant message
       const assistantMessage: ChatMessage = {
         id: `${conversationId}_${Date.now()}`,
         role: 'assistant',
@@ -227,7 +238,17 @@ export class ChatService {
         }
       };
 
-      // 7. Store message in database
+      // 8. Store messages in database
+      // First store the user message
+      const userChatMessage: ChatMessage = {
+        id: `${conversationId}_user_${Date.now()}`,
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date().toISOString()
+      };
+      await this.storeChatMessage(conversationId, userChatMessage);
+      
+      // Then store the assistant message
       await this.storeChatMessage(conversationId, assistantMessage);
 
       return assistantMessage;
@@ -487,7 +508,7 @@ Current question: ${userMessage}`;
   private async markTranscriptChatReady(transcriptId: string): Promise<void> {
     try {
       await window.electronAPI.database.run(
-        'UPDATE transcripts SET metadata = JSON_SET(COALESCE(metadata, "{}"), "$.chatReady", 1) WHERE id = ?',
+        "UPDATE transcripts SET metadata = JSON_SET(COALESCE(metadata, '{}'), '$.chatReady', 1) WHERE id = ?",
         [transcriptId]
       );
     } catch (error) {

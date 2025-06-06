@@ -25,8 +25,9 @@ export class EmbeddingService {
     return EmbeddingService.instance;
   }
 
-  async initialize(onProgress?: (progress: { loaded: number; total: number; status: string }) => void): Promise<void> {
-    return (window.electronAPI as any).embedding.initialize(onProgress);
+  async initialize(_onProgress?: (progress: { loaded: number; total: number; status: string }) => void): Promise<void> {
+    // Don't pass the callback through IPC as functions can't be serialized
+    return (window.electronAPI as any).embedding.initialize();
   }
 
   async embedText(text: string, metadata?: Record<string, any>): Promise<EmbeddingResult> {

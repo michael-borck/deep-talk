@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive } from 'lucide-react';
+import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive, MessageCircle } from 'lucide-react';
 
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: (collapsed: boolean) => void;
   onUploadClick?: () => void;
+  onAboutClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUploadClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUploadClick, onAboutClick }) => {
   const location = useLocation();
 
   const menuItems = [
@@ -24,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUplo
 
   const dataItems = [
     { path: '/search', icon: Search, label: 'Search & Filter' },
+    { path: '/chat-history', icon: MessageCircle, label: 'Chat History' },
     { path: '/trash', icon: Trash, label: 'Trash' },
     { path: '/archive', icon: Archive, label: 'Archive' },
   ];
@@ -141,14 +143,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUplo
       {/* Bottom section - version info */}
       <div className="p-4 border-t border-gray-700">
         {!isCollapsed ? (
-          <div className="text-xs text-gray-400">
-            <p>AudioScribe v1.0.0</p>
-            <p className="mt-1">© 2024</p>
+          <div className="text-xs">
+            <button
+              onClick={onAboutClick}
+              className="text-gray-400 hover:text-white transition-colors flex items-center space-x-1"
+            >
+              <Info size={14} />
+              <span>AudioScribe v1.0.0</span>
+            </button>
+            <p className="text-gray-500 mt-1">© 2024</p>
           </div>
         ) : (
-          <div title="AudioScribe v1.0.0">
-            <Info size={16} className="mx-auto text-gray-400" />
-          </div>
+          <button
+            onClick={onAboutClick}
+            title="About AudioScribe"
+            className="p-2 hover:bg-gray-700 rounded transition-colors mx-auto block"
+          >
+            <Info size={16} className="text-gray-400 hover:text-white" />
+          </button>
         )}
       </div>
     </div>

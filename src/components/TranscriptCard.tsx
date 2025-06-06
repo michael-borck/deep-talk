@@ -241,7 +241,13 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
         
         <button
           onClick={handleChat}
-          className="flex items-center space-x-1 text-sm text-primary-600 hover:text-primary-700"
+          disabled={transcript.is_archived}
+          className={`flex items-center space-x-1 text-sm ${
+            transcript.is_archived
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-primary-600 hover:text-primary-700'
+          }`}
+          title={transcript.is_archived ? 'Chat disabled for archived transcripts' : 'Chat with this transcript'}
         >
           <span>💬</span>
           <span>Chat</span>

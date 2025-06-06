@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { GlobalUploadModal } from './GlobalUploadModal';
+import { AboutDialog } from './AboutDialog';
+import { LicensesModal } from './LicensesModal';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,10 +15,36 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     return saved ? JSON.parse(saved) : false;
   });
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
+  const [showLicensesModal, setShowLicensesModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  // Listen for menu actions
+  useEffect(() => {
+    const handleMenuAction = (action: string) => {
+      if (action === 'show-about') {
+        setShowAboutDialog(true);
+      } else if (action === 'show-licenses') {
+        setShowLicensesModal(true);
+      } else if (action === 'new-upload') {
+        setShowUploadModal(true);
+      }
+    };
+
+    if (window.electronAPI?.onMenuAction) {
+      window.electronAPI.onMenuAction(handleMenuAction);
+    }
+
+    // Cleanup
+    return () => {
+      if (window.electronAPI?.removeAllListeners) {
+        window.electronAPI.removeAllListeners('menu-action');
+      }
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -25,6 +53,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         isCollapsed={isSidebarCollapsed} 
         onToggleCollapse={setIsSidebarCollapsed}
         onUploadClick={() => setShowUploadModal(true)}
+        onAboutClick={() => setShowAboutDialog(true)}
       />
       
       {/* Main content area */}
@@ -47,6 +76,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       <GlobalUploadModal 
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
+      />
+
+      {/* About Dialog */}
+      <AboutDialog 
+        isOpen={showAboutDialog}
+        onClose={() => setShowAboutDialog(false)}
+        onShowLicenses={() => {
+          setShowAboutDialog(false);
+          setShowLicensesModal(true);
+        }}
+      />
+
+      {/* Licenses Modal */}
+      <LicensesModal 
+        isOpen={showLicensesModal}
+        onClose={() => setShowLicensesModal(false)}
       />
     </div>
   );

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { formatFileSize } from '../utils/helpers';
 
-type SettingsTab = 'services' | 'storage' | 'appearance' | 'privacy' | 'about';
+type SettingsTab = 'transcription' | 'processing' | 'chat' | 'general';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('services');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('transcription');
+  const [searchQuery, setSearchQuery] = useState('');
   const { testConnections, serviceStatus } = useContext(ServiceContext);
   
   // Settings state
@@ -21,6 +22,7 @@ export const SettingsPage: React.FC = () => {
   const [loadingModels, setLoadingModels] = useState(false);
   const [availableSttModels, setAvailableSttModels] = useState<string[]>([]);
   const [loadingSttModels, setLoadingSttModels] = useState(false);
+  const [vectorStats, setVectorStats] = useState<any>(null);
   
   // Transcript processing settings
   const [enableTranscriptValidation, setEnableTranscriptValidation] = useState(true);
@@ -198,7 +200,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleBackupNow = async () => {
     const result = await window.electronAPI.dialog.saveFile({
-      defaultPath: `locallisten-backup-${new Date().toISOString().split('T')[0]}.db`,
+      defaultPath: `audioscribe-backup-${new Date().toISOString().split('T')[0]}.db`,
       filters: [{ name: 'Database', extensions: ['db'] }]
     });
     
@@ -212,21 +214,103 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleResetVectorDB = async () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to reset the vector database? This will delete all chat embeddings and you\'ll need to re-process transcripts for chat functionality.'
+    );
+    
+    if (confirmed) {
+      try {
+        const result = await (window.electronAPI as any).vectorStore.reset();
+        if (result.success) {
+          alert('Vector database reset successfully! You\'ll need to re-process transcripts for chat.');
+          setVectorStats(null);
+        } else {
+          alert(`Reset failed: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`Reset failed: ${error}`);
+      }
+    }
+  };
+
+  const handleGetVectorStats = async () => {
+    try {
+      const stats = await (window.electronAPI as any).vectorStore.getStats();
+      setVectorStats(stats);
+    } catch (error) {
+      alert(`Failed to get statistics: ${error}`);
+    }
+  };
+
   const tabs = [
-    { id: 'services' as const, label: '🔌 Services', name: 'Services' },
-    { id: 'storage' as const, label: '📁 Storage', name: 'Storage' },
-    { id: 'appearance' as const, label: '🎨 Appearance', name: 'Appearance' },
-    { id: 'privacy' as const, label: '🔒 Privacy', name: 'Privacy' },
-    { id: 'about' as const, label: 'ℹ️ About', name: 'About' }
+    { id: 'transcription' as const, label: '🎤 Transcription', name: 'Transcription' },
+    { id: 'processing' as const, label: '🔧 Processing', name: 'Processing' },
+    { id: 'chat' as const, label: '💬 Chat', name: 'Chat' },
+    { id: 'general' as const, label: '⚙️ General', name: 'General' }
   ];
+
+  // Search functionality
+  const searchInSettings = (query: string) => {
+    if (!query) return null;
+    
+    const lowerQuery = query.toLowerCase();
+    const matches: { tab: SettingsTab; setting: string }[] = [];
+
+    // Transcription tab settings
+    if ('speech-to-text url service speaches'.includes(lowerQuery)) {
+      matches.push({ tab: 'transcription', setting: 'Speech-to-Text Service URL' });
+    }
+    if ('model whisper stt speech'.includes(lowerQuery)) {
+      matches.push({ tab: 'transcription', setting: 'Speech-to-Text Model' });
+    }
+    if ('chunk audio size'.includes(lowerQuery)) {
+      matches.push({ tab: 'transcription', setting: 'Audio Chunk Size' });
+    }
+
+    // Processing tab settings
+    if ('ai ollama analysis url'.includes(lowerQuery)) {
+      matches.push({ tab: 'processing', setting: 'AI Analysis Service URL' });
+    }
+    if ('correction transcript validation spelling grammar'.includes(lowerQuery)) {
+      matches.push({ tab: 'processing', setting: 'Transcript Correction' });
+    }
+    if ('speaker tagging detection'.includes(lowerQuery)) {
+      matches.push({ tab: 'processing', setting: 'Speaker Tagging' });
+    }
+    if ('duplicate removal sentences'.includes(lowerQuery)) {
+      matches.push({ tab: 'processing', setting: 'Duplicate Removal' });
+    }
+
+    // Chat tab settings
+    if ('context chunks chat'.includes(lowerQuery)) {
+      matches.push({ tab: 'chat', setting: 'Context Chunks' });
+    }
+    if ('memory limit conversation'.includes(lowerQuery)) {
+      matches.push({ tab: 'chat', setting: 'Conversation Memory' });
+    }
+
+    // General tab settings
+    if ('backup database storage'.includes(lowerQuery)) {
+      matches.push({ tab: 'general', setting: 'Database Backup' });
+    }
+    if ('theme appearance dark light'.includes(lowerQuery)) {
+      matches.push({ tab: 'general', setting: 'Theme' });
+    }
+    if ('vector database reset'.includes(lowerQuery)) {
+      matches.push({ tab: 'general', setting: 'Vector Database' });
+    }
+
+    return matches.length > 0 ? matches : null;
+  };
+
+  const searchResults = searchInSettings(searchQuery);
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'services':
+      case 'transcription':
         return (
           <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900">External Services</h2>
-            
             {/* Speech-to-Text Service */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
@@ -314,6 +398,47 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Audio Processing */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Audio Processing
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Audio Chunk Size (for long files)
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="range"
+                      min="30"
+                      max="300"
+                      step="30"
+                      value={audioChunkSize}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        setAudioChunkSize(value);
+                        saveSetting('audioChunkSize', value.toString());
+                      }}
+                      className="flex-1"
+                    />
+                    <span className="text-sm text-gray-600 w-20 text-right">
+                      {audioChunkSize}s ({Math.floor(audioChunkSize / 60)}:{(audioChunkSize % 60).toString().padStart(2, '0')})
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Splits long audio into chunks for better transcription accuracy (30s to 5min)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'processing':
+        return (
+          <div className="space-y-6">
             {/* AI Analysis Service */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
@@ -401,42 +526,14 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Transcript Processing Settings */}
+            {/* Transcript Enhancement */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
-                Transcript Processing
+                Transcript Enhancement
               </h3>
               
               <div className="space-y-4">
-                {/* Audio Chunk Size */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Audio Chunk Size (for long files)
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="range"
-                      min="30"
-                      max="300"
-                      step="30"
-                      value={audioChunkSize}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        setAudioChunkSize(value);
-                        saveSetting('audioChunkSize', value.toString());
-                      }}
-                      className="flex-1"
-                    />
-                    <span className="text-sm text-gray-600 w-20 text-right">
-                      {audioChunkSize}s ({Math.floor(audioChunkSize / 60)}:{(audioChunkSize % 60).toString().padStart(2, '0')})
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Splits long audio into chunks for better transcription accuracy (30s to 5min)
-                  </p>
-                </div>
-
-                {/* Enable Validation */}
+                {/* Enable Transcript Correction */}
                 <div>
                   <label className="flex items-center space-x-2">
                     <input
@@ -448,17 +545,17 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="rounded text-primary-600 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">Enable transcript validation</span>
+                    <span className="text-sm font-medium text-gray-700">Enable transcript correction</span>
                   </label>
                   <p className="text-xs text-gray-500 ml-6">
                     Use AI to correct spelling, grammar, and punctuation errors
                   </p>
                 </div>
 
-                {/* Validation Options */}
+                {/* Correction Options */}
                 {enableTranscriptValidation && (
                   <div className="ml-6 space-y-2">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Validation options:</p>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Correction options:</p>
                     {Object.entries(validationOptions).map(([key, value]) => (
                       <label key={key} className="flex items-center space-x-2">
                         <input
@@ -477,7 +574,7 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Analyze Validated Transcript */}
+                {/* Analyze Corrected Transcript */}
                 {enableTranscriptValidation && (
                   <div>
                     <label className="flex items-center space-x-2">
@@ -490,7 +587,7 @@ export const SettingsPage: React.FC = () => {
                         }}
                         className="rounded text-primary-600 focus:ring-primary-500"
                       />
-                      <span className="text-sm font-medium text-gray-700">Analyze validated transcript</span>
+                      <span className="text-sm font-medium text-gray-700">Analyze corrected transcript</span>
                     </label>
                     <p className="text-xs text-gray-500 ml-6">
                       Use the corrected transcript for AI analysis (unchecked uses original)
@@ -556,8 +653,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        );
 
-            {/* Chat Settings */}
+      case 'chat':
+        return (
+          <div className="space-y-6">
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
                 Chat with Transcripts
@@ -701,14 +802,13 @@ export const SettingsPage: React.FC = () => {
           </div>
         );
 
-      case 'storage':
+      case 'general':
         return (
           <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900">Storage & Data</h2>
-            
+            {/* Storage & Backup */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
-                Database Location
+                Storage & Backup
               </h3>
               
               <div className="space-y-4">
@@ -776,15 +876,50 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        );
-
-      case 'appearance':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900">Appearance</h2>
             
+            {/* Vector Database Management */}
             <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                🤖 Chat Vector Database
+              </h3>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  The vector database stores embeddings for chat functionality. Reset if you experience chat issues or after system updates.
+                </p>
+                
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={handleResetVectorDB}
+                    className="px-4 py-2 border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50"
+                  >
+                    Reset Vector Database
+                  </button>
+                  <button 
+                    onClick={handleGetVectorStats}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    View Statistics
+                  </button>
+                </div>
+                
+                {vectorStats && (
+                  <div className="text-sm text-gray-600 bg-white p-3 rounded border">
+                    <p><strong>Total Chunks:</strong> {vectorStats.totalChunks}</p>
+                    <p><strong>Processed Transcripts:</strong> {vectorStats.transcripts.length}</p>
+                    <p><strong>Average Chunk Size:</strong> {vectorStats.avgChunkSize.toFixed(1)}s</p>
+                    <p><strong>Speakers Found:</strong> {vectorStats.speakers.length}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Appearance
+              </h3>
+              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -805,133 +940,16 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        );
 
-      case 'privacy':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900">Privacy</h2>
-            
+            {/* Privacy */}
             <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Privacy
+              </h3>
               <p className="text-sm text-gray-600">
-                LocalListen stores all data locally on your computer. No data is sent to external services
-                except for transcription and analysis processing.
+                AudioScribe stores all data locally on your computer. No data is sent to external services
+                except for transcription and analysis processing through your configured services.
               </p>
-            </div>
-          </div>
-        );
-
-      case 'about':
-        return (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-gray-900">About LocalListen</h2>
-            
-            {/* App Info */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="text-center mb-6">
-                <div className="text-4xl mb-4">🎤</div>
-                <h3 className="text-2xl font-bold text-gray-900">LocalListen</h3>
-                <p className="text-lg text-gray-600 mt-2">Version 1.0.0</p>
-                <p className="text-gray-500 mt-1">AI-Powered Transcription & Analysis</p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Platform:</span>
-                  <span className="text-gray-900">{window.electronAPI?.platform === 'darwin' ? 'macOS' : window.electronAPI?.platform === 'win32' ? 'Windows' : 'Linux'}</span>
-                </div>
-                
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Database:</span>
-                  <span className="text-gray-900">SQLite 3.42.0</span>
-                </div>
-                
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Electron:</span>
-                  <span className="text-gray-900">{window.electronAPI?.versions?.electron || 'N/A'}</span>
-                </div>
-                
-                <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Node.js:</span>
-                  <span className="text-gray-900">{window.electronAPI?.versions?.node || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Support & Help */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Support & Help</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => console.log('Open user guide')}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <span>📚</span>
-                  <span>User Guide</span>
-                </button>
-                
-                <button
-                  onClick={() => console.log('Report bug')}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <span>🐛</span>
-                  <span>Report Bug</span>
-                </button>
-                
-                <button
-                  onClick={() => console.log('Feature request')}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <span>💡</span>
-                  <span>Feature Request</span>
-                </button>
-                
-                <button
-                  onClick={() => console.log('Contact support')}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  <span>📧</span>
-                  <span>Contact Support</span>
-                </button>
-              </div>
-              
-              <button
-                onClick={() => console.log('Check for updates')}
-                className="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                🔄 Check for Updates
-              </button>
-            </div>
-
-            {/* Legal */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal</h3>
-              
-              <div className="text-center space-y-4">
-                <div className="flex justify-center space-x-4 text-sm">
-                  <button className="text-blue-600 hover:text-blue-700">
-                    Privacy Policy
-                  </button>
-                  <span className="text-gray-400">•</span>
-                  <button className="text-blue-600 hover:text-blue-700">
-                    Terms of Service
-                  </button>
-                  <span className="text-gray-400">•</span>
-                  <button className="text-blue-600 hover:text-blue-700">
-                    Licenses
-                  </button>
-                </div>
-                
-                <p className="text-gray-600">
-                  © 2024 Your Institution
-                </p>
-                
-                <p className="text-gray-500 text-sm">
-                  Built with ❤️ for Academic Research
-                </p>
-              </div>
             </div>
           </div>
         );
@@ -940,7 +958,49 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Settings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
+        
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search settings..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-4 py-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+          <svg 
+            className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Search results hint */}
+      {searchResults && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-md">
+          <p className="text-sm text-blue-800">
+            Found {searchResults.length} matching setting{searchResults.length !== 1 ? 's' : ''}:
+            {searchResults.map((result, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setActiveTab(result.tab);
+                  setSearchQuery('');
+                }}
+                className="ml-2 text-blue-600 hover:underline"
+              >
+                {result.setting} ({tabs.find(t => t.id === result.tab)?.name})
+              </button>
+            ))}
+          </p>
+        </div>
+      )}
       
       {/* Tab navigation */}
       <div className="flex space-x-6 mb-6 border-b border-gray-200">
@@ -969,7 +1029,15 @@ export const SettingsPage: React.FC = () => {
       
       {/* Action buttons */}
       <div className="mt-8 flex space-x-3">
-        <button className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+        <button 
+          onClick={() => {
+            if (window.confirm('Are you sure you want to reset all settings to defaults?')) {
+              // Reset logic would go here
+              window.location.reload();
+            }
+          }}
+          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+        >
           Reset to Defaults
         </button>
       </div>

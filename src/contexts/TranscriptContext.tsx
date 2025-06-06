@@ -136,10 +136,20 @@ export const TranscriptProvider: React.FC<TranscriptProviderProps> = ({ children
 
   const deleteTranscript = async (id: string) => {
     try {
+      // Delete transcript from database
       await window.electronAPI.database.run(
         'DELETE FROM transcripts WHERE id = ?',
         [id]
       );
+      
+      // Also delete chunks from vector store
+      try {
+        await (window.electronAPI as any).vectorStore.deleteTranscriptChunks(id);
+        console.log(`Deleted vector chunks for transcript: ${id}`);
+      } catch (vectorError) {
+        console.error('Error deleting vector chunks:', vectorError);
+        // Don't fail the deletion if vector cleanup fails
+      }
       
       await loadTranscripts();
     } catch (error) {

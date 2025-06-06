@@ -210,20 +210,33 @@ function createMenu() {
         {
           label: 'About AudioScribe',
           click: () => {
-            mainWindow.webContents.send('navigate', 'about');
+            mainWindow.webContents.send('menu-action', 'show-about');
           }
         },
         {
           label: 'User Guide',
+          enabled: false,
           click: () => {
-            shell.openExternal('https://locallisten.app/guide');
+            // Will be enabled when documentation is ready
           }
         },
         { type: 'separator' },
         {
+          label: 'View on GitHub',
+          click: () => {
+            shell.openExternal('https://github.com/michael-borck/audio-scribe');
+          }
+        },
+        {
           label: 'Report Issue',
           click: () => {
-            shell.openExternal('https://github.com/locallisten/issues');
+            shell.openExternal('https://github.com/michael-borck/audio-scribe/issues');
+          }
+        },
+        {
+          label: 'Licenses',
+          click: () => {
+            mainWindow.webContents.send('menu-action', 'show-licenses');
           }
         }
       ]
@@ -907,9 +920,500 @@ ipcMain.handle('get-media-info', async (event, { filePath }) => {
   }
 });
 
+// Real Embedding and Vector Store Services Implementation
+const lancedb = require('@lancedb/lancedb');
+
+// Simple text-based similarity fallback
+// This provides a working solution while we can enhance it later with real embeddings
+function simpleTextEmbedding(text) {
+  // Simple TF-IDF-like approach for basic semantic similarity
+  const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+  const wordFreq = {};
+  
+  // Count word frequencies
+  words.forEach(word => {
+    wordFreq[word] = (wordFreq[word] || 0) + 1;
+  });
+  
+  // Create a simple 384-dimensional vector (to match expected size)
+  const embedding = new Array(384).fill(0);
+  
+  // Use word hashes to populate embedding dimensions
+  Object.keys(wordFreq).forEach(word => {
+    for (let i = 0; i < word.length && i < 384; i++) {
+      const charCode = word.charCodeAt(i);
+      const dimension = (charCode * (i + 1)) % 384;
+      embedding[dimension] += wordFreq[word] / words.length;
+    }
+  });
+  
+  // Normalize the vector
+  const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+  if (magnitude > 0) {
+    for (let i = 0; i < embedding.length; i++) {
+      embedding[i] /= magnitude;
+    }
+  }
+  
+  return embedding;
+}
+
+// Global instances
+let embeddingPipeline = null;
+let vectorStore = null;
+let isEmbeddingInitialized = false;
+
+// Embedding service implementation
+ipcMain.handle('embedding-initialize', async () => {
+  try {
+    console.log('embedding-initialize called - current state:', { isEmbeddingInitialized });
+    
+    if (isEmbeddingInitialized) {
+      console.log('Embedding already initialized, returning success');
+      return { success: true };
+    }
+
+    console.log('Initializing simple text embedding service...');
+    
+    // For now, we'll use the simple text-based approach
+    // This can be enhanced later with real transformers.js integration
+    isEmbeddingInitialized = true;
+    console.log('Embedding service initialized successfully (using simple text similarity)');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to initialize embedding service:', error);
+    isEmbeddingInitialized = false;
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('embedding-embed-text', async (event, { text, metadata }) => {
+  try {
+    console.log('embedText called - isEmbeddingInitialized:', isEmbeddingInitialized);
+    
+    if (!isEmbeddingInitialized) {
+      console.error('Embedding service not ready - isInitialized:', isEmbeddingInitialized);
+      throw new Error('Embedding service not initialized');
+    }
+
+    // Generate embedding using simple text-based approach
+    const embedding = simpleTextEmbedding(text);
+
+    return {
+      embedding,
+      text,
+      metadata
+    };
+  } catch (error) {
+    console.error('Failed to embed text:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('embedding-embed-batch', async (event, { texts, metadata }) => {
+  try {
+    if (!isEmbeddingInitialized) {
+      throw new Error('Embedding service not initialized');
+    }
+
+    const results = [];
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i];
+      const embedding = simpleTextEmbedding(text);
+      
+      results.push({
+        embedding,
+        text,
+        metadata: metadata?.[i]
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Failed to embed batch:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('embedding-update-config', async (event, config) => {
+  console.log('Embedding config updated:', config);
+  // Config updates would require reinitialization in a full implementation
+  return { success: true };
+});
+
+// Vector store service implementation
+class MainVectorStore {
+  constructor() {
+    this.db = null;
+    this.table = null;
+    this.isInitialized = false;
+  }
+
+  async initialize(dbPath) {
+    try {
+      if (this.isInitialized) {
+        return;
+      }
+
+      // Use user data directory if no path specified
+      const vectorDbPath = dbPath || path.join(app.getPath('userData'), 'vectordb');
+      
+      // Ensure directory exists
+      if (!fs.existsSync(vectorDbPath)) {
+        fs.mkdirSync(vectorDbPath, { recursive: true });
+      }
+
+      // Connect to LanceDB
+      this.db = await lancedb.connect(vectorDbPath);
+      
+      // Try to open existing table or create new one
+      try {
+        this.table = await this.db.openTable('chunks');
+        console.log('Opened existing chunks table');
+      } catch (error) {
+        // Create table if it doesn't exist
+        const sampleData = [{
+          id: 'sample',
+          transcriptId: 'sample',
+          text: 'sample text',
+          vector: new Array(384).fill(0),
+          startTime: 0,
+          endTime: 1,
+          speaker: null,
+          chunkIndex: 0,
+          wordCount: 2,
+          speakers: [],
+          method: 'sample',
+          transcriptTitle: 'sample',
+          transcriptSummary: 'sample',
+          keyTopics: [],
+          actionItems: [],
+          totalSpeakers: 1,
+          createdAt: new Date().toISOString()
+        }];
+        
+        this.table = await this.db.createTable('chunks', sampleData);
+        // Remove sample data
+        await this.table.delete('id = "sample"');
+        console.log('Created new chunks table');
+      }
+
+      this.isInitialized = true;
+      console.log('Vector store initialized at:', vectorDbPath);
+    } catch (error) {
+      console.error('Failed to initialize vector store:', error);
+      throw error;
+    }
+  }
+
+  async storeChunks(chunks, embeddings) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Vector store not initialized');
+      }
+
+      const records = chunks.map((chunk, i) => {
+        const embedding = embeddings[i];
+        return {
+          id: chunk.id,
+          transcriptId: chunk.transcriptId,
+          text: chunk.text,
+          vector: embedding?.embedding || new Array(384).fill(0),
+          startTime: chunk.startTime,
+          endTime: chunk.endTime,
+          speaker: chunk.speaker || null,
+          chunkIndex: chunk.metadata?.chunkIndex || i,
+          wordCount: chunk.metadata?.wordCount || chunk.text.split(' ').length,
+          speakers: JSON.stringify(chunk.metadata?.speakers || []),
+          method: chunk.metadata?.method || 'unknown',
+          // Enhanced metadata from embedding
+          transcriptTitle: embedding?.metadata?.transcriptTitle || '',
+          transcriptSummary: embedding?.metadata?.transcriptSummary || '',
+          keyTopics: JSON.stringify(embedding?.metadata?.keyTopics || []),
+          actionItems: JSON.stringify(embedding?.metadata?.actionItems || []),
+          totalSpeakers: embedding?.metadata?.totalSpeakers || 1,
+          createdAt: new Date().toISOString()
+        };
+      });
+
+      await this.table.add(records);
+      console.log(`Stored ${records.length} chunks in vector database`);
+    } catch (error) {
+      console.error('Failed to store chunks:', error);
+      throw error;
+    }
+  }
+
+  async searchSimilar(queryEmbedding, options = {}) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Vector store not initialized');
+      }
+
+      let query = this.table.search(queryEmbedding).limit(options.limit || 10);
+      
+      // Add filters
+      if (options.transcriptId) {
+        query = query.where(`transcriptId = '${options.transcriptId}'`);
+      }
+      
+      if (options.speaker) {
+        query = query.where(`speaker = '${options.speaker}'`);
+      }
+
+      const results = await query.toArray();
+      
+      // Filter by minimum score if specified
+      const filteredResults = options.minScore 
+        ? results.filter(r => r._distance <= (1 - options.minScore))
+        : results;
+
+      // Transform to expected format
+      return filteredResults.map((result, i) => ({
+        chunk: {
+          id: result.id,
+          transcriptId: result.transcriptId,
+          text: result.text,
+          startTime: result.startTime,
+          endTime: result.endTime,
+          speaker: result.speaker,
+          chunkIndex: result.chunkIndex,
+          wordCount: result.wordCount,
+          speakers: JSON.parse(result.speakers || '[]'),
+          method: result.method,
+          createdAt: result.createdAt
+        },
+        score: 1 - result._distance, // Convert distance to similarity score
+        rank: i + 1
+      }));
+    } catch (error) {
+      console.error('Failed to search similar chunks:', error);
+      throw error;
+    }
+  }
+
+  async deleteTranscriptChunks(transcriptId) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Vector store not initialized');
+      }
+
+      await this.table.delete(`transcriptId = '${transcriptId}'`);
+      console.log(`Deleted chunks for transcript: ${transcriptId}`);
+    } catch (error) {
+      console.error('Failed to delete transcript chunks:', error);
+      throw error;
+    }
+  }
+
+  async getTranscriptChunks(transcriptId) {
+    try {
+      if (!this.isInitialized) {
+        throw new Error('Vector store not initialized');
+      }
+
+      const results = await this.table.search([]).where(`transcriptId = '${transcriptId}'`).toArray();
+      
+      return results.map(result => ({
+        id: result.id,
+        transcriptId: result.transcriptId,
+        text: result.text,
+        vector: result.vector,
+        startTime: result.startTime,
+        endTime: result.endTime,
+        speaker: result.speaker,
+        chunkIndex: result.chunkIndex,
+        wordCount: result.wordCount,
+        speakers: JSON.parse(result.speakers || '[]'),
+        method: result.method,
+        createdAt: result.createdAt
+      }));
+    } catch (error) {
+      console.error('Failed to get transcript chunks:', error);
+      throw error;
+    }
+  }
+
+  async updateChunks(chunks, embeddings) {
+    try {
+      // Delete existing chunks with same IDs
+      for (const chunk of chunks) {
+        await this.table.delete(`id = '${chunk.id}'`);
+      }
+      
+      // Add updated chunks
+      await this.storeChunks(chunks, embeddings);
+    } catch (error) {
+      console.error('Failed to update chunks:', error);
+      throw error;
+    }
+  }
+
+  async getStats() {
+    try {
+      if (!this.isInitialized) {
+        return {
+          totalChunks: 0,
+          transcripts: [],
+          avgChunkSize: 0,
+          speakers: []
+        };
+      }
+
+      const allChunks = await this.table.search([]).toArray();
+      const transcriptIds = [...new Set(allChunks.map(c => c.transcriptId))];
+      const speakers = [...new Set(allChunks.flatMap(c => JSON.parse(c.speakers || '[]')))];
+      
+      const avgChunkSize = allChunks.length > 0 
+        ? allChunks.reduce((sum, c) => sum + (c.endTime - c.startTime), 0) / allChunks.length 
+        : 0;
+
+      return {
+        totalChunks: allChunks.length,
+        transcripts: transcriptIds,
+        avgChunkSize,
+        speakers
+      };
+    } catch (error) {
+      console.error('Failed to get vector store stats:', error);
+      return {
+        totalChunks: 0,
+        transcripts: [],
+        avgChunkSize: 0,
+        speakers: []
+      };
+    }
+  }
+
+  async close() {
+    try {
+      if (this.db) {
+        await this.db.close();
+      }
+      this.isInitialized = false;
+      console.log('Vector store closed');
+    } catch (error) {
+      console.error('Error closing vector store:', error);
+    }
+  }
+
+  async reset() {
+    try {
+      if (this.isInitialized && this.table) {
+        // Delete all records from the table
+        await this.table.delete('1 = 1'); // Delete all
+        console.log('Vector store reset - all chunks deleted');
+      }
+    } catch (error) {
+      console.error('Error resetting vector store:', error);
+      throw error;
+    }
+  }
+}
+
+// Initialize vector store
+vectorStore = new MainVectorStore();
+
+// Vector store IPC handlers
+ipcMain.handle('vector-store-initialize', async (event, dbPath) => {
+  try {
+    await vectorStore.initialize(dbPath);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vector-store-store-chunks', async (event, { chunks, embeddings }) => {
+  try {
+    await vectorStore.storeChunks(chunks, embeddings);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vector-store-search-similar', async (event, { queryEmbedding, options }) => {
+  try {
+    const results = await vectorStore.searchSimilar(queryEmbedding, options);
+    return results;
+  } catch (error) {
+    console.error('Vector search error:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('vector-store-delete-transcript-chunks', async (event, transcriptId) => {
+  try {
+    await vectorStore.deleteTranscriptChunks(transcriptId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vector-store-get-transcript-chunks', async (event, transcriptId) => {
+  try {
+    const chunks = await vectorStore.getTranscriptChunks(transcriptId);
+    return chunks;
+  } catch (error) {
+    console.error('Error getting transcript chunks:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('vector-store-update-chunks', async (event, { chunks, embeddings }) => {
+  try {
+    await vectorStore.updateChunks(chunks, embeddings);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vector-store-get-stats', async () => {
+  try {
+    return await vectorStore.getStats();
+  } catch (error) {
+    console.error('Error getting vector store stats:', error);
+    return {
+      totalChunks: 0,
+      transcripts: [],
+      avgChunkSize: 0,
+      speakers: []
+    };
+  }
+});
+
+ipcMain.handle('vector-store-close', async () => {
+  try {
+    await vectorStore.close();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('vector-store-reset', async () => {
+  try {
+    await vectorStore.reset();
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 // Cleanup on exit
-app.on('before-quit', () => {
-  if (db) {
-    db.close();
+app.on('before-quit', async () => {
+  try {
+    if (vectorStore) {
+      await vectorStore.close();
+    }
+    if (db) {
+      db.close();
+    }
+  } catch (error) {
+    console.error('Error during cleanup:', error);
   }
 });
