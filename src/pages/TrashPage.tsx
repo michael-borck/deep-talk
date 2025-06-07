@@ -171,7 +171,6 @@ export const TrashPage: React.FC = () => {
       }
       
       await loadTrashItems();
-      alert('Trash emptied successfully');
     } catch (error) {
       console.error('Error emptying trash:', error);
       alert('Failed to empty trash. Please try again.');

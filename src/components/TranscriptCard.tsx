@@ -13,7 +13,7 @@ interface TranscriptCardProps {
 
 export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) => {
   const navigate = useNavigate();
-  const { updateTranscript } = useContext(TranscriptContext);
+  const { updateTranscript, deleteTranscript } = useContext(TranscriptContext);
   const { projects, removeTranscriptFromProject } = useProjects();
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -126,6 +126,10 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
         case 'move-to-trash':
           // Move to trash (soft delete)
           await moveTranscriptToTrash(transcript.id);
+          break;
+        case 'delete-permanently':
+          // Permanently delete the transcript
+          await deleteTranscript(transcript.id);
           break;
       }
       setShowDeleteModal(false);

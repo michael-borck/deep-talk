@@ -428,40 +428,202 @@ Respond in JSON format:
     }
   }
 
+  // Enhanced hybrid speaker detection with rule-based preprocessing
   async performSpeakerDetection(transcriptText: string): Promise<{
     speakerCount: number;
     speakers: Array<{ id: string; name: string; segments: number }>;
   }> {
     try {
+      // First, apply rule-based preprocessing
+      const preprocessed = this.preprocessTranscriptForSpeakers(transcriptText);
+      
+      // Debug logging for speaker detection
+      console.log('Speaker Detection Debug:', {
+        likelySingleSpeaker: preprocessed.likelySingleSpeaker,
+        hasExistingSpeakerTags: preprocessed.hasExistingSpeakerTags,
+        segmentCount: preprocessed.segments.length,
+        textLength: transcriptText.length
+      });
+
+      // If obvious single speaker or already has speaker tags, skip AI
+      if (preprocessed.likelySingleSpeaker || preprocessed.hasExistingSpeakerTags) {
+        console.log('Skipping AI analysis:', preprocessed.likelySingleSpeaker ? 'Single speaker detected' : 'Existing tags found');
+        return {
+          speakerCount: preprocessed.hasExistingSpeakerTags ? preprocessed.detectedSpeakers.length : 1,
+          speakers: preprocessed.hasExistingSpeakerTags ? 
+            preprocessed.detectedSpeakers.map((name, idx) => ({
+              id: `Speaker ${idx + 1}`,
+              name: name,
+              segments: preprocessed.speakerSegmentCounts[name] || 1
+            })) :
+            [{ id: 'Speaker 1', name: 'Speaker 1', segments: 1 }]
+        };
+      }
+
+      console.log('Proceeding with AI-based speaker detection...');
+
+      // Use two-stage AI approach for better results with weak models
       const aiUrl = await this.getAiUrl();
       const aiModel = await this.getAiModel();
       
-      const prompt = `Identify distinct speakers in this transcript. Look for:
-- Speaker changes
+      // Stage 1: Simple speaker count detection
+      const countPrompt = `Analyze this transcript and determine how many distinct speakers are present.
+Consider:
+- Changes in perspective (I/you/we)
+- Question and answer patterns
 - Different speaking styles
-- Dialogue patterns
-- Use of "I", "you", "we" to identify speakers
 
-Transcript: ${transcriptText}
+Transcript excerpt (first 500 chars):
+${transcriptText.substring(0, 500)}...
 
-Respond in JSON format:
-{
-  "speakerCount": 1,
-  "speakers": [
-    {"id": "Speaker 1", "name": "Speaker 1", "segments": 5}
-  ]
-}`;
+Respond with ONLY a JSON object:
+{"speaker_count": N}`;
 
-      const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
-      const result = aiResponse.parsed || {};
-      return {
-        speakerCount: typeof result.speakerCount === 'number' ? result.speakerCount : 1,
-        speakers: Array.isArray(result.speakers) ? result.speakers : []
-      };
+      const countResponse = await this.callAI(aiUrl, aiModel, countPrompt);
+      const speakerCount = countResponse.parsed?.speaker_count || 1;
+
+      if (speakerCount === 1) {
+        return {
+          speakerCount: 1,
+          speakers: [{ id: 'Speaker 1', name: 'Speaker 1', segments: 1 }]
+        };
+      }
+
+      // Stage 2: Identify speaker segments using simpler prompts
+      const segments = preprocessed.segments.slice(0, 10); // Analyze first 10 segments
+      const segmentPrompt = `Given ${speakerCount} speakers in this conversation, identify speaker changes.
+Mark each segment with a speaker number (1 to ${speakerCount}).
+
+Segments:
+${segments.map((seg, idx) => `[${idx}]: "${seg.substring(0, 100)}..."`).join('\n')}
+
+Respond with ONLY a JSON array of speaker IDs:
+{"segments": [1, 2, 1, 2, ...]}`;
+
+      const segmentResponse = await this.callAI(aiUrl, aiModel, segmentPrompt);
+      const speakerIds = segmentResponse.parsed?.segments || [];
+
+      // Count segments per speaker
+      const speakerSegmentMap = new Map<number, number>();
+      speakerIds.forEach((id: number) => {
+        speakerSegmentMap.set(id, (speakerSegmentMap.get(id) || 0) + 1);
+      });
+
+      // Create speaker array
+      const speakers = Array.from({ length: speakerCount }, (_, i) => ({
+        id: `Speaker ${i + 1}`,
+        name: `Speaker ${i + 1}`,
+        segments: speakerSegmentMap.get(i + 1) || Math.ceil(preprocessed.segments.length / speakerCount)
+      }));
+
+      return { speakerCount, speakers };
     } catch (error) {
       console.error('Speaker detection error:', error);
-      return { speakerCount: 1, speakers: [] };
+      return { speakerCount: 1, speakers: [{ id: 'Speaker 1', name: 'Speaker 1', segments: 1 }] };
     }
+  }
+
+  // Rule-based preprocessing for speaker detection
+  preprocessTranscriptForSpeakers(text: string): {
+    segments: string[];
+    likelySingleSpeaker: boolean;
+    hasExistingSpeakerTags: boolean;
+    detectedSpeakers: string[];
+    speakerSegmentCounts: Record<string, number>;
+  } {
+    // Check for existing speaker tags
+    const colonPattern = /^([A-Za-z0-9\s]+):\s/gm;
+    const bracketPattern = /^\[([A-Za-z0-9\s]+)\]\s/gm;
+    const existingTags = [...text.matchAll(colonPattern), ...text.matchAll(bracketPattern)];
+    
+    if (existingTags.length > 0) {
+      const speakers = new Set<string>();
+      const counts: Record<string, number> = {};
+      
+      existingTags.forEach(match => {
+        const speaker = match[1].trim();
+        speakers.add(speaker);
+        counts[speaker] = (counts[speaker] || 0) + 1;
+      });
+      
+      return {
+        segments: [],
+        likelySingleSpeaker: false,
+        hasExistingSpeakerTags: true,
+        detectedSpeakers: Array.from(speakers),
+        speakerSegmentCounts: counts
+      };
+    }
+
+    // Enhanced segment splitting for conversations
+    let segments = text
+      .split(/\n{2,}/) // Double line breaks
+      .filter(s => s.trim().length > 20) // Remove very short segments
+      .map(s => s.trim());
+    
+    // If we get very few segments, try alternative splitting methods
+    if (segments.length < 3) {
+      // Try splitting on conversation markers
+      const conversationSplit = text.split(/\b(?:Well,|So,|Yeah,|Yes,|No,|Okay,|And so|Can you|What was|How do)\b/i)
+        .filter(s => s.trim().length > 30)
+        .map(s => s.trim());
+      
+      if (conversationSplit.length > segments.length) {
+        segments = conversationSplit;
+      }
+      
+      // If still very few segments, try sentence-based splitting for long texts
+      if (segments.length < 3 && text.length > 500) {
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
+        if (sentences.length > 10) {
+          // Group sentences into larger segments
+          const groupSize = Math.ceil(sentences.length / 6); // Aim for ~6 segments
+          segments = [];
+          for (let i = 0; i < sentences.length; i += groupSize) {
+            const group = sentences.slice(i, i + groupSize).join(' ').trim();
+            if (group.length > 50) {
+              segments.push(group);
+            }
+          }
+        }
+      }
+    }
+
+    // Enhanced conversation detection
+    const questionCount = (text.match(/\?/g) || []).length;
+    const secondPersonCount = (text.match(/\b(you|you're|you've|your)\b/gi) || []).length;
+    const wordCount = text.split(/\s+/).length;
+    
+    // Look for conversation indicators
+    const conversationWords = (text.match(/\b(well|so|yeah|yes|no|okay|um|uh|hmm)\b/gi) || []).length;
+    const responsePatterns = (text.match(/\b(can you tell me|what do you think|how do you|do you remember)\b/gi) || []).length;
+    const interviewPatterns = (text.match(/\b(my name is|I understand|I'm doing|to start out)\b/gi) || []).length;
+    
+    // Calculate ratios
+    const conversationRatio = conversationWords / wordCount;
+    
+    // Strong indicators of conversation
+    const hasConversationMarkers = 
+      questionCount >= 3 || 
+      responsePatterns > 0 || 
+      interviewPatterns > 0 ||
+      conversationRatio > 0.01;
+    
+    // Likely single speaker ONLY if very clear indicators
+    const likelySingleSpeaker = 
+      !hasConversationMarkers &&
+      segments.length < 2 && 
+      questionCount === 0 && 
+      secondPersonCount === 0 &&
+      wordCount < 200;
+
+    return {
+      segments,
+      likelySingleSpeaker,
+      hasExistingSpeakerTags: false,
+      detectedSpeakers: [],
+      speakerSegmentCounts: {}
+    };
   }
 
   async performSpeakerTagging(transcriptText: string, speakers: Array<{ id: string; name: string; segments: number }>): Promise<string> {
@@ -473,19 +635,131 @@ Respond in JSON format:
       const aiUrl = await this.getAiUrl();
       const aiModel = await this.getAiModel();
       
-      const prompt = `Tag this transcript with speaker labels. You have identified ${speakers.length} speakers: ${speakers.map(s => s.name).join(', ')}.
+      // Stage 0: Pre-analyze for speaker patterns (like quotes analysis does)
+      const patternPrompt = `Analyze this conversation to understand speaker patterns and provide guidance for tagging.
 
-Add speaker tags like "[Speaker 1]:" before each speaker's dialogue. Look for:
-- Natural conversation breaks
-- Change in speaking style or perspective
-- Use of personal pronouns
+Transcript:
+${transcriptText.substring(0, 2000)}...
 
-Original transcript: ${transcriptText}
+Look for:
+- Who asks questions vs who answers
+- Different speaking styles or vocabulary
+- Conversation flow patterns
 
-Return only the tagged transcript (no JSON, just the tagged text):`;
+Respond with ONLY a JSON object:
+{"speaker1_role": "interviewer|interviewee|participant", "speaker2_role": "interviewer|interviewee|participant", "main_patterns": ["pattern1", "pattern2"], "question_asker": "Speaker 1|Speaker 2"}`;
 
-      const result = await this.callAI(aiUrl, aiModel, prompt, false); // false = expect text, not JSON
-      return typeof result === 'string' ? result : transcriptText;
+      let speakerGuidance = null;
+      try {
+        const guidanceResponse = await this.callAI(aiUrl, aiModel, patternPrompt);
+        speakerGuidance = guidanceResponse.parsed || {};
+        console.log('Speaker pattern guidance:', speakerGuidance);
+      } catch (error) {
+        console.error('Pattern analysis failed:', error);
+      }
+
+      // Enhanced speaker tagging with segment-based approach
+      const preprocessed = this.preprocessTranscriptForSpeakers(transcriptText);
+      let segments = preprocessed.segments;
+      
+      // Always split by sentences for better speaker detection (matching manual tagging approach)
+      const sentences = transcriptText.split(/([.!?]+)/).filter(s => s.trim());
+      const sentenceSegments: string[] = [];
+      
+      for (let i = 0; i < sentences.length; i += 2) {
+        const sentence = sentences[i] || '';
+        const punctuation = sentences[i + 1] || '';
+        const fullSentence = (sentence + punctuation).trim();
+        
+        if (fullSentence.length > 0) {
+          sentenceSegments.push(fullSentence);
+        }
+      }
+      
+      // Use sentence segments if we have more than paragraph segments
+      if (sentenceSegments.length > segments.length) {
+        console.log(`Using sentence-based segmentation: ${sentenceSegments.length} sentences vs ${segments.length} paragraphs`);
+        segments = sentenceSegments;
+      }
+
+      // Use full transcript approach (like quotes analysis) for better accuracy
+      const fullTranscriptPrompt = `You are analyzing a conversation to identify which speaker said each sentence. You will see the full conversation context to understand speaker patterns and roles.
+
+Context: This is ${speakers.length === 2 ? 'likely an interview or conversation between two people' : `a conversation with ${speakers.length} speakers`}.
+
+Available speakers: ${speakers.map(s => s.name).join(', ')}
+
+${speakerGuidance ? `Speaker patterns identified:
+- ${speakerGuidance.speaker1_role ? `Speaker 1: ${speakerGuidance.speaker1_role}` : ''}
+- ${speakerGuidance.speaker2_role ? `Speaker 2: ${speakerGuidance.speaker2_role}` : ''}
+- Questions typically asked by: ${speakerGuidance.question_asker || 'Unknown'}
+- Key patterns: ${speakerGuidance.main_patterns?.join(', ') || 'None'}` : ''}
+
+Full Conversation:
+${transcriptText}
+
+Sentences to tag:
+${segments.map((seg, idx) => `[${idx}]: "${seg}"`).join('\n')}
+
+Analyze the full conversation context and identify patterns like:
+- Questions vs answers (interviewers ask, interviewees respond)
+- Speaking style consistency
+- Conversation flow and turn-taking
+- Topic introduction vs responses
+
+Respond with ONLY a JSON object mapping ALL sentence numbers to speaker names:
+{"assignments": {"0": "Speaker 1", "1": "Speaker 1", "2": "Speaker 2", "3": "Speaker 1", "4": "Speaker 2", ...}}`;
+
+      let taggedSegments: Array<{ text: string; speaker: string }> = [];
+      
+      try {
+        console.log('Sending full transcript for speaker tagging...');
+        const response = await this.callAI(aiUrl, aiModel, fullTranscriptPrompt);
+        const assignments = response.parsed?.assignments || {};
+        
+        // Process all segments based on AI response
+        segments.forEach((seg, idx) => {
+          const assignedSpeaker = assignments[idx.toString()] || 
+                                 speakers[idx % speakers.length].name;
+          taggedSegments.push({
+            text: seg,
+            speaker: assignedSpeaker
+          });
+        });
+        
+        console.log(`Successfully tagged ${taggedSegments.length} segments using full context`);
+      } catch (fullError) {
+        console.error('Full transcript tagging error:', fullError);
+        // Fallback: alternate speakers based on patterns
+        segments.forEach((seg) => {
+          // Simple fallback: questions to Speaker 1, answers to Speaker 2
+          const isQuestion = seg.trim().endsWith('?') || 
+                           /^(what|how|why|when|where|who|can you|do you|would you|could you)/i.test(seg.trim());
+          const defaultSpeaker = isQuestion ? speakers[0].name : speakers[1].name;
+          
+          taggedSegments.push({
+            text: seg,
+            speaker: defaultSpeaker
+          });
+        });
+        console.log('Used fallback speaker assignment based on question patterns');
+      }
+
+      // Reconstruct the transcript with speaker tags
+      let taggedTranscript = '';
+      let lastSpeaker = '';
+      
+      taggedSegments.forEach(segment => {
+        if (segment.speaker !== lastSpeaker) {
+          taggedTranscript += `\n\n[${segment.speaker}]: `;
+          lastSpeaker = segment.speaker;
+        } else {
+          taggedTranscript += ' ';
+        }
+        taggedTranscript += segment.text;
+      });
+      
+      return taggedTranscript.trim();
     } catch (error) {
       console.error('Speaker tagging error:', error);
       return transcriptText;

@@ -727,12 +727,34 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
           if (overlapIndex > 0 && searchText) {
             // Found overlap, skip it
             const textToAdd = chunk.text.substring(overlapIndex + searchText.length);
-            fullTranscription += textToAdd;
-            console.log(`Added ${textToAdd.length} chars after removing overlap`);
+            
+            // Enhanced concatenation: detect if we need a paragraph break
+            const prevEndsWithSentence = /[.!?]\s*$/.test(fullTranscription.trim());
+            const currStartsWithCapital = /^[A-Z]/.test(textToAdd.trim());
+            const currStartsWithConversationWord = /^(Well|So|Yeah|Yes|No|Okay|Um|Uh|And|But|I think|Can you|What|How|Why)\b/i.test(textToAdd.trim());
+            const needsParagraphBreak = prevEndsWithSentence && (currStartsWithCapital || currStartsWithConversationWord);
+            
+            if (needsParagraphBreak) {
+              fullTranscription += '\n\n' + textToAdd.trim();
+              console.log(`Added ${textToAdd.length} chars with paragraph break (sentence boundary detected)`);
+            } else {
+              fullTranscription += ' ' + textToAdd.trim();
+              console.log(`Added ${textToAdd.length} chars after removing overlap`);
+            }
           } else {
-            // No clear overlap found, just add a space and append
-            fullTranscription += ' ' + chunk.text;
-            console.log(`No overlap found, added full chunk with space separator`);
+            // No clear overlap found - likely a natural break point
+            const prevEndsWithSentence = /[.!?]\s*$/.test(fullTranscription.trim());
+            const currStartsWithCapital = /^[A-Z]/.test(chunk.text.trim());
+            const currStartsWithConversationWord = /^(Well|So|Yeah|Yes|No|Okay|Um|Uh|And|But|I think|Can you|What|How|Why)\b/i.test(chunk.text.trim());
+            
+            // Add paragraph break if this looks like a natural conversation break
+            if (prevEndsWithSentence && (currStartsWithCapital || currStartsWithConversationWord)) {
+              fullTranscription += '\n\n' + chunk.text.trim();
+              console.log(`Added full chunk with paragraph break (likely speaker change)`);
+            } else {
+              fullTranscription += ' ' + chunk.text.trim();
+              console.log(`Added full chunk with space separator`);
+            }
           }
         }
       }
