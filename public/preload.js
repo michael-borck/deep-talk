@@ -80,6 +80,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel })
   },
 
+  // AI Prompts operations
+  aiPrompts: {
+    getByCategory: (category) => ipcRenderer.invoke('ai-prompts-get-by-category', category),
+    get: (options) => ipcRenderer.invoke('ai-prompts-get', options),
+    save: (prompt) => ipcRenderer.invoke('ai-prompts-save', prompt),
+    delete: (id) => ipcRenderer.invoke('ai-prompts-delete', id),
+    resetToDefault: (options) => ipcRenderer.invoke('ai-prompts-reset-to-default', options)
+  },
+
   // Database management
   getDatabaseInfo: () => ipcRenderer.invoke('get-database-info'),
   changeDatabaseLocation: (newPath) => ipcRenderer.invoke('change-database-location', newPath),

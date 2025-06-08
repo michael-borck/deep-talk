@@ -1,6 +1,7 @@
 import { embeddingService } from './embeddingService';
 import { chunkingService } from './chunkingService';
 import { vectorStoreService, SearchResult } from './vectorStoreService';
+import { promptService } from './promptService';
 import { Transcript, TranscriptSegment } from '../types';
 
 export interface ChatConfig {
@@ -363,20 +364,9 @@ export class ChatService {
         .map(msg => `${msg.role}: ${msg.content}`)
         .join('\n');
         
-      const compactionPrompt = `
-You are helping manage a conversation between a user and an AI assistant about a transcript. 
-Please create a concise summary of the conversation below, preserving:
-- Key topics discussed
-- Important questions asked
-- Main conclusions reached
-- Any specific transcript references or timestamps mentioned
-
-Keep the summary to 2-3 bullet points maximum. Focus on what would be useful context for continuing the conversation.
-
-Conversation to summarize:
-${conversationText}
-
-Summary:`;
+      const compactionPrompt = await promptService.getProcessedPrompt('chat', 'conversation_compaction', {
+        conversation: conversationText
+      });
       
       const response = await (window.electronAPI.services as any).chatWithOllama({
         prompt: compactionPrompt,
@@ -459,21 +449,11 @@ Summary:`;
       // Get transcript metadata for better context
       const transcript = await this.getTranscriptMetadata(transcriptId);
       
-      const systemPrompt = `You are an AI assistant helping analyze a transcript titled "${transcript?.title || 'Audio Transcript'}". 
-      
-Your role is to answer questions about the transcript content accurately and helpfully. 
-
-Guidelines:
-- Base your answers primarily on the provided transcript content
-- If information isn't in the transcript, clearly state that
-- Include timestamps when referencing specific parts of the transcript
-- Be conversational but accurate
-- If the user asks about speakers, use the speaker names/labels from the transcript
-
-Context provided:
-${context}
-
-Current question: ${userMessage}`;
+      const systemPrompt = await promptService.getProcessedPrompt('chat', 'transcript_chat', {
+        title: transcript?.title || 'Audio Transcript',
+        context: context,
+        message: userMessage
+      });
 
       // Call Ollama API through electron API
       const response = await (window.electronAPI.services as any).chatWithOllama({

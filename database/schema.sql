@@ -167,6 +167,23 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- AI Prompts Configuration
+CREATE TABLE IF NOT EXISTS ai_prompts (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL, -- 'chat', 'analysis', 'validation', 'speaker'
+    type TEXT NOT NULL, -- specific prompt type like 'transcript_chat', 'sentiment_analysis', etc.
+    name TEXT NOT NULL, -- human-readable name
+    description TEXT, -- help text for users
+    prompt_text TEXT NOT NULL, -- the actual prompt template
+    variables TEXT, -- JSON array of template variables like ["{transcript}", "{context}"]
+    model_compatibility TEXT, -- JSON array of compatible models or 'all'
+    default_prompt BOOLEAN DEFAULT 0, -- whether this is a system default
+    user_modified BOOLEAN DEFAULT 0, -- whether user has customized this prompt
+    system_used BOOLEAN DEFAULT 0, -- whether this prompt is actively used by the system's processing pipeline
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Processing queue
 CREATE TABLE IF NOT EXISTS processing_queue (
     id TEXT PRIMARY KEY,
@@ -197,6 +214,11 @@ CREATE INDEX IF NOT EXISTS idx_processing_queue_status ON processing_queue(statu
 -- Project indexes
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at);
+
+-- AI Prompts indexes
+CREATE INDEX IF NOT EXISTS idx_ai_prompts_category ON ai_prompts(category);
+CREATE INDEX IF NOT EXISTS idx_ai_prompts_type ON ai_prompts(type);
+CREATE INDEX IF NOT EXISTS idx_ai_prompts_category_type ON ai_prompts(category, type);
 CREATE INDEX IF NOT EXISTS idx_projects_archived ON projects(is_archived);
 CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted_at);

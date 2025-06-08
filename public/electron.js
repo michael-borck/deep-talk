@@ -96,9 +96,383 @@ function runMigrations() {
       }
     }
     
+    // Check if ai_prompts table exists and create it if not
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='ai_prompts'").all();
+    if (tables.length === 0) {
+      console.log('Creating ai_prompts table...');
+      db.exec(`
+        CREATE TABLE ai_prompts (
+          id TEXT PRIMARY KEY,
+          category TEXT NOT NULL,
+          type TEXT NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          prompt_text TEXT NOT NULL,
+          variables TEXT,
+          model_compatibility TEXT,
+          default_prompt BOOLEAN DEFAULT 0,
+          user_modified BOOLEAN DEFAULT 0,
+          system_used BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // Create indexes
+      db.exec(`
+        CREATE INDEX idx_ai_prompts_category ON ai_prompts(category);
+        CREATE INDEX idx_ai_prompts_type ON ai_prompts(type);
+        CREATE INDEX idx_ai_prompts_category_type ON ai_prompts(category, type);
+      `);
+      
+      console.log('ai_prompts table created successfully');
+    } else {
+      // Check if system_used column exists, add it if not
+      const columns = db.prepare("PRAGMA table_info(ai_prompts)").all();
+      const hasSystemUsedColumn = columns.some(col => col.name === 'system_used');
+      
+      if (!hasSystemUsedColumn) {
+        console.log('Adding system_used column to ai_prompts table...');
+        db.exec('ALTER TABLE ai_prompts ADD COLUMN system_used BOOLEAN DEFAULT 0');
+      }
+    }
+    
+    // Always try to initialize default prompts (in case they're missing)
+    initializeDefaultPrompts();
+    
     console.log('Database migrations completed');
   } catch (error) {
     console.error('Error running migrations:', error);
+  }
+}
+
+// Initialize default AI prompts
+function initializeDefaultPrompts() {
+  try {
+    console.log('Initializing default AI prompts...');
+    
+    const defaultPrompts = [
+      // Chat Prompts
+      {
+        id: 'chat-transcript-system',
+        category: 'chat',
+        type: 'transcript_chat',
+        name: 'Transcript Chat System Prompt',
+        description: 'System prompt for chatting with individual transcripts',
+        prompt_text: `You are an AI assistant helping analyze a transcript titled "{title}". 
+
+Your role is to answer questions about the transcript content accurately and helpfully. 
+
+Guidelines:
+- Base your answers primarily on the provided transcript content
+- If information isn't in the transcript, clearly state that
+- Include timestamps when referencing specific parts of the transcript
+- Be conversational but accurate
+- If the user asks about speakers, use the speaker names/labels from the transcript
+
+Context provided:
+{context}
+
+Current question: {message}`,
+        variables: JSON.stringify(['title', 'context', 'message']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+      {
+        id: 'chat-conversation-compaction',
+        category: 'chat',
+        type: 'conversation_compaction',
+        name: 'Conversation Memory Compaction',
+        description: 'Prompt for compacting long chat conversations',
+        prompt_text: `You are helping manage a conversation between a user and an AI assistant about a transcript. 
+Please create a concise summary of the conversation below, preserving:
+- Key topics discussed
+- Important questions asked  
+- Main conclusions reached
+- Any specific transcript references or timestamps mentioned
+
+Keep the summary to 2-3 bullet points maximum. Focus on what would be useful context for continuing the conversation.
+
+Conversation to summarize:
+{conversation}`,
+        variables: JSON.stringify(['conversation']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+
+      // Analysis Prompts
+      {
+        id: 'analysis-basic',
+        category: 'analysis',
+        type: 'basic_analysis',
+        name: 'Basic Transcript Analysis',
+        description: 'Extract summary, key topics, and action items',
+        prompt_text: `Please analyze the following transcript and provide:
+1. A concise summary (2-3 sentences)
+2. Key topics discussed (as a bullet list)
+3. Action items or next steps mentioned (as a bullet list)
+
+Transcript:
+{transcript}
+
+Please format your response as JSON:
+{
+  "summary": "Your summary here",
+  "keyTopics": ["topic1", "topic2", "topic3"],
+  "actionItems": ["action1", "action2", "action3"]
+}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+      {
+        id: 'analysis-sentiment',
+        category: 'analysis',
+        type: 'sentiment_analysis',
+        name: 'Sentiment Analysis',
+        description: 'Analyze overall sentiment and provide score',
+        prompt_text: `Analyze the sentiment of this transcript. Provide:
+1. Overall sentiment: positive, negative, or neutral
+2. Sentiment score: -1.0 (very negative) to 1.0 (very positive)
+
+Transcript: {transcript}
+
+Respond in JSON format:
+{"sentiment": "positive|negative|neutral", "sentimentScore": 0.0}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+      {
+        id: 'analysis-emotions',
+        category: 'analysis',
+        type: 'emotion_analysis',
+        name: 'Emotion Analysis',
+        description: 'Detect emotional content and intensity',
+        prompt_text: `Analyze the emotional content of this transcript. Rate each emotion from 0.0 to 1.0:
+
+Emotions to analyze: frustration, excitement, confusion, confidence, anxiety, satisfaction
+
+Transcript: {transcript}
+
+Respond in JSON format:
+{"frustration": 0.0, "excitement": 0.0, "confusion": 0.0, "confidence": 0.0, "anxiety": 0.0, "satisfaction": 0.0}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+      {
+        id: 'analysis-research',
+        category: 'analysis',
+        type: 'research_analysis',
+        name: 'Research Analysis',
+        description: 'Extract quotes, themes, Q&A pairs, and concepts for qualitative research',
+        prompt_text: `Please perform detailed research analysis on the following transcript for qualitative research purposes:
+
+1. **Notable Quotes**: Extract 3-5 most significant, quotable statements that capture key insights, surprising revelations, or memorable expressions. Rate each quote's relevance (0.0 to 1.0).
+
+2. **Research Themes**: Identify 3-7 major themes or categories that emerge from the content. These should be suitable for qualitative research coding. Provide confidence scores (0.0 to 1.0) and specific examples for each theme.
+
+3. **Question-Answer Mapping**: If this appears to be an interview or Q&A session, identify clear question-answer pairs. Look for interrogative statements followed by responses.
+
+4. **Concept Frequency**: Identify key concepts, technical terms, or important topics mentioned repeatedly. Count occurrences and provide brief context snippets.
+
+Transcript:
+{transcript}
+
+Please format your response as JSON:
+{
+  "notableQuotes": [
+    {
+      "text": "The exact quote text here",
+      "speaker": "Speaker 1",
+      "relevance": 0.9
+    }
+  ],
+  "researchThemes": [
+    {
+      "theme": "Technology Adoption",
+      "confidence": 0.85,
+      "examples": ["specific example 1", "specific example 2"]
+    }
+  ],
+  "qaPairs": [
+    {
+      "question": "What do you think about...",
+      "answer": "I believe that...",
+      "speaker": "Speaker 2"
+    }
+  ],
+  "conceptFrequency": {
+    "artificial intelligence": {
+      "count": 5,
+      "contexts": ["context snippet 1", "context snippet 2"]
+    }
+  }
+}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify(['llama3', 'gpt-4', 'claude']),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+
+      // Speaker Analysis Prompts
+      {
+        id: 'speaker-count-detection',
+        category: 'speaker',
+        type: 'speaker_count',
+        name: 'Speaker Count Detection',
+        description: 'Determine number of distinct speakers',
+        prompt_text: `Analyze this transcript and determine how many distinct speakers are present.
+Consider:
+- Changes in perspective (I/you/we)
+- Question and answer patterns
+- Different speaking styles
+
+Transcript excerpt (first 500 chars):
+{transcript}...
+
+Respond with ONLY a JSON object:
+{"speaker_count": N}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+      {
+        id: 'speaker-pattern-analysis',
+        category: 'speaker',
+        type: 'speaker_pattern_analysis',
+        name: 'Speaker Pattern Analysis',
+        description: 'Analyze conversation patterns for speaker tagging guidance',
+        prompt_text: `Analyze this conversation to understand speaker patterns and provide guidance for tagging.
+
+Transcript:
+{transcript}...
+
+Look for:
+- Who asks questions vs who answers
+- Different speaking styles or vocabulary
+- Conversation flow patterns
+
+Respond with ONLY a JSON object:
+{"speaker1_role": "interviewer|interviewee|participant", "speaker2_role": "interviewer|interviewee|participant", "main_patterns": ["pattern1", "pattern2"], "question_asker": "Speaker 1|Speaker 2"}`,
+        variables: JSON.stringify(['transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 0
+      },
+      {
+        id: 'speaker-tagging',
+        category: 'speaker',
+        type: 'speaker_tagging',
+        name: 'Speaker Tagging',
+        description: 'Assign speakers to text segments',
+        prompt_text: `You are analyzing a conversation to identify which speaker said each sentence. You will see the full conversation context to understand speaker patterns and roles.
+
+Context: This is {speaker_context}.
+
+Available speakers: {speakers}
+
+{pattern_guidance}
+
+Full Conversation:
+{transcript}
+
+Sentences to tag:
+{segments}
+
+Analyze the full conversation context and identify patterns like:
+- Questions vs answers (interviewers ask, interviewees respond)
+- Speaking style consistency
+- Conversation flow and turn-taking
+- Topic introduction vs responses
+
+Respond with ONLY a JSON object mapping ALL sentence numbers to speaker names:
+{"assignments": {"0": "Speaker 1", "1": "Speaker 1", "2": "Speaker 2", "3": "Speaker 1", "4": "Speaker 2", ...}}`,
+        variables: JSON.stringify(['speaker_context', 'speakers', 'pattern_guidance', 'transcript', 'segments']),
+        model_compatibility: JSON.stringify(['llama3', 'gpt-4', 'claude']),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      },
+
+      // Validation Prompts
+      {
+        id: 'validation-transcript',
+        category: 'validation',
+        type: 'transcript_validation',
+        name: 'Transcript Validation',
+        description: 'Correct spelling, grammar, and punctuation errors',
+        prompt_text: `Please validate and correct the following transcript. Focus on:
+{validation_options}
+
+Important: 
+- Preserve the original meaning and speaker intent
+- Do not change technical terms or proper nouns unless clearly misspelled
+- Return the corrected text and a list of changes made
+
+Original transcript:
+{transcript}
+
+Please format your response as JSON:
+{
+  "validatedText": "The corrected transcript text",
+  "changes": [
+    {
+      "type": "spelling|grammar|punctuation|capitalization",
+      "original": "original text",
+      "corrected": "corrected text",
+      "position": 0
+    }
+  ]
+}`,
+        variables: JSON.stringify(['validation_options', 'transcript']),
+        model_compatibility: JSON.stringify('all'),
+        default_prompt: 1,
+        user_modified: 0,
+        system_used: 1
+      }
+    ];
+
+    for (const prompt of defaultPrompts) {
+      // Check if prompt already exists
+      const existing = db.prepare('SELECT id FROM ai_prompts WHERE id = ?').get(prompt.id);
+      
+      if (!existing) {
+        db.prepare(`
+          INSERT INTO ai_prompts 
+          (id, category, type, name, description, prompt_text, variables, 
+           model_compatibility, default_prompt, user_modified, system_used, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          prompt.id, prompt.category, prompt.type, prompt.name,
+          prompt.description, prompt.prompt_text, prompt.variables,
+          prompt.model_compatibility, prompt.default_prompt, prompt.user_modified,
+          prompt.system_used || 0,
+          new Date().toISOString(), new Date().toISOString()
+        );
+        
+        console.log(`Inserted default prompt: ${prompt.name}`);
+      }
+    }
+    
+    console.log('Default prompts initialization completed');
+  } catch (error) {
+    console.error('Error initializing default prompts:', error);
   }
 }
 
@@ -1433,6 +1807,143 @@ ipcMain.handle('vector-store-reset', async () => {
     await vectorStore.reset();
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// AI Prompts IPC handlers
+ipcMain.handle('ai-prompts-get-by-category', async (event, category) => {
+  try {
+    const prompts = db.prepare(
+      'SELECT * FROM ai_prompts WHERE category = ? ORDER BY type, name'
+    ).all(category);
+    
+    return prompts.map(prompt => ({
+      id: prompt.id,
+      category: prompt.category,
+      type: prompt.type,
+      name: prompt.name,
+      description: prompt.description,
+      promptText: prompt.prompt_text,
+      variables: prompt.variables ? JSON.parse(prompt.variables) : [],
+      modelCompatibility: prompt.model_compatibility ? JSON.parse(prompt.model_compatibility) : 'all',
+      defaultPrompt: !!prompt.default_prompt,
+      userModified: !!prompt.user_modified,
+      systemUsed: !!prompt.system_used,
+      createdAt: prompt.created_at,
+      updatedAt: prompt.updated_at
+    }));
+  } catch (error) {
+    console.error('Error getting prompts by category:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('ai-prompts-get', async (event, { category, type }) => {
+  try {
+    const prompt = db.prepare(
+      'SELECT * FROM ai_prompts WHERE category = ? AND type = ? ORDER BY user_modified DESC, default_prompt DESC LIMIT 1'
+    ).get(category, type);
+    
+    if (prompt) {
+      return {
+        id: prompt.id,
+        category: prompt.category,
+        type: prompt.type,
+        name: prompt.name,
+        description: prompt.description,
+        promptText: prompt.prompt_text,
+        variables: prompt.variables ? JSON.parse(prompt.variables) : [],
+        modelCompatibility: prompt.model_compatibility ? JSON.parse(prompt.model_compatibility) : 'all',
+        defaultPrompt: !!prompt.default_prompt,
+        userModified: !!prompt.user_modified,
+        systemUsed: !!prompt.system_used,
+        createdAt: prompt.created_at,
+        updatedAt: prompt.updated_at
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting prompt:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('ai-prompts-save', async (event, prompt) => {
+  try {
+    const existing = db.prepare('SELECT id FROM ai_prompts WHERE id = ?').get(prompt.id);
+
+    const promptData = {
+      id: prompt.id,
+      category: prompt.category,
+      type: prompt.type,
+      name: prompt.name,
+      description: prompt.description || null,
+      prompt_text: prompt.promptText,
+      variables: JSON.stringify(prompt.variables),
+      model_compatibility: JSON.stringify(prompt.modelCompatibility),
+      default_prompt: prompt.defaultPrompt ? 1 : 0,
+      user_modified: prompt.userModified ? 1 : 0,
+      system_used: prompt.systemUsed ? 1 : 0,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existing) {
+      // Update existing prompt
+      db.prepare(`
+        UPDATE ai_prompts SET 
+        category = ?, type = ?, name = ?, description = ?, 
+        prompt_text = ?, variables = ?, model_compatibility = ?, 
+        default_prompt = ?, user_modified = ?, system_used = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        promptData.category, promptData.type, promptData.name, promptData.description,
+        promptData.prompt_text, promptData.variables, promptData.model_compatibility,
+        promptData.default_prompt, promptData.user_modified, promptData.system_used, promptData.updated_at,
+        promptData.id
+      );
+    } else {
+      // Insert new prompt
+      db.prepare(`
+        INSERT INTO ai_prompts 
+        (id, category, type, name, description, prompt_text, variables, 
+         model_compatibility, default_prompt, user_modified, system_used, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        promptData.id, promptData.category, promptData.type, promptData.name,
+        promptData.description, promptData.prompt_text, promptData.variables,
+        promptData.model_compatibility, promptData.default_prompt, promptData.user_modified,
+        promptData.system_used, promptData.updated_at, promptData.updated_at
+      );
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving prompt:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('ai-prompts-delete', async (event, id) => {
+  try {
+    db.prepare('DELETE FROM ai_prompts WHERE id = ? AND default_prompt = 0').run(id);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting prompt:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('ai-prompts-reset-to-default', async (event, { category, type }) => {
+  try {
+    // Delete user customizations
+    db.prepare(
+      'DELETE FROM ai_prompts WHERE category = ? AND type = ? AND default_prompt = 0'
+    ).run(category, type);
+    return { success: true };
+  } catch (error) {
+    console.error('Error resetting prompt to default:', error);
     return { success: false, error: error.message };
   }
 });

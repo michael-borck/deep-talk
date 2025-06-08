@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { formatFileSize } from '../utils/helpers';
+import { PromptsSettings } from '../components/PromptsSettings';
 
-type SettingsTab = 'transcription' | 'processing' | 'chat' | 'general';
+type SettingsTab = 'transcription' | 'processing' | 'chat' | 'prompts' | 'general';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('transcription');
@@ -247,6 +248,7 @@ export const SettingsPage: React.FC = () => {
     { id: 'transcription' as const, label: '🎤 Transcription', name: 'Transcription' },
     { id: 'processing' as const, label: '🔧 Processing', name: 'Processing' },
     { id: 'chat' as const, label: '💬 Chat', name: 'Chat' },
+    { id: 'prompts' as const, label: '🤖 Prompts', name: 'Prompts' },
     { id: 'general' as const, label: '⚙️ General', name: 'General' }
   ];
 
@@ -299,6 +301,17 @@ export const SettingsPage: React.FC = () => {
     }
     if ('vector database reset'.includes(lowerQuery)) {
       matches.push({ tab: 'general', setting: 'Vector Database' });
+    }
+
+    // Prompts tab settings
+    if ('ai prompts template system chat analysis'.includes(lowerQuery)) {
+      matches.push({ tab: 'prompts', setting: 'AI Prompts Configuration' });
+    }
+    if ('speaker detection tagging'.includes(lowerQuery)) {
+      matches.push({ tab: 'prompts', setting: 'Speaker Prompts' });
+    }
+    if ('validation correction grammar spelling'.includes(lowerQuery)) {
+      matches.push({ tab: 'prompts', setting: 'Validation Prompts' });
     }
 
     return matches.length > 0 ? matches : null;
@@ -801,6 +814,9 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         );
+
+      case 'prompts':
+        return <PromptsSettings />;
 
       case 'general':
         return (

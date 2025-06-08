@@ -220,6 +220,13 @@ declare global {
           error?: string;
         }>;
       };
+      aiPrompts: {
+        getByCategory: (category: string) => Promise<any[]>;
+        get: (options: { category: string; type: string }) => Promise<any | null>;
+        save: (prompt: any) => Promise<{ success: boolean; error?: string }>;
+        delete: (id: string) => Promise<{ success: boolean; error?: string }>;
+        resetToDefault: (options: { category: string; type: string }) => Promise<{ success: boolean; error?: string }>;
+      };
       onNavigate: (callback: (page: string) => void) => void;
       onMenuAction: (callback: (action: string) => void) => void;
       removeAllListeners: (channel: string) => void;

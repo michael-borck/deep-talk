@@ -1,5 +1,7 @@
 // Note: Cannot use path module in renderer process
 
+import { promptService } from './promptService';
+
 interface ProcessingCallbacks {
   onProgress?: (stage: string, percent: number) => void;
   onError?: (error: Error) => void;
@@ -235,21 +237,10 @@ export class FileProcessor {
       
       onProgress?.('analyzing', 25);
       
-      // Create analysis prompt
-      const analysisPrompt = `Please analyze the following transcript and provide:
-1. A concise summary (2-3 sentences)
-2. Key topics discussed (as a bullet list)
-3. Action items or next steps mentioned (as a bullet list)
-
-Transcript:
-${transcriptText}
-
-Please format your response as JSON:
-{
-  "summary": "Your summary here",
-  "keyTopics": ["topic1", "topic2", "topic3"],
-  "actionItems": ["action1", "action2", "action3"]
-}`;
+      // Get configurable analysis prompt
+      const analysisPrompt = await promptService.getProcessedPrompt('analysis', 'basic_analysis', {
+        transcript: transcriptText
+      });
 
       onProgress?.('analyzing', 50);
       
@@ -387,14 +378,9 @@ Please format your response as JSON:
       const aiUrl = await this.getAiUrl();
       const aiModel = await this.getAiModel();
       
-      const prompt = `Analyze the sentiment of this transcript. Provide:
-1. Overall sentiment: positive, negative, or neutral
-2. Sentiment score: -1.0 (very negative) to 1.0 (very positive)
-
-Transcript: ${transcriptText}
-
-Respond in JSON format:
-{"sentiment": "positive|negative|neutral", "sentimentScore": 0.0}`;
+      const prompt = await promptService.getProcessedPrompt('analysis', 'sentiment_analysis', {
+        transcript: transcriptText
+      });
 
       const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
       const result = aiResponse.parsed || {};
@@ -413,14 +399,9 @@ Respond in JSON format:
       const aiUrl = await this.getAiUrl();
       const aiModel = await this.getAiModel();
       
-      const prompt = `Analyze the emotional content of this transcript. Rate each emotion from 0.0 to 1.0:
-
-Emotions to analyze: frustration, excitement, confusion, confidence, anxiety, satisfaction
-
-Transcript: ${transcriptText}
-
-Respond in JSON format:
-{"frustration": 0.0, "excitement": 0.0, "confusion": 0.0, "confidence": 0.0, "anxiety": 0.0, "satisfaction": 0.0}`;
+      const prompt = await promptService.getProcessedPrompt('analysis', 'emotion_analysis', {
+        transcript: transcriptText
+      });
 
       const aiResponse = await this.callAI(aiUrl, aiModel, prompt);
       return aiResponse.parsed || {};
@@ -469,17 +450,9 @@ Respond in JSON format:
       const aiModel = await this.getAiModel();
       
       // Stage 1: Simple speaker count detection
-      const countPrompt = `Analyze this transcript and determine how many distinct speakers are present.
-Consider:
-- Changes in perspective (I/you/we)
-- Question and answer patterns
-- Different speaking styles
-
-Transcript excerpt (first 500 chars):
-${transcriptText.substring(0, 500)}...
-
-Respond with ONLY a JSON object:
-{"speaker_count": N}`;
+      const countPrompt = await promptService.getProcessedPrompt('speaker', 'speaker_count', {
+        transcript: transcriptText.substring(0, 500)
+      });
 
       const countResponse = await this.callAI(aiUrl, aiModel, countPrompt);
       const speakerCount = countResponse.parsed?.speaker_count || 1;
@@ -1022,33 +995,19 @@ Please format your response as JSON:
       const aiUrl = aiUrlSetting?.value || 'http://localhost:11434';
       const aiModel = aiModelSetting?.value || 'llama2';
       
-      // Create validation prompt
-      const validationPrompt = `Please validate and correct the following transcript. Focus on:
-${options.spelling !== false ? '- Spelling errors' : ''}
-${options.grammar !== false ? '- Grammar mistakes' : ''}
-${options.punctuation !== false ? '- Punctuation' : ''}
-${options.capitalization !== false ? '- Proper capitalization' : ''}
+      // Create validation options string
+      const validationOptions = [
+        options.spelling !== false ? '- Spelling errors' : '',
+        options.grammar !== false ? '- Grammar mistakes' : '',
+        options.punctuation !== false ? '- Punctuation' : '',
+        options.capitalization !== false ? '- Proper capitalization' : ''
+      ].filter(opt => opt !== '').join('\n');
 
-Important: 
-- Preserve the original meaning and speaker intent
-- Do not change technical terms or proper nouns unless clearly misspelled
-- Return the corrected text and a list of changes made
-
-Original transcript:
-${processedText}
-
-Please format your response as JSON:
-{
-  "validatedText": "The corrected transcript text",
-  "changes": [
-    {
-      "type": "spelling|grammar|punctuation|capitalization",
-      "original": "original text",
-      "corrected": "corrected text",
-      "position": 0
-    }
-  ]
-}`;
+      // Create validation prompt using configurable prompt
+      const validationPrompt = await promptService.getProcessedPrompt('validation', 'transcript_validation', {
+        validation_options: validationOptions,
+        transcript: processedText
+      });
 
       console.log(`Validation input length: ${processedText.length} characters`);
       
@@ -1387,50 +1346,10 @@ Please format your response as JSON:
       
       onProgress?.('analyzing', 80);
       
-      // Create research analysis prompt
-      const researchPrompt = `Please perform detailed research analysis on the following transcript for qualitative research purposes:
-
-1. **Notable Quotes**: Extract 3-5 most significant, quotable statements that capture key insights, surprising revelations, or memorable expressions. Rate each quote's relevance (0.0 to 1.0).
-
-2. **Research Themes**: Identify 3-7 major themes or categories that emerge from the content. These should be suitable for qualitative research coding. Provide confidence scores (0.0 to 1.0) and specific examples for each theme.
-
-3. **Question-Answer Mapping**: If this appears to be an interview or Q&A session, identify clear question-answer pairs. Look for interrogative statements followed by responses.
-
-4. **Concept Frequency**: Identify key concepts, technical terms, or important topics mentioned repeatedly. Count occurrences and provide brief context snippets.
-
-Transcript:
-${transcriptText}
-
-Please format your response as JSON:
-{
-  "notableQuotes": [
-    {
-      "text": "The exact quote text here",
-      "speaker": "Speaker 1",
-      "relevance": 0.9
-    }
-  ],
-  "researchThemes": [
-    {
-      "theme": "Technology Adoption",
-      "confidence": 0.85,
-      "examples": ["specific example 1", "specific example 2"]
-    }
-  ],
-  "qaPairs": [
-    {
-      "question": "What do you think about...",
-      "answer": "I believe that...",
-      "speaker": "Speaker 2"
-    }
-  ],
-  "conceptFrequency": {
-    "artificial intelligence": {
-      "count": 5,
-      "contexts": ["context snippet 1", "context snippet 2"]
-    }
-  }
-}`;
+      // Create research analysis prompt using configurable prompt
+      const researchPrompt = await promptService.getProcessedPrompt('analysis', 'research_analysis', {
+        transcript: transcriptText
+      });
 
       onProgress?.('analyzing', 90);
       
