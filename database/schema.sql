@@ -99,6 +99,9 @@ CREATE TABLE IF NOT EXISTS transcripts (
     qa_pairs TEXT, -- JSON array of question-answer mappings
     concept_frequency TEXT, -- JSON object with concept counts
     
+    -- Personal notes
+    personal_notes TEXT, -- User's personal notes about the transcript
+    
     -- Metadata
     tags TEXT, -- JSON array
     starred BOOLEAN DEFAULT 0,

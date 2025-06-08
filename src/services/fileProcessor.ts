@@ -144,10 +144,12 @@ export class FileProcessor {
       if (audioPath !== filePath) {
         console.log('Cleaning up extracted audio file:', audioPath);
         try {
-          // Note: We need to implement deleteFile in electron
-          // For now, just log that we would delete it
-          console.log('Would delete temp file:', audioPath);
-          // TODO: Implement window.electronAPI.fs.deleteFile(audioPath);
+          const deleteResult = await window.electronAPI.fs.deleteFile(audioPath);
+          if (deleteResult.success) {
+            console.log('Successfully deleted temp file:', audioPath);
+          } else {
+            console.error('Failed to delete temp file:', deleteResult.error);
+          }
         } catch (error) {
           console.error('Error deleting temp file:', error);
         }

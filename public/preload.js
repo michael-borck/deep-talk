@@ -23,7 +23,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     writeFile: (filePath, data) => ipcRenderer.invoke('fs-write-file', { filePath, data }),
     getAppPath: (type) => ipcRenderer.invoke('get-app-path', type),
     getFileStats: (filePath) => ipcRenderer.invoke('fs-get-file-stats', filePath),
-    joinPath: (...pathSegments) => ipcRenderer.invoke('fs-join-path', ...pathSegments)
+    joinPath: (...pathSegments) => ipcRenderer.invoke('fs-join-path', ...pathSegments),
+    deleteFile: (filePath) => ipcRenderer.invoke('fs-delete-file', filePath)
   },
 
   // Service operations

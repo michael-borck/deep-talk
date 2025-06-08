@@ -22,6 +22,7 @@ export interface ElectronAPI {
     getAppPath: (type: string) => Promise<string>;
     getFileStats: (filePath: string) => Promise<{ size: number; mtime: Date; error?: string }>;
     joinPath: (...pathSegments: string[]) => Promise<string>;
+    deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
   };
 
   // Service operations

@@ -8,7 +8,7 @@ import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search } f
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
 import { TranscriptChatModal } from '../components/TranscriptChatModal';
 
-type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations';
+type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations' | 'notes';
 
 export const TranscriptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,15 +19,15 @@ export const TranscriptDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
-  const [showValidated, setShowValidated] = useState(true);
   const [showValidationChanges, setShowValidationChanges] = useState(false);
   const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [speakerAnonymized, setSpeakerAnonymized] = useState(false);
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTranscriptSubTab, setActiveTranscriptSubTab] = useState<string>('full');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
 
   useEffect(() => {
     loadTranscript();
@@ -63,6 +63,7 @@ export const TranscriptDetailPage: React.FC = () => {
       const transcriptData = await getTranscriptById(id);
       setTranscript(transcriptData);
       setEditedTitle(transcriptData?.title || '');
+      setEditedNotes(transcriptData?.personal_notes || '');
     } catch (error) {
       console.error('Error loading transcript:', error);
     } finally {
@@ -90,6 +91,18 @@ export const TranscriptDetailPage: React.FC = () => {
     if (updated) {
       setTranscript({ ...transcript, title: editedTitle });
       setIsEditing(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!transcript) return;
+    
+    const updated = await updateTranscript(transcript.id, { 
+      personal_notes: editedNotes 
+    });
+    if (updated) {
+      setTranscript({ ...transcript, personal_notes: editedNotes });
+      setIsEditingNotes(false);
     }
   };
 
@@ -228,10 +241,9 @@ ${transcript.full_text || 'No transcript available.'}
     }
   };
 
-  const getAnonymizedSpeakerName = (speaker: { id: string; name: string }, index: number) => {
-    if (!speakerAnonymized) return speaker.name;
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    return `Speaker ${letters[index % letters.length]}`;
+  const getAnonymizedSpeakerName = (speaker: { id: string; name: string }) => {
+    // Always show real speaker names since anonymize toggle was removed
+    return speaker.name;
   };
 
   // Extract speaker text from transcript using enhanced pattern matching
@@ -314,7 +326,8 @@ ${transcript.full_text || 'No transcript available.'}
     { id: 'overview' as const, label: '📄 Overview', name: 'Overview' },
     { id: 'transcript' as const, label: '📝 Transcript', name: 'Transcript' },
     { id: 'analysis' as const, label: '🔍 Analysis', name: 'Analysis' },
-    { id: 'conversations' as const, label: '💬 Conversations', name: 'Conversations' }
+    { id: 'conversations' as const, label: '💬 Conversations', name: 'Conversations' },
+    { id: 'notes' as const, label: '📓 Notes', name: 'Notes' }
   ];
 
   if (loading) {
@@ -461,7 +474,7 @@ ${transcript.full_text || 'No transcript available.'}
   );
 
   const renderTranscriptTab = () => {
-    const currentText = showValidated && transcript.validated_text ? transcript.validated_text : transcript.full_text;
+    const currentText = transcript.validated_text || transcript.full_text;
     const speakers = transcript.speakers || [];
     
     // For speaker extraction, prioritize processed_text (contains speaker tags)
@@ -479,8 +492,8 @@ ${transcript.full_text || 'No transcript available.'}
       },
       ...speakers.map((speaker, idx) => ({
         id: `speaker-${idx}`,
-        label: `👤 ${getAnonymizedSpeakerName(speaker, idx)}`,
-        name: getAnonymizedSpeakerName(speaker, idx),
+        label: `👤 ${getAnonymizedSpeakerName(speaker)}`,
+        name: getAnonymizedSpeakerName(speaker),
         speaker,
         color: getSpeakerColor(idx)
       }))
@@ -488,49 +501,8 @@ ${transcript.full_text || 'No transcript available.'}
 
     return (
       <div className="space-y-6">
-        {/* Controls */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {transcript.validated_text && (
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setShowValidated(false)}
-                    className={`px-3 py-1 text-sm rounded ${
-                      !showValidated ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    Original
-                  </button>
-                  <button
-                    onClick={() => setShowValidated(true)}
-                    className={`px-3 py-1 text-sm rounded ${
-                      showValidated ? 'bg-blue-100 text-blue-800' : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    Corrected
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <span>{currentText?.split(' ').length || 0} words</span>
-              {speakers.length > 0 && (
-                <span>{speakers.length} speakers</span>
-              )}
-              <button
-                onClick={() => setSpeakerAnonymized(!speakerAnonymized)}
-                className="text-purple-600 hover:text-purple-700"
-              >
-                {speakerAnonymized ? '👤 Show Names' : '🎭 Anonymize'}
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Corrections Applied */}
-        {showValidated && transcript.validation_changes && transcript.validation_changes.length > 0 && (
+        {transcript.validation_changes && transcript.validation_changes.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">📝 Corrections Applied</h3>
@@ -786,7 +758,7 @@ ${transcript.full_text || 'No transcript available.'}
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${color}`}></div>
                       <span className="text-sm font-medium text-gray-900">
-                        {getAnonymizedSpeakerName(speaker, idx)}
+                        {getAnonymizedSpeakerName(speaker)}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
@@ -926,6 +898,96 @@ ${transcript.full_text || 'No transcript available.'}
           </button>
         </div>
       </div>
+    </div>
+  );
+
+  const renderNotesTab = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">📓 Personal Notes</h3>
+          {!isEditingNotes ? (
+            <button
+              onClick={() => {
+                setIsEditingNotes(true);
+                setEditedNotes(transcript.personal_notes || '');
+              }}
+              className="flex items-center space-x-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              <Edit size={16} />
+              <span>Edit Notes</span>
+            </button>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleSaveNotes}
+                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditingNotes(false);
+                  setEditedNotes(transcript.personal_notes || '');
+                }}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {isEditingNotes ? (
+          <textarea
+            value={editedNotes}
+            onChange={(e) => setEditedNotes(e.target.value)}
+            className="w-full h-96 p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y font-mono text-sm"
+            placeholder="Add your personal notes about this transcript here...
+
+💡 Tips:
+- Capture key insights and observations
+- Note connections to other interviews or research
+- Record methodological observations
+- Add follow-up questions or action items
+- Include timestamps for specific moments (e.g., [12:34])
+- Use markdown formatting for better organization"
+          />
+        ) : (
+          <div className="prose max-w-none">
+            {transcript.personal_notes ? (
+              <div className="text-gray-700 whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                {transcript.personal_notes}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">
+                  No personal notes added yet.
+                </p>
+                <button
+                  onClick={() => {
+                    setIsEditingNotes(true);
+                    setEditedNotes('');
+                  }}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                >
+                  Add Notes
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Note Statistics */}
+      {transcript.personal_notes && (
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>📅 Last updated: {formatDate(transcript.updated_at)}</span>
+            <span>📦 {transcript.personal_notes.length} characters</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1076,6 +1138,7 @@ ${transcript.full_text || 'No transcript available.'}
         {activeTab === 'transcript' && renderTranscriptTab()}
         {activeTab === 'analysis' && renderAnalysisTab()}
         {activeTab === 'conversations' && renderConversationsTab()}
+        {activeTab === 'notes' && renderNotesTab()}
       </div>
 
       {/* Modals */}

@@ -31,6 +31,9 @@ export interface Transcript {
   qa_pairs?: Array<{ question: string; answer: string; speaker?: string; timestamp?: number }>;
   concept_frequency?: Record<string, { count: number; contexts: string[] }>;
   
+  // Personal notes
+  personal_notes?: string;
+  
   // Metadata
   tags?: string[];
   starred: boolean;
@@ -203,6 +206,7 @@ declare global {
         getAppPath: (type: string) => Promise<string>;
         getFileStats: (filePath: string) => Promise<{ size: number; mtime?: Date; error?: string }>;
         joinPath: (...pathSegments: string[]) => Promise<string>;
+        deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       };
       services: {
         testConnection: (url: string, service: string) => Promise<{

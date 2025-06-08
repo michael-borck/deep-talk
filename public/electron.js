@@ -84,7 +84,8 @@ function runMigrations() {
       { name: 'concept_frequency', sql: 'ALTER TABLE transcripts ADD COLUMN concept_frequency TEXT' },
       { name: 'validated_text', sql: 'ALTER TABLE transcripts ADD COLUMN validated_text TEXT' },
       { name: 'validation_changes', sql: 'ALTER TABLE transcripts ADD COLUMN validation_changes TEXT' },
-      { name: 'processed_text', sql: 'ALTER TABLE transcripts ADD COLUMN processed_text TEXT' }
+      { name: 'processed_text', sql: 'ALTER TABLE transcripts ADD COLUMN processed_text TEXT' },
+      { name: 'personal_notes', sql: 'ALTER TABLE transcripts ADD COLUMN personal_notes TEXT' }
     ];
     
     // Add missing columns
@@ -494,6 +495,16 @@ ipcMain.handle('fs-get-file-stats', async (event, filePath) => {
 
 ipcMain.handle('fs-join-path', async (event, ...pathSegments) => {
   return path.join(...pathSegments);
+});
+
+ipcMain.handle('fs-delete-file', async (event, filePath) => {
+  try {
+    fs.unlinkSync(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete file:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }) => {
