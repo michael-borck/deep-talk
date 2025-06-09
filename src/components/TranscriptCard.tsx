@@ -6,6 +6,7 @@ import { useProjects } from '../contexts/ProjectContext';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
 import { EnhancedDeleteModal, DeleteAction } from './EnhancedDeleteModal';
 import { TranscriptChatModal } from './TranscriptChatModal';
+import { ExportModal } from './ExportModal';
 
 interface TranscriptCardProps {
   transcript: Transcript;
@@ -18,6 +19,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     const loadTranscriptProjects = async () => {
@@ -73,34 +75,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   };
 
   const handleExport = () => {
-    const content = `# ${transcript.title}
-
-**Date:** ${formatDate(transcript.created_at)}
-**Duration:** ${formatDuration(transcript.duration)}
-**File:** ${transcript.file_path?.split('/').pop() || transcript.filename}
-
-## Transcript
-
-${transcript.full_text || 'No transcript available.'}
-
-${transcript.summary ? `## Summary
-
-${transcript.summary}` : ''}
-
-${transcript.key_topics && transcript.key_topics.length > 0 ? `## Key Topics
-
-${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
-`;
-
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${transcript.title.replace(/[^a-z0-9]/gi, '_')}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setShowExportModal(true);
   };
 
   const handleDelete = () => {
@@ -296,6 +271,12 @@ ${transcript.key_topics.map(topic => `- ${topic}`).join('\n')}` : ''}
         transcript={transcript}
         isOpen={showChatModal}
         onClose={() => setShowChatModal(false)}
+      />
+
+      <ExportModal
+        transcript={transcript}
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
       />
     </div>
   );

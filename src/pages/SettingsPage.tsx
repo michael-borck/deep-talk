@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { formatFileSize } from '../utils/helpers';
 import { PromptsSettings } from '../components/PromptsSettings';
+import { chatService } from '../services/chatService';
 
 type SettingsTab = 'transcription' | 'processing' | 'chat' | 'prompts' | 'general';
 
@@ -45,6 +46,9 @@ export const SettingsPage: React.FC = () => {
   const [chatChunkingMethod, setChatChunkingMethod] = useState('speaker');
   const [chatMaxChunkSize, setChatMaxChunkSize] = useState(60);
   const [chatChunkOverlap, setChatChunkOverlap] = useState(10);
+  const [conversationMode, setConversationMode] = useState('rag');
+  const [directLlmContextLimit, setDirectLlmContextLimit] = useState(8000);
+  const [vectorOnlyChunkCount, setVectorOnlyChunkCount] = useState(5);
 
   useEffect(() => {
     loadSettings();
@@ -91,6 +95,9 @@ export const SettingsPage: React.FC = () => {
       setChatChunkingMethod(settingsMap.chatChunkingMethod || 'speaker');
       setChatMaxChunkSize(parseInt(settingsMap.chatMaxChunkSize) || 60);
       setChatChunkOverlap(parseInt(settingsMap.chatChunkOverlap) || 10);
+      setConversationMode(settingsMap.conversationMode || 'rag');
+      setDirectLlmContextLimit(parseInt(settingsMap.directLlmContextLimit) || 8000);
+      setVectorOnlyChunkCount(parseInt(settingsMap.vectorOnlyChunkCount) || 5);
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -113,6 +120,18 @@ export const SettingsPage: React.FC = () => {
       );
     } catch (error) {
       console.error('Error saving setting:', error);
+    }
+  };
+
+  // Special handler for chat settings that need to update the chat service
+  const saveChatSetting = async (key: string, value: string) => {
+    await saveSetting(key, value);
+    
+    // Reload chat service configuration when chat settings change
+    try {
+      await chatService.reloadConfig();
+    } catch (error) {
+      console.error('Error reloading chat config:', error);
     }
   };
 
@@ -672,9 +691,166 @@ export const SettingsPage: React.FC = () => {
       case 'chat':
         return (
           <div className="space-y-6">
+            {/* Conversation Modes */}
+            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                💬 Conversation Modes
+              </h3>
+              
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Choose how the chat system interacts with your transcripts. Each mode offers different trade-offs between speed, accuracy, and context.
+                </p>
+
+                {/* Conversation Mode Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Conversation Mode
+                  </label>
+                  <div className="space-y-3">
+                    <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-white">
+                      <input
+                        type="radio"
+                        name="conversationMode"
+                        value="vector-only"
+                        checked={conversationMode === 'vector-only'}
+                        onChange={(e) => {
+                          setConversationMode(e.target.value);
+                          saveChatSetting('conversationMode', e.target.value);
+                        }}
+                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">🔍 Vector Search Only</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Returns relevant transcript excerpts directly without AI interpretation. 
+                          <strong>Fastest</strong> and most factual - shows exact quotes with timestamps and relevance scores.
+                        </div>
+                        <div className="text-xs text-blue-600 mt-1">
+                          Best for: Finding specific information, quotes, or references
+                        </div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-white">
+                      <input
+                        type="radio"
+                        name="conversationMode"
+                        value="rag"
+                        checked={conversationMode === 'rag'}
+                        onChange={(e) => {
+                          setConversationMode(e.target.value);
+                          saveChatSetting('conversationMode', e.target.value);
+                        }}
+                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">🤖 RAG Mode (Recommended)</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Retrieves relevant chunks and sends them to AI for interpretation and analysis. 
+                          <strong>Balanced</strong> approach providing context-aware responses with good performance.
+                        </div>
+                        <div className="text-xs text-green-600 mt-1">
+                          Best for: General questions, analysis, and interactive conversations
+                        </div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-white">
+                      <input
+                        type="radio"
+                        name="conversationMode"
+                        value="direct-llm"
+                        checked={conversationMode === 'direct-llm'}
+                        onChange={(e) => {
+                          setConversationMode(e.target.value);
+                          saveChatSetting('conversationMode', e.target.value);
+                        }}
+                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">📄 Direct LLM Mode</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Sends the full transcript directly to AI for comprehensive analysis. 
+                          <strong>Most thorough</strong> but slower and may hit context limits with long transcripts.
+                        </div>
+                        <div className="text-xs text-orange-600 mt-1">
+                          Best for: Deep analysis, summaries, and questions requiring full context
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Mode-specific Settings */}
+                {conversationMode === 'vector-only' && (
+                  <div className="bg-white p-4 rounded-lg border">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Vector Search Settings</h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Number of Excerpts to Show
+                      </label>
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={vectorOnlyChunkCount}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            setVectorOnlyChunkCount(value);
+                            saveChatSetting('vectorOnlyChunkCount', value.toString());
+                          }}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-gray-600 w-12 text-right">
+                          {vectorOnlyChunkCount}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        More excerpts provide broader context but may include less relevant results
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {conversationMode === 'direct-llm' && (
+                  <div className="bg-white p-4 rounded-lg border">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Direct LLM Settings</h4>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Context Limit (characters)
+                      </label>
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="range"
+                          min="2000"
+                          max="16000"
+                          step="1000"
+                          value={directLlmContextLimit}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            setDirectLlmContextLimit(value);
+                            saveChatSetting('directLlmContextLimit', value.toString());
+                          }}
+                          className="flex-1"
+                        />
+                        <span className="text-sm text-gray-600 w-20 text-right">
+                          {(directLlmContextLimit / 1000).toFixed(0)}k
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Higher limits allow longer transcripts but may impact performance. Transcripts exceeding this limit will be truncated.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-gray-50 rounded-lg p-6">
               <h3 className="text-base font-medium text-gray-900 mb-4">
-                Chat with Transcripts
+                Advanced Chat Settings
               </h3>
               
               <div className="space-y-4">
@@ -692,7 +868,7 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => {
                         const value = parseInt(e.target.value);
                         setChatContextChunks(value);
-                        saveSetting('chatContextChunks', value.toString());
+                        saveChatSetting('chatContextChunks', value.toString());
                       }}
                       className="flex-1"
                     />
@@ -714,7 +890,7 @@ export const SettingsPage: React.FC = () => {
                     value={chatChunkingMethod}
                     onChange={(e) => {
                       setChatChunkingMethod(e.target.value);
-                      saveSetting('chatChunkingMethod', e.target.value);
+                      saveChatSetting('chatChunkingMethod', e.target.value);
                     }}
                     className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   >
@@ -742,7 +918,7 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => {
                         const value = parseInt(e.target.value);
                         setChatMaxChunkSize(value);
-                        saveSetting('chatMaxChunkSize', value.toString());
+                        saveChatSetting('chatMaxChunkSize', value.toString());
                       }}
                       className="flex-1"
                     />
@@ -770,7 +946,7 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => {
                         const value = parseInt(e.target.value);
                         setChatChunkOverlap(value);
-                        saveSetting('chatChunkOverlap', value.toString());
+                        saveChatSetting('chatChunkOverlap', value.toString());
                       }}
                       className="flex-1"
                     />
@@ -798,7 +974,7 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => {
                         const value = parseInt(e.target.value);
                         setChatMemoryLimit(value);
-                        saveSetting('chatMemoryLimit', value.toString());
+                        saveChatSetting('chatMemoryLimit', value.toString());
                       }}
                       className="flex-1"
                     />

@@ -228,7 +228,7 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
                 <div className="mt-4">
                   <button 
                     onClick={handleBrowseClick}
-                    className="mt-2 block text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                    className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
                   >
                     Click to browse files
                   </button>

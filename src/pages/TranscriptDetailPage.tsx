@@ -7,6 +7,7 @@ import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
 import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search } from 'lucide-react';
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
 import { TranscriptChatModal } from '../components/TranscriptChatModal';
+import { ExportModal } from '../components/ExportModal';
 
 type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations' | 'notes';
 
@@ -22,6 +23,7 @@ export const TranscriptDetailPage: React.FC = () => {
   const [showValidationChanges, setShowValidationChanges] = useState(false);
   const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,112 +116,7 @@ export const TranscriptDetailPage: React.FC = () => {
   };
 
   const handleExportTranscript = () => {
-    if (!transcript) return;
-    
-    // Build advanced analysis section
-    let advancedAnalysisContent = '';
-    if (transcript.sentiment_overall || transcript.emotions || transcript.speakers) {
-      advancedAnalysisContent = `
-
-## Advanced Analysis
-
-### Sentiment Analysis
-${transcript.sentiment_overall ? `**Overall Sentiment:** ${transcript.sentiment_overall}` : ''}
-${transcript.sentiment_score !== undefined ? ` (Score: ${transcript.sentiment_score > 0 ? '+' : ''}${transcript.sentiment_score.toFixed(2)})` : ''}
-
-### Emotional Tone
-${transcript.emotions && Object.keys(transcript.emotions).length > 0 ?
-  Object.entries(transcript.emotions)
-    .filter(([_, value]) => value > 0.1)
-    .sort(([,a], [,b]) => b - a)
-    .map(([emotion, value]) => `- **${emotion.charAt(0).toUpperCase() + emotion.slice(1)}:** ${Math.round(value * 100)}%`)
-    .join('\n') :
-  'No significant emotions detected.'}
-
-### Speaker Information
-${transcript.speaker_count && transcript.speaker_count > 1 ? 
-  `**Speakers Detected:** ${transcript.speaker_count}` : 
-  '**Speakers Detected:** 1 (single speaker)'}
-
-${transcript.speakers && transcript.speakers.length > 0 ?
-  transcript.speakers.map(speaker => `- **${speaker.name}:** ${speaker.segments} segments`).join('\n') :
-  ''}`;
-    }
-
-    // Build research analysis section
-    let researchAnalysisContent = '';
-    if (transcript.notable_quotes || transcript.research_themes || transcript.qa_pairs || transcript.concept_frequency) {
-      researchAnalysisContent = `
-
-## Research Analysis
-
-### Notable Quotes
-${transcript.notable_quotes && transcript.notable_quotes.length > 0 ?
-  transcript.notable_quotes.slice(0, 5).map((quote, idx) => 
-    `${idx + 1}. "${quote.text}" ${quote.speaker ? `— ${quote.speaker}` : ''} (Relevance: ${Math.round(quote.relevance * 100)}%)`
-  ).join('\n\n') :
-  'No notable quotes identified.'}
-
-### Research Themes
-${transcript.research_themes && transcript.research_themes.length > 0 ?
-  transcript.research_themes.map(theme => 
-    `- **${theme.theme}** (${Math.round(theme.confidence * 100)}% confidence)${theme.examples && theme.examples.length > 0 ? `\n  Examples: ${theme.examples.slice(0, 2).join(', ')}` : ''}`
-  ).join('\n') :
-  'No research themes identified.'}
-
-### Question-Answer Mapping
-${transcript.qa_pairs && transcript.qa_pairs.length > 0 ?
-  transcript.qa_pairs.slice(0, 3).map((qa, idx) => 
-    `**Q${idx + 1}:** ${qa.question}\n**A${idx + 1}:** ${qa.answer}${qa.speaker ? ` — ${qa.speaker}` : ''}`
-  ).join('\n\n') :
-  'No question-answer pairs identified.'}
-
-### Concept Frequency
-${transcript.concept_frequency && Object.keys(transcript.concept_frequency).length > 0 ?
-  Object.entries(transcript.concept_frequency)
-    .sort(([,a], [,b]) => b.count - a.count)
-    .slice(0, 10)
-    .map(([concept, data]) => `- **${concept}:** ${data.count} occurrences`)
-    .join('\n') :
-  'No key concepts identified.'}`;
-    }
-
-    const content = `# ${transcript.title}
-
-**Date:** ${formatDate(transcript.created_at)}
-**Duration:** ${formatDuration(transcript.duration)}
-**File:** ${transcript.file_path?.split('/').pop() || transcript.filename}
-
-## AI Summary
-
-${transcript.summary || 'No summary available.'}
-
-## Key Topics
-
-${transcript.key_topics && transcript.key_topics.length > 0 ? 
-  transcript.key_topics.map(topic => `- ${topic}`).join('\n') : 
-  'No key topics identified.'}
-
-## Action Items
-
-${transcript.action_items && transcript.action_items.length > 0 ?
-  transcript.action_items.map(item => `- ${item}`).join('\n') :
-  'No action items identified.'}${advancedAnalysisContent}${researchAnalysisContent}
-
-## Full Transcript
-
-${transcript.full_text || 'No transcript available.'}
-`;
-
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${transcript.title.replace(/[^a-z0-9]/gi, '_')}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setShowExportModal(true);
   };
 
   const handleSpeakerTaggingSave = async (taggedText: string, speakers: Array<{ id: string; name: string; segments: number }>) => {
@@ -1154,6 +1051,12 @@ ${transcript.full_text || 'No transcript available.'}
         transcript={transcript}
         isOpen={showChatModal}
         onClose={() => setShowChatModal(false)}
+      />
+
+      <ExportModal
+        transcript={transcript}
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
       />
     </div>
   );

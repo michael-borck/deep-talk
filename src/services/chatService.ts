@@ -4,6 +4,8 @@ import { vectorStoreService, SearchResult } from './vectorStoreService';
 import { promptService } from './promptService';
 import { Transcript, TranscriptSegment } from '../types';
 
+export type ConversationMode = 'vector-only' | 'rag' | 'direct-llm';
+
 export interface ChatConfig {
   contextChunks: number;
   conversationMemoryLimit: number;
@@ -12,6 +14,9 @@ export interface ChatConfig {
   chunkingMethod: 'speaker' | 'time' | 'hybrid';
   maxChunkSize: number;
   chunkOverlap: number;
+  conversationMode: ConversationMode;
+  directLlmContextLimit: number; // Max characters for direct mode
+  vectorOnlyChunkCount: number;  // Number of chunks for vector-only mode
 }
 
 export interface ChatMessage {
@@ -23,6 +28,7 @@ export interface ChatMessage {
     chunks?: SearchResult[];
     processingTime?: number;
     model?: string;
+    mode?: ConversationMode;
   };
 }
 
@@ -62,8 +68,55 @@ export class ChatService {
       precomputeEmbeddings: true,
       chunkingMethod: 'speaker',
       maxChunkSize: 60,
-      chunkOverlap: 10
+      chunkOverlap: 10,
+      conversationMode: 'rag', // Default to current behavior
+      directLlmContextLimit: 8000, // ~8k characters for direct mode
+      vectorOnlyChunkCount: 5 // Show 5 most relevant chunks for vector-only
     };
+  }
+
+  /**
+   * Load chat configuration from database settings
+   */
+  async loadConfigFromDatabase(): Promise<void> {
+    try {
+      const settings = await window.electronAPI.database.all(
+        'SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'chatContextChunks',
+          'chatMemoryLimit', 
+          'chatChunkingMethod',
+          'chatMaxChunkSize',
+          'chatChunkOverlap',
+          'conversationMode',
+          'directLlmContextLimit',
+          'vectorOnlyChunkCount'
+        ]
+      );
+
+      const settingsMap = settings.reduce((acc: any, { key, value }: any) => {
+        acc[key] = value;
+        return acc;
+      }, {});
+
+      // Update config with database values
+      this.config = {
+        ...this.config,
+        contextChunks: parseInt(settingsMap.chatContextChunks) || 4,
+        conversationMemoryLimit: parseInt(settingsMap.chatMemoryLimit) || 20,
+        chunkingMethod: settingsMap.chatChunkingMethod as 'speaker' | 'time' | 'hybrid' || 'speaker',
+        maxChunkSize: parseInt(settingsMap.chatMaxChunkSize) || 60,
+        chunkOverlap: parseInt(settingsMap.chatChunkOverlap) || 10,
+        conversationMode: settingsMap.conversationMode as ConversationMode || 'rag',
+        directLlmContextLimit: parseInt(settingsMap.directLlmContextLimit) || 8000,
+        vectorOnlyChunkCount: parseInt(settingsMap.vectorOnlyChunkCount) || 5
+      };
+
+      console.log('Chat config loaded from database:', this.config);
+    } catch (error) {
+      console.error('Failed to load chat config from database:', error);
+      // Keep default config if loading fails
+    }
   }
 
   static getInstance(): ChatService {
@@ -80,6 +133,9 @@ export class ChatService {
     if (this.isInitialized) return;
 
     try {
+      // Load configuration from database first
+      await this.loadConfigFromDatabase();
+      
       onProgress?.({ stage: 'embedding', progress: 0, total: 100, message: 'Initializing embedding model...' });
       
       // Initialize embedding service
@@ -201,32 +257,34 @@ export class ChatService {
     const startTime = Date.now();
 
     try {
-      // 1. Ensure embedding service is ready
-      await embeddingService.initialize();
-      
-      // 2. Manage conversation memory (compact if needed)
+      // 1. Manage conversation memory (compact if needed)
       const memory = await this.manageConversationMemory(conversationId, conversationHistory);
 
-      // 3. Generate embedding for user question
-      const questionEmbedding = await embeddingService.embedText(userMessage);
+      // 2. Route to appropriate conversation mode
+      let response: string;
+      let searchResults: SearchResult[] = [];
+      let mode = this.config.conversationMode;
 
-      // 4. Search for relevant chunks
-      const searchResults = await vectorStoreService.searchSimilar(
-        questionEmbedding.embedding,
-        {
-          limit: this.config.contextChunks,
-          transcriptId,
-          minScore: 0.1 // Minimum similarity threshold
-        }
-      );
+      switch (mode) {
+        case 'vector-only':
+          response = await this.handleVectorOnlyMode(transcriptId, userMessage, memory);
+          break;
+        
+        case 'rag':
+          const ragResult = await this.handleRAGMode(transcriptId, userMessage, memory);
+          response = ragResult.response;
+          searchResults = ragResult.searchResults;
+          break;
+        
+        case 'direct-llm':
+          response = await this.handleDirectLLMMode(transcriptId, userMessage, memory);
+          break;
+        
+        default:
+          throw new Error(`Unknown conversation mode: ${mode}`);
+      }
 
-      // 5. Build context from relevant chunks and managed memory
-      const context = this.buildContextWithMemory(searchResults, memory);
-
-      // 6. Generate response using Ollama
-      const response = await this.generateResponse(context, userMessage, transcriptId);
-
-      // 7. Create assistant message
+      // 3. Create assistant message
       const assistantMessage: ChatMessage = {
         id: `${conversationId}_${Date.now()}`,
         role: 'assistant',
@@ -235,11 +293,12 @@ export class ChatService {
         metadata: {
           chunks: searchResults,
           processingTime: Date.now() - startTime,
-          model: 'ollama' // This could be dynamic based on settings
+          mode: mode,
+          model: 'ollama'
         }
       };
 
-      // 8. Store messages in database
+      // 4. Store messages in database
       // First store the user message
       const userChatMessage: ChatMessage = {
         id: `${conversationId}_user_${Date.now()}`,
@@ -473,6 +532,165 @@ export class ChatService {
     }
   }
 
+  /**
+   * Vector-Only Mode: Return relevant transcript chunks without LLM processing
+   */
+  private async handleVectorOnlyMode(
+    transcriptId: string, 
+    userMessage: string, 
+    _memory: ConversationMemory
+  ): Promise<string> {
+    try {
+      // Ensure embedding service is ready
+      await embeddingService.initialize();
+      
+      // Generate embedding for user question
+      const questionEmbedding = await embeddingService.embedText(userMessage);
+
+      // Search for relevant chunks
+      const searchResults = await vectorStoreService.searchSimilar(
+        questionEmbedding.embedding,
+        {
+          limit: this.config.vectorOnlyChunkCount,
+          transcriptId,
+          minScore: 0.1
+        }
+      );
+
+      if (searchResults.length === 0) {
+        return "I couldn't find any relevant information in the transcript for your question. Try rephrasing your question or asking about different topics covered in the transcript.";
+      }
+
+      // Format chunks as direct excerpts
+      let response = `I found ${searchResults.length} relevant excerpt${searchResults.length > 1 ? 's' : ''} from the transcript:\n\n`;
+      
+      searchResults.forEach((result, index) => {
+        const timeStamp = this.formatTime(result.chunk.startTime);
+        const speaker = result.chunk.speaker ? `[${result.chunk.speaker}] ` : '';
+        const similarity = (result.score * 100).toFixed(1);
+        
+        response += `**Excerpt ${index + 1}** (${timeStamp}, ${similarity}% relevant):\n`;
+        response += `${speaker}${result.chunk.text}\n\n`;
+      });
+
+      response += "*These are direct excerpts from the transcript. No AI interpretation has been applied.*";
+      
+      return response;
+    } catch (error) {
+      console.error('Vector-only mode error:', error);
+      return "I encountered an error while searching the transcript. Please try again.";
+    }
+  }
+
+  /**
+   * RAG Mode: Current behavior - retrieve chunks and send to LLM
+   */
+  private async handleRAGMode(
+    transcriptId: string, 
+    userMessage: string, 
+    memory: ConversationMemory
+  ): Promise<{ response: string; searchResults: SearchResult[] }> {
+    try {
+      // Ensure embedding service is ready
+      await embeddingService.initialize();
+      
+      // Generate embedding for user question
+      const questionEmbedding = await embeddingService.embedText(userMessage);
+
+      // Search for relevant chunks
+      const searchResults = await vectorStoreService.searchSimilar(
+        questionEmbedding.embedding,
+        {
+          limit: this.config.contextChunks,
+          transcriptId,
+          minScore: 0.1
+        }
+      );
+
+      // Build context from relevant chunks and managed memory
+      const context = this.buildContextWithMemory(searchResults, memory);
+
+      // Generate response using LLM
+      const response = await this.generateResponse(context, userMessage, transcriptId);
+
+      return { response, searchResults };
+    } catch (error) {
+      console.error('RAG mode error:', error);
+      return { 
+        response: "I encountered an error while analyzing the transcript. Please try again.", 
+        searchResults: [] 
+      };
+    }
+  }
+
+  /**
+   * Direct LLM Mode: Send full transcript context to LLM (up to context limit)
+   */
+  private async handleDirectLLMMode(
+    transcriptId: string, 
+    userMessage: string, 
+    memory: ConversationMemory
+  ): Promise<string> {
+    try {
+      // Get full transcript
+      const transcript = await window.electronAPI.database.get(
+        'SELECT title, full_text, processed_text FROM transcripts WHERE id = ?',
+        [transcriptId]
+      );
+
+      if (!transcript) {
+        return "I couldn't find the transcript. Please make sure it has been processed.";
+      }
+
+      // Use processed_text (speaker-tagged) if available, otherwise fall back to full_text
+      let transcriptText = transcript.processed_text || transcript.full_text || '';
+      
+      // Truncate if over context limit
+      if (transcriptText.length > this.config.directLlmContextLimit) {
+        console.log(`Truncating transcript from ${transcriptText.length} to ${this.config.directLlmContextLimit} characters for direct LLM mode`);
+        transcriptText = transcriptText.substring(0, this.config.directLlmContextLimit) + "\n\n[Note: Transcript was truncated due to length. Consider using RAG mode for better handling of long transcripts.]";
+      }
+
+      // Build context with full transcript
+      let context = `FULL TRANSCRIPT:\n\n${transcriptText}`;
+
+      // Add conversation memory if exists
+      if (memory.compactedSummary) {
+        context += `\n\nCONVERSATION SUMMARY:\n\n${memory.compactedSummary}`;
+      }
+
+      if (memory.activeMessages.length > 0) {
+        context += '\n\nRECENT CONVERSATION:\n\n';
+        memory.activeMessages.forEach(msg => {
+          context += `${msg.role.toUpperCase()}: ${msg.content}\n\n`;
+        });
+      }
+
+      // Get transcript metadata for better context
+      const systemPrompt = await promptService.getProcessedPrompt('chat', 'transcript_chat', {
+        title: transcript.title || 'Audio Transcript',
+        context: context,
+        message: userMessage
+      });
+
+      // Call LLM with full context
+      const response = await (window.electronAPI.services as any).chatWithOllama({
+        prompt: systemPrompt,
+        message: userMessage,
+        context: context
+      });
+
+      if (response.success) {
+        return response.response;
+      } else {
+        throw new Error(response.error || 'Failed to generate response');
+      }
+    } catch (error) {
+      console.error('Direct LLM mode error:', error);
+      return "I encountered an error while processing the full transcript. Please try again or consider using RAG mode for better performance with long transcripts.";
+    }
+  }
+
   private async getTranscriptMetadata(transcriptId: string): Promise<any> {
     try {
       return await window.electronAPI.database.get(
@@ -532,18 +750,6 @@ export class ChatService {
     await this.processTranscriptForChat(transcript, segments, onProgress);
   }
 
-  updateConfig(config: Partial<ChatConfig>): void {
-    this.config = { ...this.config, ...config };
-    
-    // Update chunking service if relevant config changed
-    if (config.chunkingMethod || config.maxChunkSize || config.chunkOverlap) {
-      chunkingService.updateConfig({
-        method: this.config.chunkingMethod,
-        maxChunkSize: this.config.maxChunkSize,
-        chunkOverlap: this.config.chunkOverlap
-      });
-    }
-  }
 
   /**
    * Load conversation history from database
@@ -614,6 +820,40 @@ export class ChatService {
 
   getConfig(): ChatConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Update chat configuration and persist to database
+   */
+  async updateConfig(newConfig: Partial<ChatConfig>): Promise<void> {
+    this.config = { ...this.config, ...newConfig };
+    
+    // Update chunking service config if relevant properties changed
+    if (newConfig.chunkingMethod || newConfig.maxChunkSize || newConfig.chunkOverlap) {
+      chunkingService.updateConfig({
+        method: this.config.chunkingMethod,
+        maxChunkSize: this.config.maxChunkSize,
+        chunkOverlap: this.config.chunkOverlap
+      });
+    }
+
+    console.log('Chat config updated:', this.config);
+  }
+
+  /**
+   * Reload configuration from database (useful when settings change)
+   */
+  async reloadConfig(): Promise<void> {
+    await this.loadConfigFromDatabase();
+    
+    // Update chunking service with new config
+    chunkingService.updateConfig({
+      method: this.config.chunkingMethod,
+      maxChunkSize: this.config.maxChunkSize,
+      chunkOverlap: this.config.chunkOverlap
+    });
+
+    console.log('Chat config reloaded from database:', this.config);
   }
 
   isReady(): boolean {

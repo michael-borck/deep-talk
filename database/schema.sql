@@ -280,7 +280,10 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('chatMemoryLimit', '20'),
     ('chatChunkingMethod', 'speaker'),
     ('chatMaxChunkSize', '60'),
-    ('chatChunkOverlap', '10');
+    ('chatChunkOverlap', '10'),
+    ('conversationMode', 'rag'),
+    ('directLlmContextLimit', '8000'),
+    ('vectorOnlyChunkCount', '5');
 
 -- Migration: Add missing columns to existing tables (safe to run multiple times)
 -- Check if columns exist before adding them (SQLite doesn't support IF NOT EXISTS for ALTER TABLE)

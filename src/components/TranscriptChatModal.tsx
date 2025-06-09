@@ -24,6 +24,7 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
   const [isProcessingTranscript, setIsProcessingTranscript] = useState(false);
   const [chatReady, setChatReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useState<string>('rag');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -70,6 +71,10 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
       // Load existing messages
       const existingMessages = await chatService.loadConversationHistory(newConvId);
       setMessages(existingMessages);
+
+      // Load current conversation mode
+      const config = chatService.getConfig();
+      setCurrentMode(config.conversationMode);
       
       setIsProcessingTranscript(false);
       setProcessingProgress(null);
@@ -168,6 +173,20 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
     }
   };
 
+  const handleModeChange = async (newMode: string) => {
+    try {
+      // Update the chat service configuration
+      await chatService.updateConfig({ conversationMode: newMode as any });
+      
+      // Update local state
+      setCurrentMode(newMode);
+      
+      console.log(`Conversation mode changed to: ${newMode}`);
+    } catch (error) {
+      console.error('Failed to change conversation mode:', error);
+    }
+  };
+
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -188,7 +207,20 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
               <h2 className="text-lg font-semibold text-gray-900">
                 Chat with Transcript
               </h2>
-              <p className="text-sm text-gray-600">{transcript.title}</p>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-gray-600">{transcript.title}</p>
+                {chatReady && (
+                  <select
+                    value={currentMode}
+                    onChange={(e) => handleModeChange(e.target.value)}
+                    className="text-xs px-2 py-1 bg-gray-100 border border-gray-200 rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <option value="vector-only">🔍 Vector Search</option>
+                    <option value="rag">🤖 RAG Mode</option>
+                    <option value="direct-llm">📄 Direct LLM</option>
+                  </select>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -262,9 +294,21 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     Start a conversation
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 mb-2">
                     Ask questions about the transcript content, request summaries, or explore specific topics.
                   </p>
+                  {currentMode && (
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <p>
+                        {currentMode === 'vector-only' && 'Vector Search mode - you\'ll get direct transcript excerpts with timestamps.'}
+                        {currentMode === 'rag' && 'RAG mode - AI will interpret relevant transcript sections to answer your questions.'}
+                        {currentMode === 'direct-llm' && 'Direct LLM mode - AI analyzes the full transcript for comprehensive responses.'}
+                      </p>
+                      <p className="text-gray-400">
+                        You can change the conversation mode using the dropdown in the header.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -298,6 +342,13 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
                           {message.metadata?.processingTime && (
                             <span className="ml-2">
                               ({Math.round(message.metadata.processingTime / 1000)}s)
+                            </span>
+                          )}
+                          {message.metadata?.mode && message.role === 'assistant' && (
+                            <span className="ml-2">
+                              {message.metadata.mode === 'vector-only' && '🔍 Vector Search'}
+                              {message.metadata.mode === 'rag' && '🤖 RAG Mode'}
+                              {message.metadata.mode === 'direct-llm' && '📄 Direct LLM'}
                             </span>
                           )}
                         </p>
