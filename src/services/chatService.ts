@@ -2,6 +2,7 @@ import { embeddingService } from './embeddingService';
 import { chunkingService } from './chunkingService';
 import { vectorStoreService, SearchResult } from './vectorStoreService';
 import { promptService } from './promptService';
+import { modelMetadataService, ModelMetadata, ModelContextBudget } from './modelMetadataService';
 import { Transcript, TranscriptSegment } from '../types';
 
 export type ConversationMode = 'vector-only' | 'rag' | 'direct-llm';
@@ -15,8 +16,10 @@ export interface ChatConfig {
   maxChunkSize: number;
   chunkOverlap: number;
   conversationMode: ConversationMode;
-  directLlmContextLimit: number; // Max characters for direct mode
+  directLlmContextLimit: number; // Max characters for direct mode (fallback)
   vectorOnlyChunkCount: number;  // Number of chunks for vector-only mode
+  dynamicContextManagement: boolean; // Enable dynamic context management
+  memoryReserveFactor: number; // Fraction of context to reserve for memory (0.0-1.0)
 }
 
 export interface ChatMessage {
@@ -59,6 +62,8 @@ export class ChatService {
   private static instance: ChatService;
   private config: ChatConfig;
   private isInitialized = false;
+  private currentModelMetadata: ModelMetadata | null = null;
+  private currentContextBudget: ModelContextBudget | null = null;
 
   private constructor() {
     this.config = {
@@ -70,8 +75,10 @@ export class ChatService {
       maxChunkSize: 60,
       chunkOverlap: 10,
       conversationMode: 'rag', // Default to current behavior
-      directLlmContextLimit: 8000, // ~8k characters for direct mode
-      vectorOnlyChunkCount: 5 // Show 5 most relevant chunks for vector-only
+      directLlmContextLimit: 8000, // ~8k characters for direct mode (fallback)
+      vectorOnlyChunkCount: 5, // Show 5 most relevant chunks for vector-only
+      dynamicContextManagement: true, // Enable by default
+      memoryReserveFactor: 0.2 // Reserve 20% for conversation memory
     };
   }
 
@@ -81,7 +88,7 @@ export class ChatService {
   async loadConfigFromDatabase(): Promise<void> {
     try {
       const settings = await window.electronAPI.database.all(
-        'SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?)',
+        'SELECT key, value FROM settings WHERE key IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           'chatContextChunks',
           'chatMemoryLimit', 
@@ -90,7 +97,9 @@ export class ChatService {
           'chatChunkOverlap',
           'conversationMode',
           'directLlmContextLimit',
-          'vectorOnlyChunkCount'
+          'vectorOnlyChunkCount',
+          'dynamicContextManagement',
+          'memoryReserveFactor'
         ]
       );
 
@@ -109,7 +118,9 @@ export class ChatService {
         chunkOverlap: parseInt(settingsMap.chatChunkOverlap) || 10,
         conversationMode: settingsMap.conversationMode as ConversationMode || 'rag',
         directLlmContextLimit: parseInt(settingsMap.directLlmContextLimit) || 8000,
-        vectorOnlyChunkCount: parseInt(settingsMap.vectorOnlyChunkCount) || 5
+        vectorOnlyChunkCount: parseInt(settingsMap.vectorOnlyChunkCount) || 5,
+        dynamicContextManagement: settingsMap.dynamicContextManagement !== 'false', // Default true
+        memoryReserveFactor: parseFloat(settingsMap.memoryReserveFactor) || 0.2
       };
 
       console.log('Chat config loaded from database:', this.config);
@@ -126,6 +137,124 @@ export class ChatService {
     return ChatService.instance;
   }
 
+  /**
+   * Initialize model metadata for dynamic context management
+   */
+  private async initializeModelMetadata(): Promise<void> {
+    if (!this.config.dynamicContextManagement) {
+      console.log('Dynamic context management disabled, using static limits');
+      return;
+    }
+
+    try {
+      // Get current AI model from settings
+      const aiModelSetting = await window.electronAPI.database.get(
+        'SELECT value FROM settings WHERE key = ?', 
+        ['aiModel']
+      );
+      const modelName = aiModelSetting?.value || 'llama2';
+
+      // Get model metadata with dynamic detection
+      this.currentModelMetadata = await modelMetadataService.getModelMetadata(modelName);
+      this.currentContextBudget = modelMetadataService.calculateContextBudget(
+        this.currentModelMetadata,
+        this.config.memoryReserveFactor
+      );
+
+      console.log('Dynamic context management initialized:', {
+        model: modelName,
+        contextLimit: this.currentModelMetadata.contextLimit,
+        budget: this.currentContextBudget
+      });
+    } catch (error) {
+      console.warn('Failed to initialize model metadata, falling back to static limits:', error);
+      this.currentModelMetadata = null;
+      this.currentContextBudget = null;
+    }
+  }
+
+  /**
+   * Get effective context limit based on configuration
+   */
+  private getEffectiveContextLimit(): number {
+    if (this.config.dynamicContextManagement && this.currentContextBudget) {
+      // Use dynamic limit (converted from tokens to characters)
+      return this.currentContextBudget.contentBudget * 4; // ~4 chars per token
+    }
+    
+    // Fall back to static limit
+    return this.config.directLlmContextLimit;
+  }
+
+  /**
+   * Get memory reserve limit for conversation history
+   */
+  private getMemoryReserveLimit(): number {
+    if (this.config.dynamicContextManagement && this.currentContextBudget) {
+      // Use dynamic reserve (converted from tokens to characters)
+      return this.currentContextBudget.memoryReserve * 4; // ~4 chars per token
+    }
+    
+    // Fall back to fixed proportion of static limit
+    return Math.floor(this.config.directLlmContextLimit * this.config.memoryReserveFactor);
+  }
+
+  /**
+   * Validate and optimize context usage
+   */
+  private validateContextUsage(content: string, memory: string): {
+    fits: boolean;
+    contentLength: number;
+    memoryLength: number;
+    recommendation?: string;
+  } {
+    const contentLength = content.length;
+    const memoryLength = memory.length;
+    const contentLimit = this.getEffectiveContextLimit();
+    const memoryLimit = this.getMemoryReserveLimit();
+
+    if (this.config.dynamicContextManagement && this.currentModelMetadata) {
+      // Use sophisticated validation with model metadata
+      const validation = modelMetadataService.validateContextUsage(
+        content, 
+        memory, 
+        this.currentModelMetadata
+      );
+      
+      return {
+        fits: validation.fits,
+        contentLength,
+        memoryLength,
+        recommendation: validation.fits ? undefined : this.getOptimizationRecommendation(validation.usage, validation.budget)
+      };
+    }
+
+    // Use simple validation for static limits
+    const fits = contentLength <= contentLimit && memoryLength <= memoryLimit;
+    
+    return {
+      fits,
+      contentLength,
+      memoryLength,
+      recommendation: fits ? undefined : `Content too long. Try reducing to ${contentLimit} characters or use RAG mode.`
+    };
+  }
+
+  /**
+   * Get optimization recommendations based on context usage
+   */
+  private getOptimizationRecommendation(usage: number, budget: ModelContextBudget): string {
+    const overagePercent = ((usage - budget.estimatedTokens!) / budget.estimatedTokens! * 100).toFixed(1);
+    
+    if (usage > budget.estimatedTokens! * 1.5) {
+      return `Content exceeds context limit by ${overagePercent}%. Consider using RAG mode or reducing conversation history.`;
+    } else if (usage > budget.estimatedTokens! * 1.2) {
+      return `Content is ${overagePercent}% over limit. Consider compacting conversation memory or switching to RAG mode.`;
+    } else {
+      return `Content slightly exceeds limit by ${overagePercent}%. Some conversation history may be truncated.`;
+    }
+  }
+
   async initialize(
     vectorDbPath?: string,
     onProgress?: (progress: ProcessingProgress) => void
@@ -140,6 +269,11 @@ export class ChatService {
       
       // Initialize embedding service
       await embeddingService.initialize();
+      
+      onProgress?.({ stage: 'embedding', progress: 50, total: 100, message: 'Initializing model metadata...' });
+      
+      // Initialize model metadata for dynamic context management
+      await this.initializeModelMetadata();
       
       onProgress?.({ stage: 'embedding', progress: 100, total: 100, message: 'Embedding model ready' });
       onProgress?.({ stage: 'storing', progress: 0, total: 100, message: 'Initializing vector database...' });
@@ -645,24 +779,78 @@ export class ChatService {
       // Use processed_text (speaker-tagged) if available, otherwise fall back to full_text
       let transcriptText = transcript.processed_text || transcript.full_text || '';
       
-      // Truncate if over context limit
-      if (transcriptText.length > this.config.directLlmContextLimit) {
-        console.log(`Truncating transcript from ${transcriptText.length} to ${this.config.directLlmContextLimit} characters for direct LLM mode`);
-        transcriptText = transcriptText.substring(0, this.config.directLlmContextLimit) + "\n\n[Note: Transcript was truncated due to length. Consider using RAG mode for better handling of long transcripts.]";
-      }
-
-      // Build context with full transcript
-      let context = `FULL TRANSCRIPT:\n\n${transcriptText}`;
-
-      // Add conversation memory if exists
+      // Build memory context first
+      let memoryContext = '';
       if (memory.compactedSummary) {
-        context += `\n\nCONVERSATION SUMMARY:\n\n${memory.compactedSummary}`;
+        memoryContext += `CONVERSATION SUMMARY:\n\n${memory.compactedSummary}\n\n`;
+      }
+      if (memory.activeMessages.length > 0) {
+        memoryContext += 'RECENT CONVERSATION:\n\n';
+        memory.activeMessages.forEach(msg => {
+          memoryContext += `${msg.role.toUpperCase()}: ${msg.content}\n\n`;
+        });
       }
 
-      if (memory.activeMessages.length > 0) {
-        context += '\n\nRECENT CONVERSATION:\n\n';
-        memory.activeMessages.forEach(msg => {
-          context += `${msg.role.toUpperCase()}: ${msg.content}\n\n`;
+      // Get dynamic context limits
+      const contentLimit = this.getEffectiveContextLimit();
+      const memoryLimit = this.getMemoryReserveLimit();
+
+      // Validate and optimize context usage
+      const validation = this.validateContextUsage(transcriptText, memoryContext);
+      
+      // Apply smart truncation if needed
+      if (!validation.fits) {
+        console.log(`Direct LLM mode: ${validation.recommendation}`);
+        
+        // Truncate transcript to fit within content budget
+        const availableContentSpace = contentLimit - 500; // Reserve space for formatting
+        if (transcriptText.length > availableContentSpace) {
+          transcriptText = transcriptText.substring(0, availableContentSpace) + 
+            "\n\n[Note: Transcript was truncated to fit context limit. Consider using RAG mode for better handling of long transcripts.]";
+        }
+
+        // Truncate memory if needed
+        if (memoryContext.length > memoryLimit) {
+          // Prioritize recent messages over compacted summary
+          let truncatedMemory = '';
+          if (memory.activeMessages.length > 0) {
+            const recentMessagesText = memory.activeMessages
+              .map(msg => `${msg.role.toUpperCase()}: ${msg.content}`)
+              .join('\n\n');
+            
+            if (recentMessagesText.length <= memoryLimit - 50) {
+              truncatedMemory = 'RECENT CONVERSATION:\n\n' + recentMessagesText + '\n\n';
+            } else {
+              // Truncate recent messages
+              truncatedMemory = 'RECENT CONVERSATION:\n\n' + 
+                recentMessagesText.substring(0, memoryLimit - 100) + 
+                '\n\n[Conversation history truncated]\n\n';
+            }
+          } else if (memory.compactedSummary) {
+            // Just use truncated summary
+            truncatedMemory = 'CONVERSATION SUMMARY:\n\n' + 
+              memory.compactedSummary.substring(0, memoryLimit - 50) + '\n\n';
+          }
+          memoryContext = truncatedMemory;
+        }
+      }
+
+      // Build final context
+      let context = `FULL TRANSCRIPT:\n\n${transcriptText}`;
+      if (memoryContext) {
+        context += `\n\n${memoryContext}`;
+      }
+
+      // Final validation with logging
+      if (this.config.dynamicContextManagement && this.currentModelMetadata) {
+        const finalValidation = this.validateContextUsage(transcriptText, memoryContext);
+        console.log('Direct LLM context usage:', {
+          contentChars: finalValidation.contentLength,
+          memoryChars: finalValidation.memoryLength,
+          totalChars: finalValidation.contentLength + finalValidation.memoryLength,
+          fits: finalValidation.fits,
+          contextLimit: contentLimit,
+          memoryLimit: memoryLimit
         });
       }
 
@@ -673,7 +861,7 @@ export class ChatService {
         message: userMessage
       });
 
-      // Call LLM with full context
+      // Call LLM with optimized context
       const response = await (window.electronAPI.services as any).chatWithOllama({
         prompt: systemPrompt,
         message: userMessage,
@@ -846,6 +1034,11 @@ export class ChatService {
   async reloadConfig(): Promise<void> {
     await this.loadConfigFromDatabase();
     
+    // Reinitialize model metadata if dynamic context management is enabled
+    if (this.config.dynamicContextManagement) {
+      await this.initializeModelMetadata();
+    }
+    
     // Update chunking service with new config
     chunkingService.updateConfig({
       method: this.config.chunkingMethod,
@@ -854,6 +1047,40 @@ export class ChatService {
     });
 
     console.log('Chat config reloaded from database:', this.config);
+  }
+
+  /**
+   * Handle model changes (e.g., when user switches AI model in settings)
+   */
+  async onModelChanged(newModelName: string): Promise<void> {
+    if (!this.config.dynamicContextManagement) {
+      console.log('Dynamic context management disabled, model change ignored');
+      return;
+    }
+
+    try {
+      console.log(`Model changed to: ${newModelName}`);
+      
+      // Clear model metadata cache for this model to force refresh
+      modelMetadataService.clearCache();
+      
+      // Re-initialize with new model
+      this.currentModelMetadata = await modelMetadataService.getModelMetadata(newModelName, true);
+      this.currentContextBudget = modelMetadataService.calculateContextBudget(
+        this.currentModelMetadata,
+        this.config.memoryReserveFactor
+      );
+
+      console.log('Dynamic context management updated for new model:', {
+        model: newModelName,
+        contextLimit: this.currentModelMetadata.contextLimit,
+        budget: this.currentContextBudget
+      });
+    } catch (error) {
+      console.warn('Failed to update model metadata for new model:', error);
+      this.currentModelMetadata = null;
+      this.currentContextBudget = null;
+    }
   }
 
   isReady(): boolean {
@@ -867,12 +1094,18 @@ export class ChatService {
     vectorStats: any;
     embeddingModel: string;
     config: ChatConfig;
+    modelMetadata?: ModelMetadata;
+    contextBudget?: ModelContextBudget;
+    dynamicContextEnabled: boolean;
   }> {
     return {
       isReady: this.isReady(),
       vectorStats: await vectorStoreService.getStats(),
       embeddingModel: embeddingService.getConfig().model,
-      config: this.getConfig()
+      config: this.getConfig(),
+      modelMetadata: this.currentModelMetadata || undefined,
+      contextBudget: this.currentContextBudget || undefined,
+      dynamicContextEnabled: this.config.dynamicContextManagement
     };
   }
 }

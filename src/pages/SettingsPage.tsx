@@ -151,7 +151,7 @@ export const SettingsPage: React.FC = () => {
   const fetchOllamaModels = async () => {
     setLoadingModels(true);
     try {
-      const result = await window.electronAPI.services.getOllamaModels(aiAnalysisUrl);
+      const result = await window.electronAPI.services.getOllamaModels({ url: aiAnalysisUrl });
       if (result.success && result.models) {
         const modelNames = result.models.map((model: any) => model.name);
         setAvailableModels(modelNames);

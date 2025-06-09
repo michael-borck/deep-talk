@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   services: {
     testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service }),
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
+    getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
     chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),
     validateTranscript: (text) => ipcRenderer.invoke('validate-transcript', { text })
   },
@@ -98,6 +99,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     delete: (id) => ipcRenderer.invoke('ai-prompts-delete', id),
     resetToDefault: (options) => ipcRenderer.invoke('ai-prompts-reset-to-default', options)
   },
+
+  // Model info (for compatibility with ModelMetadataService)
+  getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
 
   // Database management
   getDatabaseInfo: () => ipcRenderer.invoke('get-database-info'),

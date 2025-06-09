@@ -248,12 +248,22 @@ declare global {
           status?: number;
           error?: string;
         }>;
-        getOllamaModels: (url: string) => Promise<{
+        getOllamaModels: (options: { url: string }) => Promise<{
           success: boolean;
           models?: any[];
           error?: string;
         }>;
+        getModelInfo: (options: { url: string; modelName: string }) => Promise<{
+          success: boolean;
+          info?: any;
+          error?: string;
+        }>;
       };
+      getModelInfo?: (options: { url: string; modelName: string }) => Promise<{
+        success: boolean;
+        info?: any;
+        error?: string;
+      }>;
       aiPrompts: {
         getByCategory: (category: string) => Promise<any[]>;
         get: (options: { category: string; type: string }) => Promise<any | null>;

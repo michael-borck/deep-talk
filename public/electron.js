@@ -827,6 +827,30 @@ ipcMain.handle('get-ollama-models', async (event, { url }) => {
   }
 });
 
+ipcMain.handle('get-model-info', async (event, { url, modelName }) => {
+  try {
+    const response = await fetch(`${url}/api/show/${modelName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: modelName
+      }),
+      signal: AbortSignal.timeout(10000) // Longer timeout for model info
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, info: data };
+    } else {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) => {
   try {
     // Get AI analysis settings from database

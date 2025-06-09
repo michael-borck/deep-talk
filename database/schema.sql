@@ -65,6 +65,18 @@ CREATE TABLE IF NOT EXISTS project_analysis (
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
+-- Model metadata for dynamic context management
+CREATE TABLE IF NOT EXISTS model_metadata (
+    model_name TEXT PRIMARY KEY,
+    provider TEXT NOT NULL, -- 'ollama', 'openai', 'custom'
+    context_limit INTEGER NOT NULL,
+    capabilities TEXT, -- JSON object with model capabilities
+    parameters TEXT, -- JSON object with model parameters
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    user_override BOOLEAN DEFAULT 0,
+    is_available BOOLEAN DEFAULT 1
+);
+
 -- Transcripts table
 CREATE TABLE IF NOT EXISTS transcripts (
     id TEXT PRIMARY KEY,
@@ -243,6 +255,11 @@ CREATE INDEX IF NOT EXISTS idx_project_transcripts_transcript_id ON project_tran
 CREATE INDEX IF NOT EXISTS idx_project_chat_conversations_project_id ON project_chat_conversations(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_chat_messages_conversation_id ON project_chat_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_project_analysis_project_id ON project_analysis(project_id);
+
+-- Model metadata indexes
+CREATE INDEX IF NOT EXISTS idx_model_metadata_provider ON model_metadata(provider);
+CREATE INDEX IF NOT EXISTS idx_model_metadata_available ON model_metadata(is_available);
+CREATE INDEX IF NOT EXISTS idx_model_metadata_updated ON model_metadata(last_updated);
 
 -- Triggers to update timestamps
 CREATE TRIGGER IF NOT EXISTS update_transcript_timestamp 

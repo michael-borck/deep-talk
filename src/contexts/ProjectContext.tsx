@@ -339,9 +339,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
          updated_at = ?
          WHERE id = ?`,
         [
-          JSON.stringify(analysisResult.themes),
-          JSON.stringify(analysisResult.key_insights),
-          analysisResult.summary,
+          JSON.stringify(analysisResult.aggregatedThemes?.map(t => t.theme) || []),
+          JSON.stringify(analysisResult.consensusInsights || []),
+          analysisResult.combinedSummary,
           new Date().toISOString(),
           new Date().toISOString(),
           projectId
@@ -358,11 +358,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           projectId,
           'comprehensive_analysis',
           JSON.stringify({
-            themeEvolution: analysisResult.themeEvolution,
-            conceptFrequency: analysisResult.conceptFrequency,
-            speakerAnalysis: analysisResult.speakerAnalysis,
-            timelineAnalysis: analysisResult.timelineAnalysis,
-            crossTranscriptPatterns: analysisResult.crossTranscriptPatterns
+            aggregatedThemes: analysisResult.aggregatedThemes,
+            mergedTopics: analysisResult.mergedTopics,
+            mergedActionItems: analysisResult.mergedActionItems,
+            consensusInsights: analysisResult.consensusInsights
           }),
           new Date().toISOString()
         ]
