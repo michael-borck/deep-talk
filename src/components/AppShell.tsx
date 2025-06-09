@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { StatusBar } from './StatusBar';
-import { GlobalUploadModal } from './GlobalUploadModal';
 import { AboutDialog } from './AboutDialog';
 import { LicensesModal } from './LicensesModal';
 
@@ -10,11 +10,11 @@ interface AppShellProps {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
+  const navigate = useNavigate();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved ? JSON.parse(saved) : false;
   });
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [showLicensesModal, setShowLicensesModal] = useState(false);
 
@@ -30,7 +30,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       } else if (action === 'show-licenses') {
         setShowLicensesModal(true);
       } else if (action === 'new-upload') {
-        setShowUploadModal(true);
+        navigate('/upload');
       }
     };
 
@@ -52,7 +52,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggleCollapse={setIsSidebarCollapsed}
-        onUploadClick={() => setShowUploadModal(true)}
         onAboutClick={() => setShowAboutDialog(true)}
       />
       
@@ -71,12 +70,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         {/* Status bar */}
         <StatusBar />
       </div>
-
-      {/* Global Upload Modal */}
-      <GlobalUploadModal 
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-      />
 
       {/* About Dialog */}
       <AboutDialog 

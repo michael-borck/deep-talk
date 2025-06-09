@@ -181,7 +181,7 @@ export class ModelMetadataService {
       );
       const aiUrl = aiUrlSetting?.value || 'http://localhost:11434';
 
-      const response = await (window.electronAPI.services as any).getOllamaModels({ url: aiUrl });
+      const response = await (window.electronAPI.services as any).getOllamaModels(aiUrl);
       
       if (!response.success) {
         console.warn('Failed to get Ollama models:', response.error);

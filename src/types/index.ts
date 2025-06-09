@@ -248,7 +248,7 @@ declare global {
           status?: number;
           error?: string;
         }>;
-        getOllamaModels: (options: { url: string }) => Promise<{
+        getOllamaModels: (url: string) => Promise<{
           success: boolean;
           models?: any[];
           error?: string;

@@ -8,11 +8,100 @@ interface ProjectInsightsDashboardProps {
 }
 
 interface DetailedAnalysis {
-  themeEvolution: any[];
-  conceptFrequency: any;
-  speakerAnalysis: any;
-  timelineAnalysis: any;
-  crossTranscriptPatterns: any[];
+  // Current collated analysis structure
+  aggregatedThemes?: Array<{
+    theme: string;
+    frequency: number;
+    sources: Array<{
+      transcriptId: string;
+      transcriptTitle: string;
+      relevance: number;
+    }>;
+  }>;
+  mergedTopics?: string[];
+  mergedActionItems?: string[];
+  consensusInsights?: string[];
+  
+  // Comprehensive analysis structure
+  themeEvolution?: Array<{
+    theme: string;
+    occurrences: Array<{
+      transcript_id: string;
+      transcript_title: string;
+      date: string;
+      count: number;
+      quotes: string[];
+      relevance: number;
+    }>;
+    trend: 'increasing' | 'decreasing' | 'stable' | 'emerging' | 'declining';
+    totalOccurrences: number;
+    avgRelevance: number;
+  }>;
+  conceptFrequency?: {
+    [concept: string]: {
+      totalCount: number;
+      transcriptCount: number;
+      avgFrequency: number;
+      contexts: Array<{
+        transcript_id: string;
+        transcript_title: string;
+        count: number;
+        examples: string[];
+      }>;
+      trend: 'increasing' | 'decreasing' | 'stable';
+    };
+  };
+  speakerAnalysis?: {
+    totalSpeakers: number;
+    speakerDistribution: {
+      [speaker: string]: {
+        transcriptCount: number;
+        totalSegments: number;
+        avgSegmentsPerTranscript: number;
+        themes: string[];
+        keyQuotes: string[];
+      };
+    };
+    speakerInteractions: Array<{
+      transcript_id: string;
+      transcript_title: string;
+      speakers: string[];
+      interactionPattern: 'interview' | 'discussion' | 'presentation' | 'unknown';
+    }>;
+  };
+  timelineAnalysis?: {
+    dateRange: {
+      start: string;
+      end: string;
+    };
+    transcriptsByPeriod: Array<{
+      period: string;
+      count: number;
+      totalDuration: number;
+      themes: string[];
+    }>;
+    themeEvolutionTimeline: Array<{
+      date: string;
+      themes: Array<{ theme: string; strength: number }>;
+    }>;
+    sentimentTrend: Array<{
+      date: string;
+      avgSentiment: number;
+      transcriptCount: number;
+    }>;
+  };
+  crossTranscriptPatterns?: Array<{
+    type: 'theme_consistency' | 'theme_evolution' | 'speaker_behavior' | 'sentiment_shift' | 'concept_emergence';
+    description: string;
+    strength: number;
+    evidence: Array<{
+      transcript_id: string;
+      transcript_title: string;
+      date: string;
+      supporting_data: any;
+    }>;
+    insights: string[];
+  }>;
 }
 
 export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> = ({ 

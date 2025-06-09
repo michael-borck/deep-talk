@@ -5,22 +5,18 @@ import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, U
 interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: (collapsed: boolean) => void;
-  onUploadClick?: () => void;
   onAboutClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUploadClick, onAboutClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAboutClick }) => {
   const location = useLocation();
 
   const menuItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
+    { path: '/upload', icon: Upload, label: 'Upload & Process' },
     { path: '/projects', icon: FolderOpen, label: 'Projects' },
     { path: '/library', icon: Library, label: 'Library' },
     { path: '/settings', icon: Settings, label: 'Settings' },
-  ];
-
-  const actionItems = [
-    { action: 'upload', icon: Upload, label: 'Upload & Process', color: 'bg-blue-600 hover:bg-blue-700' },
   ];
 
   const dataItems = [
@@ -34,10 +30,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUplo
     if (path === '/' && location.pathname === '/') return true;
     if (path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
-  };
-
-  const handleUploadClick = () => {
-    onUploadClick?.();
   };
 
   return (
@@ -85,28 +77,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onUplo
                     <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
                     {!isCollapsed && <span className="ml-3">{item.label}</span>}
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Action Items */}
-        <div>
-          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Actions</h3>}
-          <ul className="space-y-2">
-            {actionItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.action}>
-                  <button
-                    onClick={handleUploadClick}
-                    className={`w-full flex items-center px-3 py-2 rounded-lg transition-colors text-white ${item.color}`}
-                    title={isCollapsed ? item.label : ''}
-                  >
-                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
-                  </button>
                 </li>
               );
             })}

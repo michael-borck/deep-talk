@@ -11,6 +11,7 @@ import { SearchPage } from './pages/SearchPage';
 import { TrashPage } from './pages/TrashPage';
 import { ArchivePage } from './pages/ArchivePage';
 import { ChatHistoryPage } from './pages/ChatHistoryPage';
+import { UploadPage } from './pages/UploadPage';
 import { ServiceProvider } from './contexts/ServiceContext';
 import { TranscriptProvider } from './contexts/TranscriptContext';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -24,6 +25,7 @@ const App: React.FC = () => {
             <AppShell>
               <Routes>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/upload" element={<UploadPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/project/:id" element={<ProjectDetailPage />} />
                 <Route path="/library" element={<LibraryPage />} />

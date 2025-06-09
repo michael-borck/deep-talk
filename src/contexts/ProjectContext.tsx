@@ -357,12 +357,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           analysisId,
           projectId,
           'comprehensive_analysis',
-          JSON.stringify({
-            aggregatedThemes: analysisResult.aggregatedThemes,
-            mergedTopics: analysisResult.mergedTopics,
-            mergedActionItems: analysisResult.mergedActionItems,
-            consensusInsights: analysisResult.consensusInsights
-          }),
+          JSON.stringify(analysisResult),
           new Date().toISOString()
         ]
       );
