@@ -1,4 +1,4 @@
-import { Project, Transcript } from '../types';
+import { Transcript } from '../types';
 
 export interface ProjectAnalysisResult {
   themes: string[];
@@ -478,7 +478,7 @@ export class ProjectAnalysisService {
         transcriptCount: data.transcriptCount,
         totalSegments: data.totalSegments,
         avgSegmentsPerTranscript: data.totalSegments / data.transcriptCount,
-        themes: Array.from(data.themes).slice(0, 10),
+        themes: Array.from(data.themes as Set<string>).slice(0, 10),
         keyQuotes: data.keyQuotes.slice(0, 5)
       };
     }

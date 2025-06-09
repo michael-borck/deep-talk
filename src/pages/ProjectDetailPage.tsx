@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../contexts/ProjectContext';
 import { Transcript } from '../types';
-import { formatDistanceToNow, formatDuration } from '../utils/helpers';
+import { formatDuration } from '../utils/helpers';
 import { AddExistingModal } from '../components/AddExistingModal';
 import { ProjectInsightsDashboard } from '../components/ProjectInsightsDashboard';
 import { ProjectCrossTranscriptSearch } from '../components/ProjectCrossTranscriptSearch';
@@ -311,7 +311,6 @@ export const ProjectDetailPage: React.FC = () => {
 
         {activeTab === 'search' && (
           <ProjectCrossTranscriptSearch 
-            projectId={projectId!}
             transcripts={projectTranscripts}
           />
         )}

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Project, Transcript } from '../types';
 import { generateId } from '../utils/helpers';
-import { projectAnalysisService, ProjectAnalysisResult } from '../services/projectAnalysisService';
+import { projectAnalysisService } from '../services/projectAnalysisService';
 
 interface ProjectContextType {
   projects: Project[];

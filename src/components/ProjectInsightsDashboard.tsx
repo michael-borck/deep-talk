@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Project } from '../types';
-import { ProjectAnalysisResult } from '../services/projectAnalysisService';
 import { ProjectAnalysisExport } from './ProjectAnalysisExport';
 
 interface ProjectInsightsDashboardProps {

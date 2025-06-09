@@ -15,13 +15,11 @@ interface SearchResult {
 }
 
 interface ProjectCrossTranscriptSearchProps {
-  projectId: string;
   transcripts: Transcript[];
   className?: string;
 }
 
 export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearchProps> = ({
-  projectId,
   transcripts,
   className = ""
 }) => {
@@ -55,9 +53,9 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
     return text.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>');
   };
 
-  const getContextWindow = (text: string, matchIndex: number, query: string, windowSize: number = 100): string => {
+  const getContextWindow = (text: string, matchIndex: number, matchLength: number, windowSize: number = 100): string => {
     const start = Math.max(0, matchIndex - windowSize);
-    const end = Math.min(text.length, matchIndex + query.length + windowSize);
+    const end = Math.min(text.length, matchIndex + matchLength + windowSize);
     
     let context = text.substring(start, end);
     if (start > 0) context = '...' + context;
@@ -66,7 +64,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
     return context;
   };
 
-  const calculateRelevanceScore = (matches: any[], transcript: Transcript, query: string): number => {
+  const calculateRelevanceScore = (matches: any[], transcript: Transcript): number => {
     let score = 0;
     
     // Base score from number of matches
@@ -129,7 +127,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
           matches.push({
             field: fieldName,
             content: text,
-            context: getContextWindow(text, index, term),
+            context: getContextWindow(text, index, term.length),
             startIndex: index,
             endIndex: index + term.length
           });
@@ -229,7 +227,6 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
         
         if (searchFilter === 'all' || searchFilter === 'insights') {
           fieldsToSearch.action_items = transcript.action_items;
-          fieldsToSearch.key_insights = transcript.key_insights;
           fieldsToSearch.qa_pairs = transcript.qa_pairs;
         }
         
@@ -240,7 +237,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
         });
         
         if (allMatches.length > 0) {
-          const relevanceScore = calculateRelevanceScore(allMatches, transcript, searchQuery);
+          const relevanceScore = calculateRelevanceScore(allMatches, transcript);
           
           searchResults.push({
             transcript,
@@ -415,7 +412,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
         )}
 
         {/* Results List */}
-        {results.map((result, index) => (
+        {results.map((result) => (
           <div key={result.transcript.id} className="bg-white rounded-lg border p-4">
             {/* Transcript Header */}
             <div className="flex items-center justify-between mb-3">
