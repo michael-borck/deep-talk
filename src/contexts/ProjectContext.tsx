@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Project, Transcript } from '../types';
 import { generateId } from '../utils/helpers';
+import { projectAnalysisService, ProjectAnalysisResult } from '../services/projectAnalysisService';
 
 interface ProjectContextType {
   projects: Project[];
@@ -320,21 +321,54 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Analyze project (placeholder for AI analysis)
+  // Analyze project using comprehensive analysis service
   const analyzeProject = async (projectId: string) => {
     try {
-      // TODO: Implement actual AI analysis
-      // For now, just update the last_analysis_at timestamp
+      console.log('Starting project analysis...');
+      
+      // Perform comprehensive analysis
+      const analysisResult = await projectAnalysisService.analyzeProject(projectId);
+      
+      // Update project with analysis results
       await window.electronAPI.database.run(
-        'UPDATE projects SET last_analysis_at = ? WHERE id = ?',
-        [new Date().toISOString(), projectId]
+        `UPDATE projects SET 
+         themes = ?, 
+         key_insights = ?, 
+         summary = ?, 
+         last_analysis_at = ?, 
+         updated_at = ?
+         WHERE id = ?`,
+        [
+          JSON.stringify(analysisResult.themes),
+          JSON.stringify(analysisResult.key_insights),
+          analysisResult.summary,
+          new Date().toISOString(),
+          new Date().toISOString(),
+          projectId
+        ]
       );
       
-      // In a real implementation, this would:
-      // 1. Get all transcripts for the project
-      // 2. Send them to the AI service for cross-transcript analysis
-      // 3. Update the project with themes, insights, summary
-      // 4. Store detailed analysis results in project_analysis table
+      // Store detailed analysis results
+      const analysisId = generateId();
+      await window.electronAPI.database.run(
+        `INSERT INTO project_analysis (id, project_id, analysis_type, results, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          analysisId,
+          projectId,
+          'comprehensive_analysis',
+          JSON.stringify({
+            themeEvolution: analysisResult.themeEvolution,
+            conceptFrequency: analysisResult.conceptFrequency,
+            speakerAnalysis: analysisResult.speakerAnalysis,
+            timelineAnalysis: analysisResult.timelineAnalysis,
+            crossTranscriptPatterns: analysisResult.crossTranscriptPatterns
+          }),
+          new Date().toISOString()
+        ]
+      );
+      
+      console.log('Project analysis completed successfully');
       
       await loadProject(projectId);
       await loadProjects();
