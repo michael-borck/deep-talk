@@ -119,16 +119,28 @@ CREATE TABLE IF NOT EXISTS transcripts (
     deleted_at DATETIME
 );
 
--- Transcript segments for timestamps
+-- Transcript segments for sentence-level processing with timestamps
 CREATE TABLE IF NOT EXISTS transcript_segments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     transcript_id TEXT NOT NULL,
-    start_time REAL NOT NULL, -- in seconds
-    end_time REAL NOT NULL,
-    text TEXT NOT NULL,
-    speaker TEXT,
+    sentence_index INTEGER NOT NULL, -- Order of sentence in transcript
+    text TEXT NOT NULL, -- Sentence text
+    start_time REAL, -- in seconds from audio start
+    end_time REAL, -- in seconds from audio start
+    speaker TEXT, -- Speaker identifier
+    confidence REAL, -- Confidence score for this segment (0.0-1.0)
+    version TEXT DEFAULT 'original', -- 'original', 'corrected', 'speaker_tagged'
+    source_chunk_index INTEGER, -- Which audio chunk this came from
+    word_count INTEGER, -- Number of words in this sentence
+    
+    -- Analysis fields
     sentiment TEXT, -- 'positive', 'negative', 'neutral' for this segment
     emotions TEXT, -- JSON object with emotion scores for this segment
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
 );
 
@@ -206,6 +218,10 @@ CREATE INDEX IF NOT EXISTS idx_transcripts_archived ON transcripts(is_archived);
 CREATE INDEX IF NOT EXISTS idx_transcripts_deleted ON transcripts(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_transcripts_deleted_at ON transcripts(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_transcript_segments_transcript_id ON transcript_segments(transcript_id);
+CREATE INDEX IF NOT EXISTS idx_transcript_segments_sentence_index ON transcript_segments(transcript_id, sentence_index);
+CREATE INDEX IF NOT EXISTS idx_transcript_segments_version ON transcript_segments(transcript_id, version);
+CREATE INDEX IF NOT EXISTS idx_transcript_segments_speaker ON transcript_segments(transcript_id, speaker);
+CREATE INDEX IF NOT EXISTS idx_transcript_segments_time ON transcript_segments(transcript_id, start_time);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_transcript_id ON chat_conversations(transcript_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conversation_memory_conversation_id ON conversation_memory(conversation_id);

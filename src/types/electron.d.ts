@@ -30,6 +30,7 @@ export interface ElectronAPI {
     testConnection: (url: string, service: string) => Promise<{ success: boolean; status?: number; error?: string }>;
     getOllamaModels: (url: string) => Promise<{ success: boolean; models?: any[]; error?: string }>;
     chatWithOllama: (data: { prompt: string; message: string; context: string }) => Promise<{ success: boolean; response?: string; error?: string }>;
+    validateTranscript: (text: string) => Promise<{ success: boolean; validatedText: string; changes: any[]; error?: string }>;
   };
 
   // Vector store operations (delegated to main process)
@@ -57,6 +58,15 @@ export interface ElectronAPI {
     extractAudio: (inputPath: string, outputPath: string) => Promise<any>;
     getMediaInfo: (filePath: string) => Promise<any>;
     transcribeAudio: (audioPath: string, sttUrl: string, sttModel: string) => Promise<any>;
+  };
+
+  // Sentence segments operations
+  segments: {
+    create: (data: { transcriptId: string; segments: any[] }) => Promise<{ success: boolean; error?: string }>;
+    getByTranscript: (data: { transcriptId: string; version?: string }) => Promise<any[]>;
+    update: (data: { segmentId: string; updates: any }) => Promise<{ success: boolean; error?: string }>;
+    deleteByTranscript: (data: { transcriptId: string; version?: string }) => Promise<{ success: boolean; error?: string }>;
+    createFromChunks: (data: { transcriptId: string; chunkTimings: any[]; version?: string }) => Promise<{ success: boolean; segmentCount?: number; error?: string }>;
   };
 
   // AI Prompts operations

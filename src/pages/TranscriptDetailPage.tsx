@@ -8,6 +8,9 @@ import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search } f
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
 import { TranscriptChatModal } from '../components/TranscriptChatModal';
 import { ExportModal } from '../components/ExportModal';
+import { CorrectionTrigger } from '../components/CorrectionTrigger';
+import { TranscriptEditor } from '../components/TranscriptEditor';
+import { TimestampedTranscript } from '../components/TimestampedTranscript';
 
 type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations' | 'notes';
 
@@ -24,6 +27,8 @@ export const TranscriptDetailPage: React.FC = () => {
   const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showTranscriptEditor, setShowTranscriptEditor] = useState(false);
+  const [showTimestamps, setShowTimestamps] = useState(false);
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,6 +122,55 @@ export const TranscriptDetailPage: React.FC = () => {
 
   const handleExportTranscript = () => {
     setShowExportModal(true);
+  };
+
+  const handleCorrectionStart = () => {
+    console.log('Starting transcript correction...');
+  };
+
+  const handleCorrectionComplete = (updatedTranscript: Transcript) => {
+    setTranscript(updatedTranscript);
+    console.log('Transcript correction completed');
+  };
+
+  const handleCorrectionError = (error: string) => {
+    console.error('Correction error:', error);
+    alert(`Correction failed: ${error}`);
+  };
+
+  const handleManualEdit = () => {
+    if (!transcript) return;
+    
+    // If no corrected version exists, create one from the original
+    if (!transcript.validated_text && transcript.full_text) {
+      // Copy original to corrected before opening editor
+      handleTranscriptSave(transcript.full_text).then(() => {
+        setShowTranscriptEditor(true);
+      });
+    } else {
+      setShowTranscriptEditor(true);
+    }
+  };
+
+  const handleTranscriptSave = async (editedText: string) => {
+    if (!transcript) return;
+
+    try {
+      const success = await updateTranscript(transcript.id, {
+        validated_text: editedText,
+        updated_at: new Date().toISOString()
+      });
+
+      if (success) {
+        await loadTranscript();
+        console.log('Transcript saved successfully');
+      } else {
+        throw new Error('Failed to save transcript');
+      }
+    } catch (error) {
+      console.error('Error saving transcript:', error);
+      alert('Failed to save transcript. Please try again.');
+    }
   };
 
   const handleSpeakerTaggingSave = async (taggedText: string, speakers: Array<{ id: string; name: string; segments: number }>) => {
@@ -378,15 +432,32 @@ export const TranscriptDetailPage: React.FC = () => {
     // If not available, use original full_text (validated text might not have speaker tags)
     const textForSpeakerExtraction = transcript.processed_text || transcript.full_text;
     
-    // Create sub-tabs: Full transcript + individual speakers
+    // Create sub-tabs: Include original and corrected versions when available
     const transcriptSubTabs = [
       { 
-        id: 'full', 
-        label: '📄 Full Transcript', 
-        name: 'Full',
+        id: 'original', 
+        label: '📄 Original', 
+        name: 'Original',
         speaker: null,
-        color: null
+        color: null,
+        text: transcript.full_text
       },
+      ...(transcript.validated_text ? [{ 
+        id: 'corrected', 
+        label: '✏️ Corrected', 
+        name: 'Corrected',
+        speaker: null,
+        color: null,
+        text: transcript.validated_text
+      }] : []),
+      ...(transcript.processed_text ? [{ 
+        id: 'speaker-tagged', 
+        label: '👥 Speaker-Tagged', 
+        name: 'Speaker-Tagged',
+        speaker: null,
+        color: null,
+        text: transcript.processed_text
+      }] : []),
       ...speakers.map((speaker, idx) => ({
         id: `speaker-${idx}`,
         label: `👤 ${getAnonymizedSpeakerName(speaker)}`,
@@ -396,8 +467,54 @@ export const TranscriptDetailPage: React.FC = () => {
       }))
     ];
 
+    // Set default active tab to corrected if available, otherwise original
+    if (!activeTranscriptSubTab || !transcriptSubTabs.find(tab => tab.id === activeTranscriptSubTab)) {
+      const defaultTab = transcript.validated_text ? 'corrected' : 'original';
+      setActiveTranscriptSubTab(defaultTab);
+    }
+
     return (
       <div className="space-y-6">
+        {/* Correction Trigger */}
+        <CorrectionTrigger
+          transcript={transcript}
+          onCorrectionStart={handleCorrectionStart}
+          onCorrectionComplete={handleCorrectionComplete}
+          onError={handleCorrectionError}
+        />
+
+        {/* Manual Edit Controls */}
+        {(transcript.validated_text || transcript.full_text) && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">Manual Editing & Display</h3>
+                <p className="text-xs text-gray-600">
+                  Edit the {transcript.validated_text ? 'corrected' : 'original'} transcript manually or adjust display options
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowTimestamps(!showTimestamps)}
+                  className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                    showTimestamps 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  🕐 Timestamps
+                </button>
+                <button
+                  onClick={() => handleManualEdit()}
+                  className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                >
+                  Edit Transcript
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Corrections Applied */}
         {transcript.validation_changes && transcript.validation_changes.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -457,25 +574,41 @@ export const TranscriptDetailPage: React.FC = () => {
 
             {/* Sub-tab Content */}
             <div className="p-6">
-              {activeTranscriptSubTab === 'full' ? (
-                // Full transcript view
-                currentText ? (
-                  <div className="prose max-w-none">
-                    <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                      {currentText}
+              {['original', 'corrected', 'speaker-tagged'].includes(activeTranscriptSubTab) ? (
+                // Transcript version view
+                (() => {
+                  const selectedTab = transcriptSubTabs.find(tab => tab.id === activeTranscriptSubTab);
+                  const tabText = selectedTab && 'text' in selectedTab ? selectedTab.text : undefined;
+                  
+                  // Map tab IDs to version names
+                  const getVersionFromTabId = (tabId: string): 'original' | 'corrected' | 'speaker_tagged' => {
+                    switch (tabId) {
+                      case 'corrected': return 'corrected';
+                      case 'speaker-tagged': return 'speaker_tagged';
+                      default: return 'original';
+                    }
+                  };
+
+                  return tabText ? (
+                    <TimestampedTranscript
+                      transcript={tabText}
+                      transcriptId={transcript.id}
+                      version={getVersionFromTabId(activeTranscriptSubTab)}
+                      showTimestamps={showTimestamps}
+                      editable={false}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No transcript available for this version.</p>
+                      {transcript.status === 'processing' && (
+                        <p className="mt-2">Transcript is still being processed...</p>
+                      )}
+                      {transcript.status === 'error' && (
+                        <p className="mt-2 text-red-600">There was an error processing this file.</p>
+                      )}
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No transcript available.</p>
-                    {transcript.status === 'processing' && (
-                      <p className="mt-2">Transcript is still being processed...</p>
-                    )}
-                    {transcript.status === 'error' && (
-                      <p className="mt-2 text-red-600">There was an error processing this file.</p>
-                    )}
-                  </div>
-                )
+                  );
+                })()
               ) : (
                 // Individual speaker view
                 (() => {
@@ -556,11 +689,13 @@ export const TranscriptDetailPage: React.FC = () => {
         {transcriptSubTabs.length <= 1 && (
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             {currentText ? (
-              <div className="prose max-w-none">
-                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                  {currentText}
-                </div>
-              </div>
+              <TimestampedTranscript
+                transcript={currentText}
+                transcriptId={transcript.id}
+                version={transcript.validated_text ? 'corrected' : 'original'}
+                showTimestamps={showTimestamps}
+                editable={false}
+              />
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <p>No transcript available.</p>
@@ -1057,6 +1192,13 @@ export const TranscriptDetailPage: React.FC = () => {
         transcript={transcript}
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
+      />
+
+      <TranscriptEditor
+        transcript={transcript}
+        isOpen={showTranscriptEditor}
+        onClose={() => setShowTranscriptEditor(false)}
+        onSave={handleTranscriptSave}
       />
     </div>
   );

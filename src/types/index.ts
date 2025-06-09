@@ -58,6 +58,40 @@ export interface TranscriptSegment {
   emotions?: Record<string, number>;
 }
 
+export interface SentenceSegment {
+  id: number;
+  transcript_id: string;
+  sentence_index: number;
+  text: string;
+  start_time?: number;
+  end_time?: number;
+  speaker?: string;
+  confidence?: number;
+  version: 'original' | 'corrected' | 'speaker_tagged';
+  source_chunk_index?: number;
+  word_count: number;
+  sentiment?: string;
+  emotions?: Record<string, number>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChunkTimingInfo {
+  chunkIndex: number;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  text: string;
+}
+
+export interface SegmentationStats {
+  totalSentences: number;
+  avgWordsPerSentence: number;
+  avgDurationPerSentence: number;
+  confidenceDistribution: { high: number; medium: number; low: number };
+  versionsCount: Record<string, number>;
+}
+
 export interface ProcessingItem {
   id: string;
   transcript_id: string;
@@ -246,6 +280,7 @@ declare global {
           success: boolean;
           text?: string;
           error?: string;
+          chunkTimings?: ChunkTimingInfo[];
         }>;
       };
       getDatabaseInfo: () => Promise<any>;

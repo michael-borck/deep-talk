@@ -1,6 +1,7 @@
 // Note: Cannot use path module in renderer process
 
 import { promptService } from './promptService';
+import { sentenceSegmentsService } from './sentenceSegmentsService';
 
 interface ProcessingCallbacks {
   onProgress?: (stage: string, percent: number) => void;
@@ -141,6 +142,29 @@ export class FileProcessor {
       console.log('Database update result:', updateResult);
       
       callbacks.onProgress?.('saving', 100);
+
+      // Step 6: Create sentence segments from transcription
+      if (transcriptResult.chunkTimings && transcriptResult.chunkTimings.length > 0) {
+        console.log('Creating sentence segments from chunk timings...');
+        try {
+          const segmentSuccess = await sentenceSegmentsService.createSegmentsFromChunks(
+            transcriptId,
+            transcriptResult.chunkTimings,
+            'original'
+          );
+          
+          if (segmentSuccess) {
+            console.log('Successfully created sentence segments');
+          } else {
+            console.warn('Failed to create sentence segments');
+          }
+        } catch (segmentError) {
+          console.error('Error creating sentence segments:', segmentError);
+          // Don't fail the whole process for segment creation errors
+        }
+      } else {
+        console.warn('No chunk timings available for segment creation');
+      }
       
       // Cleanup temp files if audio was extracted from video
       if (audioPath !== filePath) {
@@ -177,6 +201,13 @@ export class FileProcessor {
     success: boolean;
     text?: string;
     error?: string;
+    chunkTimings?: Array<{
+      chunkIndex: number;
+      startTime: number;
+      endTime: number;
+      duration: number;
+      text: string;
+    }>;
   }> {
     try {
       // Get STT service settings

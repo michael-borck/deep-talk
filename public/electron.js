@@ -96,6 +96,45 @@ function runMigrations() {
       }
     }
     
+    // Check if transcript_segments table exists and create it if not
+    const segmentsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='transcript_segments'").all();
+    if (segmentsTable.length === 0) {
+      console.log('Creating transcript_segments table...');
+      db.exec(`
+        CREATE TABLE transcript_segments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          transcript_id TEXT NOT NULL,
+          sentence_index INTEGER NOT NULL,
+          text TEXT NOT NULL,
+          start_time REAL,
+          end_time REAL,
+          speaker TEXT,
+          confidence REAL,
+          version TEXT DEFAULT 'original',
+          source_chunk_index INTEGER,
+          word_count INTEGER,
+          sentiment TEXT,
+          emotions TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
+        )
+      `);
+      
+      // Create indexes
+      db.exec(`
+        CREATE INDEX idx_transcript_segments_transcript_id ON transcript_segments(transcript_id);
+        CREATE INDEX idx_transcript_segments_sentence_index ON transcript_segments(transcript_id, sentence_index);
+        CREATE INDEX idx_transcript_segments_version ON transcript_segments(transcript_id, version);
+        CREATE INDEX idx_transcript_segments_speaker ON transcript_segments(transcript_id, speaker);
+        CREATE INDEX idx_transcript_segments_time ON transcript_segments(transcript_id, start_time);
+      `);
+      
+      console.log('transcript_segments table created successfully');
+    } else {
+      console.log('transcript_segments table already exists');
+    }
+
     // Check if ai_prompts table exists and create it if not
     const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='ai_prompts'").all();
     if (tables.length === 0) {
@@ -840,6 +879,133 @@ ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) =
   }
 });
 
+ipcMain.handle('validate-transcript', async (event, { text }) => {
+  try {
+    // Get validation settings from database
+    const validationEnabledSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('enableTranscriptValidation');
+    
+    if (validationEnabledSetting?.value !== 'true') {
+      return {
+        validatedText: text,
+        changes: [],
+        success: true
+      };
+    }
+
+    const validationOptionsSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('validationOptions');
+    const aiUrlSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiAnalysisUrl');
+    const aiModelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiModel');
+    
+    const options = validationOptionsSetting?.value ? JSON.parse(validationOptionsSetting.value) : {};
+    const aiUrl = aiUrlSetting ? aiUrlSetting.value : 'http://localhost:11434';
+    const model = aiModelSetting ? aiModelSetting.value : 'llama2';
+
+    // Create validation options string
+    const validationOptions = [
+      options.spelling && 'spelling',
+      options.grammar && 'grammar', 
+      options.punctuation && 'punctuation',
+      options.capitalization && 'capitalization'
+    ].filter(Boolean).join(', ');
+
+    if (validationOptions.length === 0) {
+      return {
+        validatedText: text,
+        changes: [],
+        success: true
+      };
+    }
+
+    const prompt = `Please validate and correct the following transcript text. Focus on ${validationOptions}.
+
+Return your response as a JSON object with the following structure:
+{
+  "validatedText": "the corrected text",
+  "changes": [
+    {
+      "type": "spelling|grammar|punctuation|capitalization",
+      "original": "original text",
+      "corrected": "corrected text",
+      "position": number
+    }
+  ]
+}
+
+Transcript to validate:
+${text}`;
+
+    console.log('Validating transcript with options:', validationOptions);
+
+    const response = await fetch(`${aiUrl}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: model,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: 0.3,
+          num_predict: Math.max(text.length * 1.5, 2048),
+          top_p: 0.9,
+          top_k: 40
+        }
+      }),
+      signal: AbortSignal.timeout(300000) // 5 minute timeout for validation
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      try {
+        // Check if the response looks like JSON
+        const responseText = data.response || '';
+        if (responseText.trim().startsWith('{') && responseText.trim().endsWith('}')) {
+          const validationData = JSON.parse(responseText);
+          return {
+            validatedText: validationData.validatedText || text,
+            changes: validationData.changes || [],
+            success: true
+          };
+        } else {
+          // Response is plain text, not JSON
+          console.warn('Validation response is not JSON format, using as-is');
+          return {
+            validatedText: responseText || text,
+            changes: [],
+            success: true
+          };
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse validation response as JSON:', parseError.message);
+        return {
+          validatedText: data.response || text,
+          changes: [],
+          success: true
+        };
+      }
+    } else {
+      const errorText = await response.text();
+      console.error('Validation API error:', response.status, errorText);
+      return { 
+        success: false, 
+        error: `Validation failed: HTTP ${response.status}: ${errorText}`,
+        validatedText: text,
+        changes: []
+      };
+    }
+  } catch (error) {
+    console.error('Failed to validate transcript:', error);
+    return { 
+      success: false, 
+      error: error.message,
+      validatedText: text,
+      changes: []
+    };
+  }
+});
+
 ipcMain.handle('fs-read-file', async (event, filePath) => {
   try {
     const data = fs.readFileSync(filePath);
@@ -1034,7 +1200,12 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
           transcriptions.push({
             index: i,
             text: chunkResult.text,
-            hasOverlap: i > 0
+            hasOverlap: i > 0,
+            // Enhanced timing info for sentence segmentation
+            chunkIndex: i,
+            startTime: startTime,
+            endTime: startTime + duration,
+            duration: duration
           });
           console.log(`✓ CHUNK ${i + 1} TRANSCRIBED SUCCESSFULLY`);
           console.log(`  - Transcription time: ${transcribeTime}ms`);
@@ -1157,9 +1328,19 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
     console.log('To delete chunks, navigate to the directory and remove them manually');
     console.log('=== END AUDIO CHUNKING DEBUG ===\n');
     
+    // Process transcriptions into sentence segments
+    const chunkTimings = transcriptions.map(t => ({
+      chunkIndex: t.chunkIndex,
+      startTime: t.startTime,
+      endTime: t.endTime,
+      duration: t.duration,
+      text: t.text
+    }));
+
     return {
       success: true,
-      text: fullTranscription
+      text: fullTranscription,
+      chunkTimings: chunkTimings  // Add chunk timing info for sentence segmentation
     };
   } catch (error) {
     console.error('Transcription error:', error);
@@ -1230,9 +1411,19 @@ async function transcribeSingleFile(audioPath, sttUrl, sttModel) {
     console.log('Preview:', resultText ? `"${resultText.substring(0, 100)}..."` : 'No text');
     console.log('<<< END SINGLE FILE TRANSCRIPTION\n');
     
+    // For single file, create a single chunk timing entry
+    const chunkTimings = [{
+      chunkIndex: 0,
+      startTime: 0,
+      endTime: 0, // Will be filled in by caller if duration is known
+      duration: 0, // Will be filled in by caller if duration is known
+      text: resultText
+    }];
+
     return {
       success: true,
-      text: resultText
+      text: resultText,
+      chunkTimings: chunkTimings
     };
   } catch (error) {
     console.error('✗ SINGLE FILE TRANSCRIPTION ERROR:', error.message);
@@ -1262,6 +1453,110 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+// Helper function for sentence segmentation
+function createSentenceSegmentsFromChunks(transcriptId, chunkTimings, version = 'original') {
+  console.log('createSentenceSegmentsFromChunks called with:', { 
+    transcriptId, 
+    chunkTimingsLength: chunkTimings?.length, 
+    version 
+  });
+
+  if (!transcriptId) {
+    console.error('No transcriptId provided');
+    return [];
+  }
+
+  if (!chunkTimings || !Array.isArray(chunkTimings) || chunkTimings.length === 0) {
+    console.error('Invalid or empty chunkTimings:', chunkTimings);
+    return [];
+  }
+
+  const segments = [];
+  let globalSentenceIndex = 0;
+
+  for (let i = 0; i < chunkTimings.length; i++) {
+    const chunk = chunkTimings[i];
+    console.log(`Processing chunk ${i}:`, {
+      chunkIndex: chunk.chunkIndex,
+      startTime: chunk.startTime, 
+      endTime: chunk.endTime,
+      textLength: chunk.text?.length,
+      textPreview: chunk.text?.substring(0, 50) + '...'
+    });
+    const sentences = splitIntoSentences(chunk.text);
+    const chunkDuration = chunk.duration || 0;
+    const totalWords = countWordsInText(chunk.text);
+    const wordsPerSecond = totalWords > 0 && chunkDuration > 0 ? totalWords / chunkDuration : 0;
+
+    let currentTime = chunk.startTime || 0;
+
+    for (const sentence of sentences) {
+      const wordCount = countWords(sentence);
+      const estimatedDuration = wordsPerSecond > 0 ? wordCount / wordsPerSecond : 1;
+      const endTime = currentTime + estimatedDuration;
+
+      segments.push({
+        transcriptId,
+        sentenceIndex: globalSentenceIndex,
+        text: sentence,
+        startTime: currentTime,
+        endTime: Math.min(endTime, chunk.endTime || currentTime + estimatedDuration),
+        confidence: calculateConfidence(sentence, wordCount, estimatedDuration),
+        version,
+        sourceChunkIndex: chunk.chunkIndex,
+        wordCount,
+      });
+
+      currentTime = endTime;
+      globalSentenceIndex++;
+    }
+  }
+
+  return segments;
+}
+
+function splitIntoSentences(text) {
+  if (!text || !text.trim()) return [];
+
+  // Simple sentence splitting
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && countWords(s) >= 2);
+
+  return sentences;
+}
+
+function countWords(text) {
+  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+}
+
+function countWordsInText(text) {
+  const matches = text.match(/\b\w+\b/g);
+  return matches ? matches.length : 0;
+}
+
+function calculateConfidence(sentence, wordCount, estimatedDuration) {
+  let confidence = 0.5; // Base confidence
+
+  // Boost confidence for well-formed sentences
+  if (/^[A-Z]/.test(sentence) && /[.!?]\s*$/.test(sentence)) {
+    confidence += 0.2;
+  }
+
+  // Boost confidence for reasonable word count
+  if (wordCount >= 5 && wordCount <= 30) {
+    confidence += 0.2;
+  }
+
+  // Boost confidence for reasonable duration (1-10 seconds per sentence)
+  if (estimatedDuration >= 1 && estimatedDuration <= 10) {
+    confidence += 0.1;
+  }
+
+  return Math.max(0, Math.min(1, confidence));
+}
 
 // Helper function to get FFmpeg path
 function getFFmpegPath() {
@@ -1807,6 +2102,150 @@ ipcMain.handle('vector-store-reset', async () => {
     await vectorStore.reset();
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Sentence Segments IPC handlers
+ipcMain.handle('segments-create', async (event, { transcriptId, segments }) => {
+  try {
+    // Insert sentence segments into database
+    const insertStmt = db.prepare(`
+      INSERT INTO transcript_segments 
+      (transcript_id, sentence_index, text, start_time, end_time, speaker, 
+       confidence, version, source_chunk_index, word_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const segment of segments) {
+      insertStmt.run(
+        transcriptId,
+        segment.sentenceIndex,
+        segment.text,
+        segment.startTime,
+        segment.endTime,
+        segment.speaker || null,
+        segment.confidence,
+        segment.version,
+        segment.sourceChunkIndex,
+        segment.wordCount,
+        new Date().toISOString(),
+        new Date().toISOString()
+      );
+    }
+
+    console.log(`Created ${segments.length} sentence segments for transcript ${transcriptId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error creating sentence segments:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('segments-get-by-transcript', async (event, { transcriptId, version }) => {
+  try {
+    let query = 'SELECT * FROM transcript_segments WHERE transcript_id = ?';
+    let params = [transcriptId];
+    
+    if (version) {
+      query += ' AND version = ?';
+      params.push(version);
+    }
+    
+    query += ' ORDER BY sentence_index ASC';
+    
+    const segments = db.prepare(query).all(params);
+    return segments;
+  } catch (error) {
+    console.error('Error getting sentence segments:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('segments-update', async (event, { segmentId, updates }) => {
+  try {
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = Object.values(updates);
+    values.push(new Date().toISOString()); // updated_at
+    values.push(segmentId);
+    
+    const query = `UPDATE transcript_segments SET ${fields}, updated_at = ? WHERE id = ?`;
+    db.prepare(query).run(values);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating sentence segment:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('segments-delete-by-transcript', async (event, { transcriptId, version }) => {
+  try {
+    let query = 'DELETE FROM transcript_segments WHERE transcript_id = ?';
+    let params = [transcriptId];
+    
+    if (version) {
+      query += ' AND version = ?';
+      params.push(version);
+    }
+    
+    db.prepare(query).run(params);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting sentence segments:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('segments-create-from-chunks', async (event, { transcriptId, chunkTimings, version = 'original' }) => {
+  try {
+    console.log('=== CREATING SENTENCE SEGMENTS ===');
+    console.log('Input data:', { 
+      transcriptId, 
+      chunkCount: chunkTimings?.length, 
+      version,
+      chunkTimings: chunkTimings?.map(c => ({
+        chunkIndex: c.chunkIndex, 
+        startTime: c.startTime, 
+        endTime: c.endTime, 
+        textLength: c.text?.length 
+      }))
+    });
+
+    // For now, implement the segmentation logic directly here
+    // Later, we can improve this by compiling the TS service or using a different approach
+    const segments = createSentenceSegmentsFromChunks(transcriptId, chunkTimings, version);
+    console.log(`Segmentation created ${segments.length} segments`);
+
+    // Insert into database
+    const insertStmt = db.prepare(`
+      INSERT INTO transcript_segments 
+      (transcript_id, sentence_index, text, start_time, end_time, speaker, 
+       confidence, version, source_chunk_index, word_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const segment of segments) {
+      insertStmt.run(
+        segment.transcriptId,
+        segment.sentenceIndex,
+        segment.text,
+        segment.startTime,
+        segment.endTime,
+        segment.speaker || null,
+        segment.confidence,
+        segment.version,
+        segment.sourceChunkIndex,
+        segment.wordCount,
+        new Date().toISOString(),
+        new Date().toISOString()
+      );
+    }
+
+    console.log(`Created ${segments.length} sentence segments from ${chunkTimings.length} chunks for transcript ${transcriptId}`);
+    return { success: true, segmentCount: segments.length };
+  } catch (error) {
+    console.error('Error creating sentence segments from chunks:', error);
     return { success: false, error: error.message };
   }
 });

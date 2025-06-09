@@ -318,29 +318,19 @@ etc.`;
       console.log('AI Prompt:', aiPrompt);
       console.log('AI URL:', aiUrl, 'Model:', aiModel);
 
-      // Call AI service
-      const response = await fetch(`${aiUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: aiModel,
-          prompt: aiPrompt,
-          stream: false
-        })
+      // Call AI service through Electron API
+      const services = window.electronAPI.services as any;
+      const result = await services.chatWithOllama({
+        prompt: aiPrompt,
+        message: '',
+        context: ''
       });
 
-      console.log('AI Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('AI service error response:', errorText);
-        throw new Error(`AI service error: ${response.status} ${response.statusText}`);
-      }
-
-      const result = await response.json();
       console.log('AI Result:', result);
+
+      if (!result.success) {
+        throw new Error(`AI service error: ${result.error}`);
+      }
 
       if (result.response) {
         // Parse AI response

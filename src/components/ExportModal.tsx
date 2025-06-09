@@ -10,6 +10,7 @@ interface ExportModalProps {
 
 type ExportVersion = 'original' | 'corrected' | 'speaker-tagged';
 type ExportFormat = 'markdown' | 'txt' | 'json';
+type TimestampFormat = 'preserve' | 'remove' | 'external-tools';
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   transcript,
@@ -20,20 +21,58 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('markdown');
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [includeAnalysis, setIncludeAnalysis] = useState(true);
+  const [timestampFormat, setTimestampFormat] = useState<TimestampFormat>('preserve');
 
   if (!isOpen) return null;
 
+  const processTimestamps = (text: string): string => {
+    if (!text) return text;
+    
+    switch (timestampFormat) {
+      case 'remove':
+        // Remove all timestamps in format [MM:SS] or [HH:MM:SS]
+        return text.replace(/\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g, '').replace(/\n\s*\n/g, '\n').trim();
+      
+      case 'external-tools':
+        // Format for external audio tools: timestamp at start of each segment
+        const segments = text.split(/(\[(\d{1,2}:\d{2}(?::\d{2})?)\])/);
+        let formatted = '';
+        for (let i = 0; i < segments.length; i += 3) {
+          const beforeTimestamp = segments[i] || '';
+          const timestampWithBrackets = segments[i + 1] || '';
+          const nextText = segments[i + 3] || '';
+          
+          if (timestampWithBrackets && nextText) {
+            formatted += `${timestampWithBrackets} ${nextText.trim()}\n`;
+          } else if (beforeTimestamp.trim()) {
+            formatted += beforeTimestamp.trim() + '\n';
+          }
+        }
+        return formatted.trim();
+      
+      case 'preserve':
+      default:
+        return text;
+    }
+  };
+
   const getTranscriptContent = (): string => {
+    let content: string;
     switch (selectedVersion) {
       case 'original':
-        return transcript.full_text || 'No original transcript available.';
+        content = transcript.full_text || 'No original transcript available.';
+        break;
       case 'corrected':
-        return transcript.validated_text || transcript.full_text || 'No corrected transcript available.';
+        content = transcript.validated_text || transcript.full_text || 'No corrected transcript available.';
+        break;
       case 'speaker-tagged':
-        return transcript.processed_text || transcript.validated_text || transcript.full_text || 'No speaker-tagged transcript available.';
+        content = transcript.processed_text || transcript.validated_text || transcript.full_text || 'No speaker-tagged transcript available.';
+        break;
       default:
-        return transcript.full_text || 'No transcript available.';
+        content = transcript.full_text || 'No transcript available.';
     }
+    
+    return processTimestamps(content);
   };
 
   const getVersionDescription = (version: ExportVersion): string => {
@@ -50,11 +89,24 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const isVersionAvailable = (version: ExportVersion): boolean => {
     switch (version) {
       case 'original':
-        return !!transcript.full_text;
+        return !!transcript.full_text && transcript.full_text.trim().length > 0;
       case 'corrected':
-        return !!transcript.validated_text;
+        return !!transcript.validated_text && transcript.validated_text.trim().length > 0;
       case 'speaker-tagged':
-        return !!transcript.processed_text;
+        return !!transcript.processed_text && transcript.processed_text.trim().length > 0;
+    }
+  };
+
+  const getVersionUnavailableReason = (version: ExportVersion): string => {
+    switch (version) {
+      case 'original':
+        return 'Original transcript not found';
+      case 'corrected':
+        return 'No corrected version available - enable transcript validation in Settings or use "Generate Correction"';
+      case 'speaker-tagged':
+        return 'No speaker-tagged version available - use "Speaker Tagging" feature first';
+      default:
+        return 'Version not available';
     }
   };
 
@@ -226,11 +278,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                             <CheckCircle size={16} className="text-blue-500" />
                           )}
                           {!available && (
-                            <span className="text-xs text-gray-400">(Not available)</span>
+                            <span className="text-xs text-red-500">(Not available)</span>
                           )}
                         </div>
                         <p className={`text-xs ${available ? 'text-gray-600' : 'text-gray-400'}`}>
-                          {getVersionDescription(version)}
+                          {available ? getVersionDescription(version) : getVersionUnavailableReason(version)}
                         </p>
                       </div>
                     </div>
@@ -254,6 +306,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <option value="txt">Plain Text (.txt)</option>
               <option value="json">JSON (.json)</option>
             </select>
+          </div>
+
+          {/* Timestamp Options */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Timestamp Handling
+            </label>
+            <select
+              value={timestampFormat}
+              onChange={(e) => setTimestampFormat(e.target.value as TimestampFormat)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="preserve">Preserve timestamps as-is</option>
+              <option value="remove">Remove all timestamps</option>
+              <option value="external-tools">Format for external audio tools</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {timestampFormat === 'preserve' && 'Keep timestamps exactly as they appear in the transcript'}
+              {timestampFormat === 'remove' && 'Clean transcript text without any timestamp markers'}
+              {timestampFormat === 'external-tools' && 'Format timestamps for use with audio editing software'}
+            </p>
           </div>
 
           {/* Options */}

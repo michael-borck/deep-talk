@@ -31,7 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   services: {
     testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service }),
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
-    chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data)
+    chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),
+    validateTranscript: (text) => ipcRenderer.invoke('validate-transcript', { text })
   },
 
   // Vector store operations (delegated to main process)
@@ -78,6 +79,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('get-media-info', { filePath }),
     transcribeAudio: (audioPath, sttUrl, sttModel) =>
       ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel })
+  },
+
+  // Sentence segments operations
+  segments: {
+    create: (data) => ipcRenderer.invoke('segments-create', data),
+    getByTranscript: (data) => ipcRenderer.invoke('segments-get-by-transcript', data),
+    update: (data) => ipcRenderer.invoke('segments-update', data),
+    deleteByTranscript: (data) => ipcRenderer.invoke('segments-delete-by-transcript', data),
+    createFromChunks: (data) => ipcRenderer.invoke('segments-create-from-chunks', data)
   },
 
   // AI Prompts operations
