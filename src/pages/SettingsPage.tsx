@@ -12,7 +12,7 @@ export const SettingsPage: React.FC = () => {
   const { testConnections, serviceStatus } = useContext(ServiceContext);
   
   // Settings state
-  const [speechToTextUrl, setSpeechToTextUrl] = useState('https://speaches.serveur.au');
+  const [speechToTextUrl, setSpeechToTextUrl] = useState('http://localhost:8000');
   const [speechToTextModel, setSpeechToTextModel] = useState('Systran/faster-distil-whisper-small.en');
   const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434');
   const [aiModel, setAiModel] = useState('llama2');
@@ -66,7 +66,7 @@ export const SettingsPage: React.FC = () => {
         return acc;
       }, {});
 
-      setSpeechToTextUrl(settingsMap.speechToTextUrl || 'https://speaches.serveur.au');
+      setSpeechToTextUrl(settingsMap.speechToTextUrl || 'http://localhost:8000');
       setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-medium.en');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
       setAiModel(settingsMap.aiModel || 'llama2');
