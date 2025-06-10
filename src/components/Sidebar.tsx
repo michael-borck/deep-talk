@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive, MessageCircle } from 'lucide-react';
+import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive, MessageCircle, BookOpen, Keyboard, HelpCircle } from 'lucide-react';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -24,6 +24,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
     { path: '/chat-history', icon: MessageCircle, label: 'Chat History' },
     { path: '/trash', icon: Trash, label: 'Trash' },
     { path: '/archive', icon: Archive, label: 'Archive' },
+  ];
+
+  const helpItems = [
+    { path: '/docs', icon: BookOpen, label: 'Documentation' },
+    { path: '/shortcuts', icon: Keyboard, label: 'Keyboard Shortcuts' },
+    { 
+      path: 'https://michael-borck.github.io/deep-talk/troubleshooting', 
+      icon: HelpCircle, 
+      label: 'Help & Support',
+      external: true
+    },
   ];
 
   const isActive = (path: string) => {
@@ -89,6 +100,46 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
           <ul className="space-y-2">
             {dataItems.map((item) => {
               const Icon = item.icon;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                      isActive(item.path)
+                        ? 'bg-blue-600 text-white'
+                        : 'hover:bg-gray-700 text-gray-300'
+                    }`}
+                    title={isCollapsed ? item.label : ''}
+                  >
+                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
+                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Help & Documentation */}
+        <div>
+          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Help</h3>}
+          <ul className="space-y-2">
+            {helpItems.map((item) => {
+              const Icon = item.icon;
+              if (item.external) {
+                return (
+                  <li key={item.path}>
+                    <button
+                      onClick={() => window.open(item.path, '_blank')}
+                      className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-gray-700 text-gray-300 w-full text-left"
+                      title={isCollapsed ? item.label : ''}
+                    >
+                      <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
+                      {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                    </button>
+                  </li>
+                );
+              }
               return (
                 <li key={item.path}>
                   <Link

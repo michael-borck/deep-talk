@@ -627,22 +627,22 @@ function createMenu() {
         },
         {
           label: 'User Guide',
-          enabled: false,
+          enabled: true,
           click: () => {
-            // Will be enabled when documentation is ready
+            shell.openExternal('https://michael-borck.github.io/deep-talk');
           }
         },
         { type: 'separator' },
         {
           label: 'View on GitHub',
           click: () => {
-            shell.openExternal('https://github.com/michael-borck/audio-scribe');
+            shell.openExternal('https://github.com/michael-borck/deep-talk');
           }
         },
         {
           label: 'Report Issue',
           click: () => {
-            shell.openExternal('https://github.com/michael-borck/audio-scribe/issues');
+            shell.openExternal('https://github.com/michael-borck/deep-talk/issues');
           }
         },
         {
@@ -1645,7 +1645,13 @@ ipcMain.handle('get-media-info', async (event, { filePath }) => {
 });
 
 // Real Embedding and Vector Store Services Implementation
-const lancedb = require('@lancedb/lancedb');
+let lancedb;
+try {
+  lancedb = require('@lancedb/lancedb');
+} catch (error) {
+  console.warn('LanceDB not available, using fallback vector store:', error.message);
+  lancedb = null;
+}
 
 // Simple text-based similarity fallback
 // This provides a working solution while we can enhance it later with real embeddings
@@ -1788,7 +1794,14 @@ class MainVectorStore {
         fs.mkdirSync(vectorDbPath, { recursive: true });
       }
 
-      // Connect to LanceDB
+      // Connect to LanceDB (if available)
+      if (!lancedb) {
+        console.warn('LanceDB not available, using fallback vector store');
+        this.db = null;
+        this.table = null;
+        return;
+      }
+      
       this.db = await lancedb.connect(vectorDbPath);
       
       // Try to open existing table or create new one
@@ -1837,6 +1850,12 @@ class MainVectorStore {
         throw new Error('Vector store not initialized');
       }
 
+      // If LanceDB is not available, skip storing
+      if (!this.db || !this.table) {
+        console.warn('LanceDB not available, skipping chunk storage');
+        return;
+      }
+
       const records = chunks.map((chunk, i) => {
         const embedding = embeddings[i];
         return {
@@ -1873,6 +1892,12 @@ class MainVectorStore {
     try {
       if (!this.isInitialized) {
         throw new Error('Vector store not initialized');
+      }
+
+      // If LanceDB is not available, return empty results
+      if (!this.db || !this.table) {
+        console.warn('LanceDB not available, returning empty search results');
+        return [];
       }
 
       let query = this.table.search(queryEmbedding).limit(options.limit || 10);

@@ -7,6 +7,12 @@
   "publish": null,
   "npmRebuild": true,
   "buildDependenciesFromSource": true,
+  "includeSubNodeModules": true,
+  "asarUnpack": [
+    "node_modules/@lancedb/**/*",
+    "node_modules/better-sqlite3/**/*",
+    "node_modules/ffmpeg-static/**/*"
+  ],
   "files": [
     "dist/**/*",
     "public/**/*",
@@ -37,6 +43,13 @@
       {
         "target": "zip",
         "arch": ["x64", "arm64"]
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@lancedb",
+        "to": "node_modules/@lancedb",
+        "filter": ["**/*"]
       }
     ]
   },
