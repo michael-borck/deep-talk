@@ -538,8 +538,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
-    // Open dev tools to debug the issue
-    mainWindow.webContents.openDevTools();
   }
 
   // Show window when ready
