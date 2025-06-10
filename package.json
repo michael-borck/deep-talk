@@ -16,7 +16,7 @@
     "pack": "electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "electron-rebuild",
+    "postinstall": "electron-builder install-app-deps",
     "download-ffmpeg": "node scripts/download-ffmpeg.js"
   },
   "keywords": [
