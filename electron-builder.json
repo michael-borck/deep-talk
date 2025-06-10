@@ -6,7 +6,8 @@
   },
   "publish": null,
   "npmRebuild": true,
-  "buildDependenciesFromSource": true,
+  "buildDependenciesFromSource": false,
+  "nodeGypRebuild": false,
   "asarUnpack": [
     "node_modules/better-sqlite3/**/*",
     "node_modules/ffmpeg-static/**/*",
