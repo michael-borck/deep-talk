@@ -6,6 +6,7 @@ import { formatDuration } from '../utils/helpers';
 import { AddExistingModal } from '../components/AddExistingModal';
 import { ProjectInsightsDashboard } from '../components/ProjectInsightsDashboard';
 import { ProjectCrossTranscriptSearch } from '../components/ProjectCrossTranscriptSearch';
+import { ProjectChatModal } from '../components/ProjectChatModal';
 
 type TabType = 'overview' | 'transcripts' | 'analysis' | 'search' | 'chat';
 
@@ -18,6 +19,7 @@ export const ProjectDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddTranscriptModal, setShowAddTranscriptModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
 
@@ -317,16 +319,72 @@ export const ProjectDetailPage: React.FC = () => {
 
         {activeTab === 'chat' && (
           <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-lg font-semibold mb-4">💬 Project Chat</h2>
-            <div className="bg-gray-50 rounded-lg p-12 text-center">
-              <div className="text-gray-400 mb-4">
-                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-semibold">💬 Project Chat</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Ask questions across all {projectTranscripts.length} transcript{projectTranscripts.length !== 1 ? 's' : ''} in this project
+                </p>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Project-wide chat coming soon</h3>
-              <p className="text-gray-500">Ask questions across all transcripts in this project</p>
+              <button
+                onClick={() => setShowChatModal(true)}
+                disabled={projectTranscripts.length === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Start Chat
+              </button>
             </div>
+            
+            {projectTranscripts.length === 0 ? (
+              <div className="bg-gray-50 rounded-lg p-8 text-center">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No transcripts in project</h3>
+                <p className="text-gray-500 mb-4">Add some transcripts to start chatting about project insights</p>
+                <button
+                  onClick={() => setShowAddTranscriptModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add Transcripts
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-900 mb-2">Cross-Transcript Analysis</h4>
+                    <p className="text-sm text-blue-700">
+                      Ask about patterns, themes, and insights that span across multiple transcripts
+                    </p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h4 className="font-medium text-green-900 mb-2">Collated Search</h4>
+                    <p className="text-sm text-green-700">
+                      Search for specific information across all project transcripts
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-4">
+                    <h4 className="font-medium text-purple-900 mb-2">Hybrid Analysis</h4>
+                    <p className="text-sm text-purple-700">
+                      Intelligent analysis that adapts based on your question type
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Example Questions:</h4>
+                  <ul className="text-sm text-gray-700 space-y-1">
+                    <li>• "What are the common themes across all transcripts?"</li>
+                    <li>• "How do the viewpoints differ between interviews?"</li>
+                    <li>• "What consensus points can you identify?"</li>
+                    <li>• "Summarize the key insights from this project"</li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -394,6 +452,15 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Project Chat Modal */}
+      {currentProject && (
+        <ProjectChatModal
+          isOpen={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          project={currentProject}
+        />
       )}
     </div>
   );

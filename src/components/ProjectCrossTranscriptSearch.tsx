@@ -36,7 +36,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
   const allSpeakers = useMemo(() => {
     const speakers = new Set<string>();
     transcripts.forEach(transcript => {
-      if (transcript.speakers) {
+      if (transcript.speakers && Array.isArray(transcript.speakers)) {
         transcript.speakers.forEach(speaker => {
           const speakerName = typeof speaker === 'string' ? speaker : speaker.name || speaker.id;
           if (speakerName) speakers.add(speakerName);
