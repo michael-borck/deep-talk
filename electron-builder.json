@@ -5,6 +5,8 @@
     "output": "release"
   },
   "publish": null,
+  "npmRebuild": true,
+  "buildDependenciesFromSource": true,
   "files": [
     "dist/**/*",
     "public/**/*",
