@@ -64,7 +64,7 @@ export const AboutPage: React.FC = () => {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="text-4xl mb-4">🎤</div>
-        <h1 className="text-3xl font-bold text-gray-900">AudioScribe</h1>
+        <h1 className="text-3xl font-bold text-gray-900">DeepTalk</h1>
         <p className="text-lg text-gray-600 mt-2">Version 1.0.0</p>
         <p className="text-gray-500 mt-1">AI-Powered Transcription & Analysis</p>
       </div>

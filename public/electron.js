@@ -622,7 +622,7 @@ function createMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'About AudioScribe',
+          label: 'About DeepTalk',
           click: () => {
             mainWindow.webContents.send('menu-action', 'show-about');
           }

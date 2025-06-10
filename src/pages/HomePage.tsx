@@ -43,7 +43,7 @@ export const HomePage: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">
-            Welcome to AudioScribe 👋
+            Welcome to DeepTalk 👋
           </h1>
           <p className="text-gray-600 mt-1">Your recent activity and quick access</p>
         </div>

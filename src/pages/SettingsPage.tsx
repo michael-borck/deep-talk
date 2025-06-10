@@ -220,7 +220,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleBackupNow = async () => {
     const result = await window.electronAPI.dialog.saveFile({
-      defaultPath: `audioscribe-backup-${new Date().toISOString().split('T')[0]}.db`,
+      defaultPath: `deeptalk-backup-${new Date().toISOString().split('T')[0]}.db`,
       filters: [{ name: 'Database', extensions: ['db'] }]
     });
     
@@ -1139,7 +1139,7 @@ export const SettingsPage: React.FC = () => {
                 Privacy
               </h3>
               <p className="text-sm text-gray-600">
-                AudioScribe stores all data locally on your computer. No data is sent to external services
+                DeepTalk stores all data locally on your computer. No data is sent to external services
                 except for transcription and analysis processing through your configured services.
               </p>
             </div>

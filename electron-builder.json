@@ -1,6 +1,6 @@
 {
-  "appId": "com.yourinstitution.audioscribe",
-  "productName": "AudioScribe",
+  "appId": "com.yourinstitution.deeptalk",
+  "productName": "DeepTalk",
   "directories": {
     "output": "release"
   },

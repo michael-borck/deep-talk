@@ -15,7 +15,7 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
         {/* Header */}
         <div className="border-b border-gray-200 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">About AudioScribe</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">About DeepTalk</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -32,9 +32,9 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
           {/* App Info */}
           <div className="text-center">
             <div className="text-6xl mb-4">🎤</div>
-            <h3 className="text-3xl font-bold text-gray-900">AudioScribe</h3>
+            <h3 className="text-3xl font-bold text-gray-900">DeepTalk</h3>
             <p className="text-xl text-gray-600 mt-2">Version 1.0.0</p>
-            <p className="text-gray-500 mt-1">AI-Powered Transcription & Analysis</p>
+            <p className="text-gray-500 mt-1">AI-Powered Conversation Analysis & Insight Discovery</p>
           </div>
 
           {/* System Info */}
@@ -73,12 +73,12 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
           <div className="bg-blue-50 rounded-lg p-4">
             <h4 className="font-semibold text-gray-900 mb-3">Key Features</h4>
             <ul className="space-y-1 text-sm text-gray-700">
-              <li>• Local audio/video transcription with Whisper models</li>
-              <li>• AI-powered transcript analysis and summarization</li>
-              <li>• Smart transcript correction and enhancement</li>
-              <li>• Interactive chat with your transcripts using RAG</li>
-              <li>• Project-based organization</li>
-              <li>• All data stored locally for privacy</li>
+              <li>• Process audio, video, podcasts, and conversations</li>
+              <li>• AI-powered analysis with theme discovery and pattern recognition</li>
+              <li>• Cross-transcript intelligence and consensus analysis</li>
+              <li>• Interactive chat with semantic search using local RAG</li>
+              <li>• Project-based workflow for research and content analysis</li>
+              <li>• Complete privacy with local processing and storage</li>
             </ul>
           </div>
 
@@ -101,14 +101,14 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
               <span>Licenses</span>
             </button>
             <button
-              onClick={() => window.open('https://github.com/michael-borck/audio-scribe', '_blank')}
+              onClick={() => window.open('https://github.com/michael-borck/deep-talk', '_blank')}
               className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
               <span>🐙</span>
               <span>GitHub</span>
             </button>
             <button
-              onClick={() => window.open('https://github.com/michael-borck/audio-scribe/issues', '_blank')}
+              onClick={() => window.open('https://github.com/michael-borck/deep-talk/issues', '_blank')}
               className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
               <span>🐛</span>
@@ -128,10 +128,10 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
           {/* Footer */}
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-gray-600 text-sm">
-              © 2024 AudioScribe Project
+              © 2024 DeepTalk Project
             </p>
             <p className="text-gray-500 text-xs mt-1">
-              Built with ❤️ for Academic Research
+              Built with ❤️ for Conversation Analysis & Research
             </p>
             <div className="mt-3 text-xs text-gray-500">
               <button className="hover:text-blue-600 transition-colors">Privacy Policy</button>

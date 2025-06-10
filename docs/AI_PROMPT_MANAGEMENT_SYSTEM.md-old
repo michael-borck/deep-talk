@@ -1,0 +1,2996 @@
+# AI Prompt Management System
+
+## Table of Contents
+1. [Overview](#overview)
+2. [Core Architecture](#core-architecture)
+3. [Template Engine & Variable System](#template-engine--variable-system)
+4. [Category & Type Organization](#category--type-organization)
+5. [Default vs Custom Prompt Management](#default-vs-custom-prompt-management)
+6. [Model Compatibility Framework](#model-compatibility-framework)
+7. [System Usage Tracking](#system-usage-tracking)
+8. [Service Integration](#service-integration)
+9. [Configuration Workflows](#configuration-workflows)
+10. [Database Operations](#database-operations)
+11. [Error Handling & Fallbacks](#error-handling--fallbacks)
+12. [API Reference](#api-reference)
+13. [Implementation Patterns](#implementation-patterns)
+14. [Best Practices](#best-practices)
+
+## Overview
+
+Audio-Scribe implements a sophisticated AI Prompt Management System that enables dynamic customization of AI interactions across different processing stages. The system provides template-based prompts with variable substitution, category-based organization, model compatibility awareness, and robust fallback mechanisms.
+
+### Key Features
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI Prompt Management System                  │
+├─────────────────────────────────────────────────────────────────┤
+│  Template Engine    │  Category System    │  Model Compatibility│
+│  ┌─────────────┐   │  ┌─────────────┐   │  ┌─────────────┐    │
+│  │ Variable    │   │  │ Chat        │   │  │ Universal   │    │
+│  │ Substitution│   │  │ Analysis    │   │  │ Model-      │    │
+│  │ Validation  │   │  │ Speaker     │   │  │ Specific    │    │
+│  │ Processing  │   │  │ Validation  │   │  │ Warnings    │    │
+│  └─────────────┘   │  └─────────────┘   │  └─────────────┘    │
+├─────────────────────────────────────────────────────────────────┤
+│  Default Management │  System Integration │  Export/Import     │
+│  ┌─────────────┐   │  ┌─────────────┐   │  ┌─────────────┐    │
+│  │ Built-in    │   │  │ File        │   │  │ Backup      │    │
+│  │ Prompts     │   │  │ Processor   │   │  │ Sharing     │    │
+│  │ Reset       │   │  │ Chat        │   │  │ Migration   │    │
+│  │ Capability  │   │  │ Service     │   │  │ Templates   │    │
+│  └─────────────┘   │  └─────────────┘   │  └─────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Benefits for AI Applications
+
+- **Flexibility**: Dynamic prompt customization without code changes
+- **Consistency**: Centralized prompt management across application features
+- **Scalability**: Category-based organization supports growing AI capabilities
+- **Reliability**: Multi-layer fallback system ensures application stability
+- **User Control**: Interface for customizing AI behavior while preserving system integrity
+
+## Core Architecture
+
+### Service-Oriented Design
+
+The system follows a clean service-oriented architecture with clear separation of concerns:
+
+```typescript
+┌──────────────────┐    ┌─────────────────────┐    ┌─────────────────┐
+│   PromptService  │    │  PromptsSettings    │    │  PromptEditor   │
+│                  │    │                     │    │                 │
+│ • Template Eng.  │◄──►│ • Category Nav      │◄──►│ • Variable Ed.  │
+│ • CRUD Ops       │    │ • Search/Filter     │    │ • Token Count   │
+│ • Fallbacks      │    │ • Import/Export     │    │ • Reset Feature │
+│ • Integration    │    │ • Usage Indicators  │    │ • Validation    │
+└──────────────────┘    └─────────────────────┘    └─────────────────┘
+        │                          │                          │
+        └──────────────────────────┼──────────────────────────┘
+                                   │
+                    ┌──────────────▼──────────────┐
+                    │        Database Layer       │
+                    │                             │
+                    │ • SQLite Storage            │
+                    │ • Indexed Queries           │
+                    │ • IPC Communication         │
+                    │ • JSON Metadata             │
+                    └─────────────────────────────┘
+```
+
+### Core Components
+
+#### 1. PromptService (`src/services/promptService.ts`)
+
+**Purpose**: Central business logic for prompt operations and template processing
+
+```typescript
+export class PromptService {
+  private static instance: PromptService;
+  
+  // Primary API for other services
+  async getProcessedPrompt(
+    category: string, 
+    type: string, 
+    variables: Record<string, string>
+  ): Promise<string>
+  
+  // CRUD operations
+  async getPrompt(category: string, type: string): Promise<AIPrompt | null>
+  async savePrompt(prompt: AIPrompt): Promise<void>
+  async deletePrompt(id: string): Promise<void>
+  
+  // Template processing
+  replaceVariables(promptText: string, variables: Record<string, string>): string
+  extractVariables(promptText: string): string[]
+  
+  // Default management
+  getDefaultPrompt(category: string, type: string): AIPrompt | null
+  getDefaultPrompts(): Record<string, Record<string, AIPrompt>>
+  
+  // Utility methods
+  validatePrompt(prompt: AIPrompt): ValidationResult
+  estimateTokens(text: string): number
+}
+```
+
+**Key Features**:
+- Singleton pattern for state consistency
+- Template engine with variable substitution
+- Fallback to defaults when custom prompts fail
+- Integration with database via Electron IPC
+
+#### 2. PromptsSettings (`src/components/PromptsSettings.tsx`)
+
+**Purpose**: Main configuration interface for prompt management
+
+```typescript
+interface PromptsSettingsProps {
+  // No props - self-contained configuration component
+}
+
+interface PromptsSettingsState {
+  activeCategory: PromptCategory;
+  searchTerm: string;
+  prompts: Record<string, AIPrompt[]>;
+  loading: boolean;
+  showEditor: boolean;
+  selectedPrompt: AIPrompt | null;
+}
+```
+
+**Features**:
+- Category-based navigation (tabs for Chat, Analysis, Speaker, Validation)
+- Real-time search and filtering
+- System usage indicators (shows which prompts are actively used)
+- Import/Export functionality for backup and sharing
+- Responsive design with clear visual hierarchy
+
+#### 3. PromptEditor (`src/components/PromptEditor.tsx`)
+
+**Purpose**: Individual prompt editing interface with advanced features
+
+```typescript
+interface PromptEditorProps {
+  prompt: AIPrompt;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (prompt: AIPrompt) => void;
+}
+
+interface PromptEditorState {
+  promptText: string;
+  variables: string[];
+  tokenCount: number;
+  validationErrors: string[];
+  hasChanges: boolean;
+}
+```
+
+**Features**:
+- Variable extraction and highlighting (`{variable}` patterns)
+- Token counting with optimization hints
+- Model compatibility warnings
+- Reset to default functionality
+- Real-time validation
+
+### Database Schema
+
+```sql
+CREATE TABLE ai_prompts (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,                    -- 'chat', 'analysis', 'speaker', 'validation'
+  type TEXT NOT NULL,                        -- Specific prompt purpose
+  name TEXT NOT NULL,                        -- Human-readable name
+  description TEXT,                          -- Usage explanation
+  prompt_text TEXT NOT NULL,                 -- Template content
+  variables TEXT,                            -- JSON array of variables
+  model_compatibility TEXT DEFAULT 'all',    -- JSON array or 'all'
+  is_default BOOLEAN DEFAULT 0,             -- System vs user prompt
+  system_used BOOLEAN DEFAULT 0,            -- Active in processing pipeline
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(category, type)                     -- Prevent duplicates
+);
+
+-- Performance indexes
+CREATE INDEX idx_ai_prompts_category ON ai_prompts(category);
+CREATE INDEX idx_ai_prompts_type ON ai_prompts(type);
+CREATE INDEX idx_ai_prompts_category_type ON ai_prompts(category, type);
+CREATE INDEX idx_ai_prompts_system_used ON ai_prompts(system_used);
+```
+
+## Template Engine & Variable System
+
+### Variable Substitution Engine
+
+The template engine uses a simple but powerful variable substitution system:
+
+```typescript
+class TemplateEngine {
+  /**
+   * Replace template variables with actual values
+   * Variables follow the pattern: {variable_name}
+   */
+  replaceVariables(promptText: string, variables: Record<string, string>): string {
+    let result = promptText;
+    
+    for (const [key, value] of Object.entries(variables)) {
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
+      result = result.replace(regex, value || '');
+    }
+    
+    // Log any unreplaced variables for debugging
+    const remainingVars = this.extractVariables(result);
+    if (remainingVars.length > 0) {
+      console.warn('Unreplaced variables found:', remainingVars);
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Extract all variables from a prompt template
+   */
+  extractVariables(promptText: string): string[] {
+    const regex = /\{([^}]+)\}/g;
+    const variables: string[] = [];
+    let match;
+    
+    while ((match = regex.exec(promptText)) !== null) {
+      if (!variables.includes(match[1])) {
+        variables.push(match[1]);
+      }
+    }
+    
+    return variables;
+  }
+}
+```
+
+### Variable Types and Usage
+
+#### **Standard Variables**
+
+```typescript
+// Common variables across all prompts
+interface StandardVariables {
+  transcript: string;        // Full transcript text
+  title: string;            // Transcript title
+  context: string;          // Relevant chunks or excerpts
+  message: string;          // User question or input
+  options: string;          // Processing options
+  metadata: string;         // Transcript metadata
+}
+```
+
+#### **Context-Specific Variables**
+
+```typescript
+// Chat-specific variables
+interface ChatVariables extends StandardVariables {
+  conversation_history: string;  // Previous messages
+  memory_summary: string;        // Compacted conversation
+  user_name: string;            // User identifier
+}
+
+// Analysis-specific variables
+interface AnalysisVariables extends StandardVariables {
+  analysis_type: string;        // Type of analysis requested
+  previous_analysis: string;    // Prior analysis results
+  focus_areas: string;          // Specific areas to analyze
+}
+```
+
+### Template Examples
+
+#### **Basic Analysis Template**
+```typescript
+const basicAnalysisTemplate = `You are an AI assistant analyzing a transcript. Please provide a comprehensive analysis of the following content.
+
+Transcript Title: {title}
+Content: {transcript}
+
+Please provide your analysis in the following JSON format:
+{
+  "summary": "Brief summary of the main points",
+  "key_topics": ["topic1", "topic2", "topic3"],
+  "action_items": ["action1", "action2"],
+  "insights": ["insight1", "insight2"]
+}
+
+Focus on accuracy and relevance. Ensure all responses are based solely on the provided content.`;
+```
+
+#### **Chat Template with Context**
+```typescript
+const chatTemplate = `You are a helpful AI assistant that answers questions about audio transcripts. 
+
+Transcript: "{title}"
+Relevant Context: {context}
+
+Previous conversation summary: {memory_summary}
+
+User Question: {message}
+
+Please provide a helpful, accurate response based on the transcript content. If the question cannot be answered from the provided context, say so clearly.
+
+Response:`;
+```
+
+#### **Speaker Detection Template**
+```typescript
+const speakerDetectionTemplate = `Analyze this transcript to detect the number of distinct speakers.
+
+Transcript: {transcript}
+
+Consider:
+- Different speaking patterns and vocabulary
+- Conversation flow and turn-taking
+- Voice or tone indicators in the text
+- Context clues about participants
+
+Provide your analysis as a JSON object:
+{
+  "speaker_count": number,
+  "confidence": "high|medium|low",
+  "reasoning": "explanation of how you determined the count"
+}`;
+```
+
+### Variable Validation
+
+```typescript
+interface VariableValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  requiredVariables: string[];
+  providedVariables: string[];
+  missingVariables: string[];
+}
+
+class PromptValidator {
+  validatePromptVariables(
+    promptText: string, 
+    providedVariables: Record<string, string>
+  ): VariableValidation {
+    const requiredVariables = this.extractVariables(promptText);
+    const providedKeys = Object.keys(providedVariables);
+    const missingVariables = requiredVariables.filter(
+      variable => !providedKeys.includes(variable)
+    );
+    
+    return {
+      isValid: missingVariables.length === 0,
+      errors: missingVariables.map(v => `Missing required variable: {${v}}`),
+      warnings: this.checkVariableUsage(promptText, providedVariables),
+      requiredVariables,
+      providedVariables: providedKeys,
+      missingVariables
+    };
+  }
+  
+  private checkVariableUsage(
+    promptText: string, 
+    variables: Record<string, string>
+  ): string[] {
+    const warnings: string[] = [];
+    
+    // Check for very long variable values
+    Object.entries(variables).forEach(([key, value]) => {
+      if (value.length > 10000) {
+        warnings.push(`Variable {${key}} is very long (${value.length} chars) - consider truncation`);
+      }
+    });
+    
+    // Check for empty variables
+    Object.entries(variables).forEach(([key, value]) => {
+      if (!value.trim()) {
+        warnings.push(`Variable {${key}} is empty or whitespace only`);
+      }
+    });
+    
+    return warnings;
+  }
+}
+```
+
+## Category & Type Organization
+
+### Four-Tier Classification System
+
+The prompt system organizes prompts using a hierarchical category and type structure:
+
+#### **1. Chat Category (`'chat'`)**
+
+Used for conversational AI interactions and memory management.
+
+```typescript
+const chatPrompts = {
+  transcript_chat: {
+    name: "Transcript Chat",
+    description: "Primary prompt for conversing about transcript content",
+    systemUsed: true,
+    variables: ['title', 'context', 'memory_summary', 'message'],
+    modelCompatibility: 'all'
+  },
+  
+  conversation_compaction: {
+    name: "Conversation Memory Compaction", 
+    description: "Summarizes long conversations for memory management",
+    systemUsed: true,
+    variables: ['conversation_history', 'exchange_count'],
+    modelCompatibility: 'all'
+  }
+};
+```
+
+#### **2. Analysis Category (`'analysis'`)**
+
+Covers all AI-powered content analysis operations.
+
+```typescript
+const analysisPrompts = {
+  basic_analysis: {
+    name: "Basic Analysis",
+    description: "Extract summary, topics, and action items",
+    systemUsed: true,
+    variables: ['transcript', 'title'],
+    modelCompatibility: 'all'
+  },
+  
+  sentiment_analysis: {
+    name: "Sentiment Analysis",
+    description: "Analyze emotional tone and sentiment",
+    systemUsed: true,
+    variables: ['transcript', 'title'],
+    modelCompatibility: 'all'
+  },
+  
+  emotion_analysis: {
+    name: "Emotion Analysis", 
+    description: "Detailed emotion detection and scoring",
+    systemUsed: true,
+    variables: ['transcript', 'title'],
+    modelCompatibility: ['llama3', 'gpt-4', 'claude'] // Requires advanced models
+  },
+  
+  research_analysis: {
+    name: "Research Analysis",
+    description: "Extract quotes, themes, Q&A pairs for research purposes", 
+    systemUsed: true,
+    variables: ['transcript', 'title', 'focus_areas'],
+    modelCompatibility: ['llama3', 'gpt-4', 'claude'] // Complex analysis
+  }
+};
+```
+
+#### **3. Speaker Category (`'speaker'`)**
+
+Handles speaker detection and segmentation tasks.
+
+```typescript
+const speakerPrompts = {
+  speaker_count: {
+    name: "Speaker Count Detection",
+    description: "Determine the number of distinct speakers",
+    systemUsed: true,
+    variables: ['transcript'],
+    modelCompatibility: 'all'
+  },
+  
+  speaker_tagging: {
+    name: "Speaker Tagging",
+    description: "Assign text segments to specific speakers",
+    systemUsed: true,
+    variables: ['transcript', 'speaker_count', 'speaker_names'],
+    modelCompatibility: ['llama3', 'gpt-4', 'claude'] // Requires reasoning
+  }
+};
+```
+
+#### **4. Validation Category (`'validation'`)**
+
+Used for transcript correction and quality improvement.
+
+```typescript
+const validationPrompts = {
+  transcript_validation: {
+    name: "Transcript Validation",
+    description: "Correct grammar, spelling, and punctuation errors",
+    systemUsed: true,
+    variables: ['transcript', 'validation_options'],
+    modelCompatibility: 'all'
+  }
+};
+```
+
+### Hierarchical Retrieval Logic
+
+```typescript
+class PromptHierarchy {
+  async getPrompt(category: string, type: string): Promise<AIPrompt | null> {
+    // 1. Try user customization first
+    const userPrompt = await this.getUserPrompt(category, type);
+    if (userPrompt) {
+      return userPrompt;
+    }
+    
+    // 2. Fall back to system default
+    const defaultPrompt = this.getDefaultPrompt(category, type);
+    if (defaultPrompt) {
+      return defaultPrompt;
+    }
+    
+    // 3. Try category-level fallback
+    const categoryFallback = this.getCategoryFallback(category);
+    if (categoryFallback) {
+      return categoryFallback;
+    }
+    
+    // 4. Ultimate fallback
+    return this.getUltimateFallback();
+  }
+  
+  private async getUserPrompt(category: string, type: string): Promise<AIPrompt | null> {
+    try {
+      return await window.electronAPI.aiPrompts.get({ category, type });
+    } catch (error) {
+      console.warn(`Failed to retrieve user prompt ${category}:${type}`, error);
+      return null;
+    }
+  }
+  
+  private getDefaultPrompt(category: string, type: string): AIPrompt | null {
+    return this.defaultPrompts[category]?.[type] || null;
+  }
+  
+  private getCategoryFallback(category: string): AIPrompt | null {
+    // Each category has a generic fallback prompt
+    const fallbacks = {
+      chat: this.createGenericChatPrompt(),
+      analysis: this.createGenericAnalysisPrompt(),
+      speaker: this.createGenericSpeakerPrompt(),
+      validation: this.createGenericValidationPrompt()
+    };
+    
+    return fallbacks[category] || null;
+  }
+  
+  private getUltimateFallback(): AIPrompt {
+    return {
+      id: 'ultimate_fallback',
+      category: 'generic',
+      type: 'fallback',
+      name: 'Emergency Fallback',
+      promptText: 'Please process the following content: {transcript}',
+      variables: ['transcript'],
+      modelCompatibility: 'all',
+      systemUsed: false
+    };
+  }
+}
+```
+
+## Default vs Custom Prompt Management
+
+### Default Prompt System
+
+#### **Built-in Prompts**
+
+Default prompts are embedded directly in the service code to ensure system functionality even with empty databases:
+
+```typescript
+class DefaultPromptRegistry {
+  private static defaultPrompts: Record<string, Record<string, AIPrompt>> = {
+    chat: {
+      transcript_chat: {
+        id: 'default_transcript_chat',
+        category: 'chat',
+        type: 'transcript_chat',
+        name: 'Transcript Chat',
+        description: 'Default prompt for chatting about transcript content',
+        promptText: `You are a helpful AI assistant that answers questions about audio transcripts.
+
+Transcript: "{title}"
+Relevant Context: {context}
+
+Previous conversation: {memory_summary}
+
+User Question: {message}
+
+Please provide a helpful, accurate response based on the transcript content. If the question cannot be answered from the provided context, say so clearly.`,
+        variables: ['title', 'context', 'memory_summary', 'message'],
+        modelCompatibility: 'all',
+        isDefault: true,
+        systemUsed: true,
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z'
+      }
+      // ... more default prompts
+    },
+    
+    analysis: {
+      basic_analysis: {
+        id: 'default_basic_analysis',
+        category: 'analysis', 
+        type: 'basic_analysis',
+        name: 'Basic Analysis',
+        description: 'Extract summary, key topics, and action items',
+        promptText: `Please analyze this transcript and provide a comprehensive summary.
+
+Transcript Title: {title}
+Content: {transcript}
+
+Please provide your analysis in the following JSON format:
+{
+  "summary": "A concise summary of the main points discussed",
+  "key_topics": ["topic1", "topic2", "topic3"],
+  "action_items": ["action1", "action2", "action3"],
+  "key_insights": ["insight1", "insight2"]
+}
+
+Focus on accuracy and ensure all responses are based solely on the provided content.`,
+        variables: ['title', 'transcript'],
+        modelCompatibility: 'all',
+        isDefault: true,
+        systemUsed: true,
+        created_at: '2024-01-01T00:00:00.000Z',
+        updated_at: '2024-01-01T00:00:00.000Z'
+      }
+      // ... more analysis prompts  
+    }
+    // ... other categories
+  };
+  
+  static getDefault(category: string, type: string): AIPrompt | null {
+    return this.defaultPrompts[category]?.[type] || null;
+  }
+  
+  static getAllDefaults(): Record<string, Record<string, AIPrompt>> {
+    return JSON.parse(JSON.stringify(this.defaultPrompts)); // Deep copy
+  }
+}
+```
+
+#### **System Usage Indicators**
+
+```typescript
+interface SystemUsageTracking {
+  systemUsed: boolean;           // Is this prompt actively used by the system?
+  lastUsed?: string;            // When was it last used?
+  usageCount?: number;          // How many times has it been used?
+  criticalToSystem: boolean;    // Is the system dependent on this prompt?
+}
+
+// Visual indicators in UI
+const getSystemUsageIndicator = (prompt: AIPrompt) => {
+  if (prompt.systemUsed) {
+    return {
+      badge: '🔧 System Used',
+      color: 'blue',
+      tooltip: 'This prompt is actively used by the system for processing'
+    };
+  }
+  
+  return {
+    badge: '📋 Available',
+    color: 'gray', 
+    tooltip: 'This prompt is available for manual use'
+  };
+};
+```
+
+### Customization Workflow
+
+#### **1. Discovery and Browsing**
+
+```typescript
+// Users browse prompts with full context
+interface PromptDisplayInfo {
+  prompt: AIPrompt;
+  defaultVersion?: AIPrompt;    // Show comparison with default
+  usageStats: {
+    isSystemUsed: boolean;
+    lastModified?: string;
+    isCustomized: boolean;
+  };
+  validationStatus: {
+    hasErrors: boolean;
+    warnings: string[];
+    tokenCount: number;
+  };
+}
+```
+
+#### **2. Editing Interface**
+
+```typescript
+class PromptEditor {
+  state = {
+    promptText: '',
+    originalPrompt: null,
+    hasChanges: false,
+    variables: [],
+    validationErrors: [],
+    tokenCount: 0
+  };
+  
+  handlePromptTextChange = (newText: string) => {
+    this.setState({
+      promptText: newText,
+      hasChanges: newText !== this.state.originalPrompt?.promptText,
+      variables: this.extractVariables(newText),
+      validationErrors: this.validatePrompt(newText),
+      tokenCount: this.estimateTokens(newText)
+    });
+  };
+  
+  handleSave = async () => {
+    if (this.state.validationErrors.length > 0) {
+      throw new Error('Cannot save prompt with validation errors');
+    }
+    
+    const updatedPrompt = {
+      ...this.state.originalPrompt,
+      promptText: this.state.promptText,
+      variables: JSON.stringify(this.state.variables),
+      userModified: true,
+      updated_at: new Date().toISOString()
+    };
+    
+    await promptService.savePrompt(updatedPrompt);
+  };
+  
+  handleReset = async () => {
+    const defaultPrompt = promptService.getDefaultPrompt(
+      this.state.originalPrompt.category,
+      this.state.originalPrompt.type
+    );
+    
+    if (defaultPrompt) {
+      await promptService.resetToDefault(
+        this.state.originalPrompt.category,
+        this.state.originalPrompt.type
+      );
+      this.loadPrompt(defaultPrompt);
+    }
+  };
+}
+```
+
+#### **3. Version Management**
+
+```typescript
+interface PromptVersion {
+  id: string;
+  promptId: string;
+  version: number;
+  promptText: string;
+  changedBy: 'user' | 'system' | 'import';
+  changeReason: string;
+  created_at: string;
+}
+
+class PromptVersioning {
+  async savePromptWithVersion(prompt: AIPrompt, changeReason: string): Promise<void> {
+    // Create version record
+    const version: PromptVersion = {
+      id: generateId(),
+      promptId: prompt.id,
+      version: await this.getNextVersion(prompt.id),
+      promptText: prompt.promptText,
+      changedBy: 'user',
+      changeReason,
+      created_at: new Date().toISOString()
+    };
+    
+    // Save both prompt and version
+    await Promise.all([
+      this.savePrompt(prompt),
+      this.saveVersion(version)
+    ]);
+  }
+  
+  async getPromptHistory(promptId: string): Promise<PromptVersion[]> {
+    return await window.electronAPI.database.all(
+      'SELECT * FROM prompt_versions WHERE prompt_id = ? ORDER BY version DESC',
+      [promptId]
+    );
+  }
+  
+  async revertToVersion(promptId: string, version: number): Promise<void> {
+    const targetVersion = await this.getVersion(promptId, version);
+    if (!targetVersion) {
+      throw new Error(`Version ${version} not found for prompt ${promptId}`);
+    }
+    
+    const currentPrompt = await this.getPrompt(promptId);
+    const revertedPrompt = {
+      ...currentPrompt,
+      promptText: targetVersion.promptText,
+      updated_at: new Date().toISOString()
+    };
+    
+    await this.savePromptWithVersion(revertedPrompt, `Reverted to version ${version}`);
+  }
+}
+```
+
+## Model Compatibility Framework
+
+### Compatibility Classification
+
+The system categorizes prompts based on model requirements:
+
+```typescript
+interface ModelCompatibility {
+  // Universal compatibility - works with any model
+  universal: 'all';
+  
+  // Specific model support
+  specific: string[];  // e.g., ['llama3', 'gpt-4', 'claude']
+  
+  // Minimum requirements  
+  requirements: {
+    minContextLength?: number;      // Minimum context window
+    capabilities?: ModelCapability[];  // Required capabilities
+    modelSize?: 'small' | 'medium' | 'large';
+  };
+}
+
+enum ModelCapability {
+  REASONING = 'reasoning',           // Complex logical reasoning
+  JSON_OUTPUT = 'json_output',       // Structured JSON responses
+  LONG_CONTEXT = 'long_context',     // Extended context handling
+  CONVERSATION = 'conversation',     // Multi-turn conversations
+  ANALYSIS = 'analysis'              // Content analysis tasks
+}
+```
+
+### Model-Specific Optimizations
+
+```typescript
+class ModelCompatibilityManager {
+  private modelProfiles = {
+    'llama3': {
+      contextLength: 8192,
+      capabilities: [
+        ModelCapability.REASONING,
+        ModelCapability.JSON_OUTPUT,
+        ModelCapability.CONVERSATION,
+        ModelCapability.ANALYSIS
+      ],
+      size: 'large',
+      strengths: ['reasoning', 'conversation'],
+      limitations: ['context_length']
+    },
+    
+    'llama2': {
+      contextLength: 4096,
+      capabilities: [
+        ModelCapability.CONVERSATION,
+        ModelCapability.ANALYSIS
+      ],
+      size: 'medium',
+      strengths: ['conversation'],
+      limitations: ['reasoning', 'json_output', 'context_length']
+    },
+    
+    'gpt-4': {
+      contextLength: 32768,
+      capabilities: Object.values(ModelCapability),
+      size: 'large',
+      strengths: ['reasoning', 'json_output', 'long_context'],
+      limitations: []
+    }
+  };
+  
+  validatePromptCompatibility(
+    prompt: AIPrompt, 
+    targetModel: string
+  ): CompatibilityResult {
+    const modelProfile = this.modelProfiles[targetModel];
+    if (!modelProfile) {
+      return {
+        compatible: false,
+        warnings: [`Unknown model: ${targetModel}`],
+        recommendations: ['Use a known model or set compatibility to "all"']
+      };
+    }
+    
+    // Check if prompt is compatible
+    if (prompt.modelCompatibility === 'all') {
+      return { compatible: true, warnings: [], recommendations: [] };
+    }
+    
+    if (Array.isArray(prompt.modelCompatibility)) {
+      const isSupported = prompt.modelCompatibility.includes(targetModel);
+      if (!isSupported) {
+        return {
+          compatible: false,
+          warnings: [`Prompt not optimized for ${targetModel}`],
+          recommendations: [
+            'Consider using a compatible model',
+            'Test prompt performance carefully',
+            'Modify prompt for better compatibility'
+          ]
+        };
+      }
+    }
+    
+    // Check specific requirements
+    const requirements = prompt.requirements || {};
+    const warnings: string[] = [];
+    const recommendations: string[] = [];
+    
+    if (requirements.minContextLength && 
+        modelProfile.contextLength < requirements.minContextLength) {
+      warnings.push(
+        `Model context length (${modelProfile.contextLength}) may be insufficient (requires ${requirements.minContextLength})`
+      );
+      recommendations.push('Consider truncating prompt or using a larger model');
+    }
+    
+    if (requirements.capabilities) {
+      const missingCapabilities = requirements.capabilities.filter(
+        cap => !modelProfile.capabilities.includes(cap)
+      );
+      
+      if (missingCapabilities.length > 0) {
+        warnings.push(`Model may lack required capabilities: ${missingCapabilities.join(', ')}`);
+        recommendations.push('Test prompt carefully or use a more capable model');
+      }
+    }
+    
+    return {
+      compatible: warnings.length === 0,
+      warnings,
+      recommendations
+    };
+  }
+  
+  suggestOptimizations(prompt: AIPrompt, targetModel: string): OptimizationSuggestion[] {
+    const modelProfile = this.modelProfiles[targetModel];
+    const suggestions: OptimizationSuggestion[] = [];
+    
+    // Context length optimization
+    const estimatedTokens = this.estimateTokens(prompt.promptText);
+    if (estimatedTokens > modelProfile.contextLength * 0.8) {
+      suggestions.push({
+        type: 'context_optimization',
+        description: 'Prompt may be too long for model context window',
+        suggestion: 'Consider shortening the prompt or splitting into multiple requests',
+        priority: 'high'
+      });
+    }
+    
+    // Model-specific optimizations
+    if (modelProfile.limitations.includes('json_output') && 
+        prompt.promptText.includes('JSON')) {
+      suggestions.push({
+        type: 'output_format',
+        description: 'Model may struggle with JSON output format',
+        suggestion: 'Consider using plain text output with clear structure',
+        priority: 'medium'
+      });
+    }
+    
+    if (modelProfile.limitations.includes('reasoning') && 
+        this.requiresComplexReasoning(prompt.promptText)) {
+      suggestions.push({
+        type: 'complexity_reduction',
+        description: 'Prompt requires complex reasoning that may challenge this model',
+        suggestion: 'Break down the task into simpler steps or use explicit instructions',
+        priority: 'high'
+      });
+    }
+    
+    return suggestions;
+  }
+}
+```
+
+### UI Integration
+
+```typescript
+// Compatibility warnings in the UI
+const CompatibilityIndicator: React.FC<{
+  prompt: AIPrompt;
+  currentModel: string;
+}> = ({ prompt, currentModel }) => {
+  const compatibility = useCompatibilityCheck(prompt, currentModel);
+  
+  if (compatibility.compatible) {
+    return (
+      <div className="flex items-center text-green-600">
+        <CheckIcon className="w-4 h-4 mr-1" />
+        Compatible with {currentModel}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="border-l-4 border-yellow-400 bg-yellow-50 p-4 rounded">
+      <div className="flex items-center text-yellow-800 mb-2">
+        <WarningIcon className="w-4 h-4 mr-1" />
+        Compatibility Warning
+      </div>
+      
+      <ul className="text-sm text-yellow-700 space-y-1">
+        {compatibility.warnings.map((warning, index) => (
+          <li key={index}>• {warning}</li>
+        ))}
+      </ul>
+      
+      {compatibility.recommendations.length > 0 && (
+        <div className="mt-3">
+          <div className="text-sm font-medium text-yellow-800 mb-1">
+            Recommendations:
+          </div>
+          <ul className="text-sm text-yellow-700 space-y-1">
+            {compatibility.recommendations.map((rec, index) => (
+              <li key={index}>• {rec}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+## System Usage Tracking
+
+### Usage Classification System
+
+The system tracks how prompts are used throughout the application:
+
+```typescript
+interface SystemUsageMetadata {
+  systemUsed: boolean;              // Actively used by system processes
+  criticalToSystem: boolean;        // System depends on this prompt
+  usageFrequency: 'high' | 'medium' | 'low';
+  lastUsed?: string;               // Timestamp of last usage
+  usageCount: number;              // Total usage count
+  usageContexts: UsageContext[];   // Where/how it's used
+}
+
+interface UsageContext {
+  service: string;                 // Service that uses this prompt
+  method: string;                  // Specific method or function
+  frequency: number;               // Usage frequency in this context
+  essential: boolean;              // Is it essential for this context?
+}
+```
+
+### Integration Points Tracking
+
+```typescript
+class SystemUsageTracker {
+  private usageMap = new Map<string, UsageMetadata>();
+  
+  // Track usage when prompts are retrieved
+  async trackPromptUsage(
+    category: string, 
+    type: string, 
+    context: UsageContext
+  ): Promise<void> {
+    const key = `${category}:${type}`;
+    const existing = this.usageMap.get(key) || {
+      usageCount: 0,
+      contexts: [],
+      lastUsed: null
+    };
+    
+    existing.usageCount += 1;
+    existing.lastUsed = new Date().toISOString();
+    
+    // Update or add context
+    const contextIndex = existing.contexts.findIndex(
+      c => c.service === context.service && c.method === context.method
+    );
+    
+    if (contextIndex >= 0) {
+      existing.contexts[contextIndex].frequency += 1;
+    } else {
+      existing.contexts.push({ ...context, frequency: 1 });
+    }
+    
+    this.usageMap.set(key, existing);
+    
+    // Periodically persist to database
+    if (existing.usageCount % 10 === 0) {
+      await this.persistUsageData(key, existing);
+    }
+  }
+  
+  // Get usage statistics for UI display
+  getUsageStats(category: string, type: string): UsageStatistics {
+    const key = `${category}:${type}`;
+    const usage = this.usageMap.get(key);
+    
+    if (!usage) {
+      return {
+        isSystemUsed: false,
+        usageFrequency: 'none',
+        lastUsed: null,
+        primaryContexts: []
+      };
+    }
+    
+    const frequency = this.calculateFrequency(usage.usageCount);
+    const primaryContexts = usage.contexts
+      .sort((a, b) => b.frequency - a.frequency)
+      .slice(0, 3);
+    
+    return {
+      isSystemUsed: usage.usageCount > 0,
+      usageFrequency: frequency,
+      lastUsed: usage.lastUsed,
+      primaryContexts
+    };
+  }
+  
+  private calculateFrequency(count: number): 'high' | 'medium' | 'low' | 'none' {
+    if (count === 0) return 'none';
+    if (count > 100) return 'high';
+    if (count > 10) return 'medium';
+    return 'low';
+  }
+}
+```
+
+### Critical System Prompts
+
+```typescript
+// Prompts essential for system operation
+const CRITICAL_PROMPTS = {
+  'analysis:basic_analysis': {
+    description: 'Core analysis functionality',
+    failureImpact: 'Transcript processing will fail',
+    fallbackAvailable: true
+  },
+  
+  'chat:transcript_chat': {
+    description: 'Primary chat functionality',
+    failureImpact: 'Chat system will not work',
+    fallbackAvailable: true
+  },
+  
+  'validation:transcript_validation': {
+    description: 'Transcript quality improvement',
+    failureImpact: 'Validation stage will be skipped',
+    fallbackAvailable: false
+  }
+};
+
+class CriticalPromptManager {
+  validateCriticalPrompts(): ValidationReport {
+    const report: ValidationReport = {
+      allCriticalPromptsValid: true,
+      issues: [],
+      recommendations: []
+    };
+    
+    for (const [promptKey, metadata] of Object.entries(CRITICAL_PROMPTS)) {
+      const [category, type] = promptKey.split(':');
+      const prompt = promptService.getPrompt(category, type);
+      
+      if (!prompt) {
+        report.allCriticalPromptsValid = false;
+        report.issues.push({
+          promptKey,
+          severity: 'error',
+          message: `Critical prompt missing: ${metadata.description}`,
+          impact: metadata.failureImpact
+        });
+        
+        if (metadata.fallbackAvailable) {
+          report.recommendations.push(
+            `Reset ${promptKey} to default to restore functionality`
+          );
+        }
+      } else {
+        // Validate prompt integrity
+        const validation = this.validatePromptIntegrity(prompt);
+        if (!validation.isValid) {
+          report.allCriticalPromptsValid = false;
+          report.issues.push({
+            promptKey,
+            severity: 'warning',
+            message: `Critical prompt has issues: ${validation.errors.join(', ')}`,
+            impact: 'May cause processing failures'
+          });
+        }
+      }
+    }
+    
+    return report;
+  }
+  
+  async repairCriticalPrompts(): Promise<RepairResult> {
+    const repairActions: RepairAction[] = [];
+    
+    for (const [promptKey] of Object.entries(CRITICAL_PROMPTS)) {
+      const [category, type] = promptKey.split(':');
+      const prompt = await promptService.getPrompt(category, type);
+      
+      if (!prompt) {
+        // Restore from default
+        await promptService.resetToDefault(category, type);
+        repairActions.push({
+          promptKey,
+          action: 'restored_default',
+          success: true
+        });
+      }
+    }
+    
+    return {
+      repairActions,
+      allRepairsSuccessful: repairActions.every(a => a.success)
+    };
+  }
+}
+```
+
+## Service Integration
+
+### FileProcessor Integration
+
+The file processing pipeline heavily integrates with the prompt system for various analysis stages:
+
+```typescript
+class FileProcessor {
+  async performBasicAnalysis(transcript: Transcript): Promise<AnalysisResult> {
+    // Get analysis prompt with variables
+    const analysisPrompt = await promptService.getProcessedPrompt(
+      'analysis', 
+      'basic_analysis', 
+      {
+        transcript: transcript.full_text || transcript.validated_text,
+        title: transcript.title
+      }
+    );
+    
+    // Track usage
+    await systemUsageTracker.trackPromptUsage('analysis', 'basic_analysis', {
+      service: 'FileProcessor',
+      method: 'performBasicAnalysis',
+      essential: true
+    });
+    
+    try {
+      const response = await this.callAIService(analysisPrompt);
+      return this.parseAnalysisResponse(response);
+    } catch (error) {
+      // Fallback with simpler prompt
+      console.warn('Primary analysis failed, trying fallback:', error);
+      return await this.performFallbackAnalysis(transcript);
+    }
+  }
+  
+  async performSentimentAnalysis(transcript: Transcript): Promise<SentimentResult> {
+    const sentimentPrompt = await promptService.getProcessedPrompt(
+      'analysis',
+      'sentiment_analysis',
+      {
+        transcript: transcript.validated_text || transcript.full_text,
+        title: transcript.title
+      }
+    );
+    
+    const response = await this.callAIService(sentimentPrompt);
+    return this.parseSentimentResponse(response);
+  }
+  
+  async performValidation(
+    transcript: Transcript, 
+    options: ValidationOptions
+  ): Promise<ValidationResult> {
+    const validationPrompt = await promptService.getProcessedPrompt(
+      'validation',
+      'transcript_validation',
+      {
+        transcript: transcript.full_text,
+        validation_options: JSON.stringify(options)
+      }
+    );
+    
+    const response = await this.callAIService(validationPrompt);
+    return this.parseValidationResponse(response);
+  }
+  
+  private async performFallbackAnalysis(transcript: Transcript): Promise<AnalysisResult> {
+    // Use hard-coded minimal prompt as ultimate fallback
+    const fallbackPrompt = `Analyze this transcript and provide summary, topics, and action items in JSON format:
+
+${transcript.full_text}
+
+Response:`;
+    
+    const response = await this.callAIService(fallbackPrompt);
+    return this.parseAnalysisResponse(response);
+  }
+}
+```
+
+### ChatService Integration
+
+```typescript
+class ChatService {
+  async chatWithTranscript(
+    transcriptId: string,
+    conversationId: string,
+    userMessage: string,
+    conversationHistory: ChatMessage[]
+  ): Promise<ChatMessage> {
+    // Get transcript and build context
+    const transcript = await this.getTranscript(transcriptId);
+    const context = await this.buildContext(transcript, userMessage);
+    const memory = await this.getConversationMemory(conversationId);
+    
+    // Get chat prompt with full context
+    const chatPrompt = await promptService.getProcessedPrompt(
+      'chat',
+      'transcript_chat',
+      {
+        title: transcript.title,
+        context: context.relevantChunks,
+        memory_summary: memory?.compactedSummary || '',
+        message: userMessage
+      }
+    );
+    
+    // Track system usage
+    await systemUsageTracker.trackPromptUsage('chat', 'transcript_chat', {
+      service: 'ChatService',
+      method: 'chatWithTranscript',
+      essential: true
+    });
+    
+    const response = await this.callLLM(chatPrompt);
+    
+    return {
+      id: Date.now(),
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: response,
+      created_at: new Date().toISOString()
+    };
+  }
+  
+  async compactConversationMemory(
+    conversationId: string,
+    messages: ChatMessage[]
+  ): Promise<string> {
+    const compactionPrompt = await promptService.getProcessedPrompt(
+      'chat',
+      'conversation_compaction',
+      {
+        conversation_history: this.formatMessagesForCompaction(messages),
+        exchange_count: messages.length.toString()
+      }
+    );
+    
+    const summary = await this.callLLM(compactionPrompt);
+    return summary;
+  }
+}
+```
+
+### Dynamic Integration Registry
+
+```typescript
+class IntegrationRegistry {
+  private integrations: Map<string, ServiceIntegration> = new Map();
+  
+  registerService(integration: ServiceIntegration): void {
+    this.integrations.set(integration.serviceName, integration);
+  }
+  
+  async notifyPromptChange(category: string, type: string): Promise<void> {
+    const affectedServices = Array.from(this.integrations.values())
+      .filter(integration => 
+        integration.usedPrompts.some(p => 
+          p.category === category && p.type === type
+        )
+      );
+    
+    // Notify services about prompt changes
+    await Promise.all(
+      affectedServices.map(service => 
+        service.onPromptChanged?.(category, type)
+      )
+    );
+  }
+  
+  getPromptUsage(category: string, type: string): ServiceUsage[] {
+    const usage: ServiceUsage[] = [];
+    
+    for (const integration of this.integrations.values()) {
+      const promptUsage = integration.usedPrompts.find(p => 
+        p.category === category && p.type === type
+      );
+      
+      if (promptUsage) {
+        usage.push({
+          serviceName: integration.serviceName,
+          usage: promptUsage,
+          critical: integration.criticalPrompts?.includes(`${category}:${type}`) || false
+        });
+      }
+    }
+    
+    return usage;
+  }
+}
+
+interface ServiceIntegration {
+  serviceName: string;
+  usedPrompts: PromptUsageInfo[];
+  criticalPrompts?: string[];          // Prompts essential for service operation
+  onPromptChanged?: (category: string, type: string) => Promise<void>;
+}
+
+interface PromptUsageInfo {
+  category: string;
+  type: string;
+  method: string;                      // Method that uses this prompt
+  frequency: 'high' | 'medium' | 'low';
+  purpose: string;                     // Description of how it's used
+}
+```
+
+## Configuration Workflows
+
+### User Configuration Journey
+
+#### **1. Discovery and Navigation**
+
+```typescript
+// Main configuration interface
+const PromptsSettings: React.FC = () => {
+  const [activeCategory, setActiveCategory] = useState<PromptCategory>('chat');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [prompts, setPrompts] = useState<Record<string, AIPrompt[]>>({});
+  
+  const categories: PromptCategory[] = ['chat', 'analysis', 'speaker', 'validation'];
+  
+  const filteredPrompts = useMemo(() => {
+    const categoryPrompts = prompts[activeCategory] || [];
+    if (!searchTerm) return categoryPrompts;
+    
+    return categoryPrompts.filter(prompt =>
+      prompt.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      prompt.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [prompts, activeCategory, searchTerm]);
+  
+  return (
+    <div className="space-y-6">
+      {/* Category Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-8">
+          {categories.map(category => (
+            <button
+              key={category}
+              onClick={() => setActiveCategory(category)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeCategory === category
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </button>
+          ))}
+        </nav>
+      </div>
+      
+      {/* Search and Filter */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search prompts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
+        </div>
+        <PromptImportExport category={activeCategory} />
+      </div>
+      
+      {/* Prompts List */}
+      <div className="space-y-4">
+        {filteredPrompts.map(prompt => (
+          <PromptCard 
+            key={prompt.id} 
+            prompt={prompt}
+            onEdit={() => openEditor(prompt)}
+            onReset={() => resetPrompt(prompt)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+#### **2. Individual Prompt Management**
+
+```typescript
+const PromptCard: React.FC<{
+  prompt: AIPrompt;
+  onEdit: () => void;
+  onReset: () => void;
+}> = ({ prompt, onEdit, onReset }) => {
+  const usageStats = usePromptUsage(prompt.category, prompt.type);
+  const compatibility = useModelCompatibility(prompt);
+  
+  return (
+    <div className="border border-gray-200 rounded-lg p-6">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900">
+            {prompt.name}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            {prompt.description}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* System Usage Indicator */}
+          {prompt.systemUsed && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              🔧 System Used
+            </span>
+          )}
+          
+          {/* Compatibility Warning */}
+          {compatibility.hasWarnings && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              ⚠️ Check Compatibility
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Usage Statistics */}
+      {usageStats.isSystemUsed && (
+        <div className="mb-4 text-sm text-gray-600">
+          <div className="flex items-center gap-4">
+            <span>Usage: {usageStats.usageFrequency}</span>
+            {usageStats.lastUsed && (
+              <span>Last used: {formatRelativeTime(usageStats.lastUsed)}</span>
+            )}
+          </div>
+          
+          {usageStats.primaryContexts.length > 0 && (
+            <div className="mt-2">
+              <span className="font-medium">Used by: </span>
+              {usageStats.primaryContexts.map(ctx => ctx.service).join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Variables */}
+      {prompt.variables && prompt.variables.length > 0 && (
+        <div className="mb-4">
+          <div className="text-sm font-medium text-gray-700 mb-2">Variables:</div>
+          <div className="flex flex-wrap gap-2">
+            {prompt.variables.map(variable => (
+              <code key={variable} className="px-2 py-1 bg-gray-100 rounded text-sm">
+                {`{${variable}}`}
+              </code>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Actions */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          {prompt.userModified 
+            ? `Modified ${formatRelativeTime(prompt.updated_at)}`
+            : 'Default prompt'
+          }
+        </div>
+        
+        <div className="flex gap-2">
+          {prompt.userModified && (
+            <button
+              onClick={onReset}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900"
+            >
+              Reset to Default
+            </button>
+          )}
+          <button
+            onClick={onEdit}
+            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+#### **3. Advanced Editing Interface**
+
+```typescript
+const PromptEditor: React.FC<{
+  prompt: AIPrompt;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (prompt: AIPrompt) => void;
+}> = ({ prompt, isOpen, onClose, onSave }) => {
+  const [promptText, setPromptText] = useState(prompt.promptText);
+  const [variables, setVariables] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [tokenCount, setTokenCount] = useState(0);
+  
+  useEffect(() => {
+    const extractedVars = extractVariables(promptText);
+    const errors = validatePromptText(promptText);
+    const tokens = estimateTokens(promptText);
+    
+    setVariables(extractedVars);
+    setValidationErrors(errors);
+    setTokenCount(tokens);
+  }, [promptText]);
+  
+  const handleSave = async () => {
+    if (validationErrors.length > 0) {
+      alert('Please fix validation errors before saving');
+      return;
+    }
+    
+    const updatedPrompt = {
+      ...prompt,
+      promptText,
+      variables: JSON.stringify(variables),
+      userModified: true,
+      updated_at: new Date().toISOString()
+    };
+    
+    await onSave(updatedPrompt);
+    onClose();
+  };
+  
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="xl">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-xl font-semibold">Edit Prompt: {prompt.name}</h2>
+          <p className="text-gray-600 mt-1">{prompt.description}</p>
+        </div>
+        
+        {/* Prompt Text Editor */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Prompt Text
+          </label>
+          <textarea
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            rows={12}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+            placeholder="Enter your prompt text here..."
+          />
+          
+          {/* Token Count */}
+          <div className="mt-2 text-sm text-gray-500">
+            Estimated tokens: {tokenCount}
+            {tokenCount > 1000 && (
+              <span className="text-yellow-600 ml-2">
+                ⚠️ Large prompt - consider optimization
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Variables */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Detected Variables
+          </label>
+          {variables.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {variables.map(variable => (
+                <span
+                  key={variable}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                >
+                  {`{${variable}}`}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No variables detected</p>
+          )}
+        </div>
+        
+        {/* Validation Errors */}
+        {validationErrors.length > 0 && (
+          <div className="border-l-4 border-red-400 bg-red-50 p-4 rounded">
+            <div className="flex items-center text-red-800 mb-2">
+              <span className="font-medium">Validation Errors:</span>
+            </div>
+            <ul className="text-sm text-red-700 space-y-1">
+              {validationErrors.map((error, index) => (
+                <li key={index}>• {error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {/* Model Compatibility */}
+        <ModelCompatibilityChecker prompt={{ ...prompt, promptText }} />
+        
+        {/* Actions */}
+        <div className="flex justify-between">
+          <button
+            onClick={() => setPromptText(getDefaultPrompt(prompt.category, prompt.type)?.promptText || '')}
+            className="px-4 py-2 text-gray-600 hover:text-gray-900"
+          >
+            Reset to Default
+          </button>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={validationErrors.length > 0}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+```
+
+### Import/Export System
+
+```typescript
+class PromptImportExport {
+  async exportPrompts(category?: string): Promise<ExportData> {
+    const prompts = category 
+      ? await this.getPromptsByCategory(category)
+      : await this.getAllPrompts();
+    
+    const exportData: ExportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      metadata: {
+        source: 'Audio-Scribe',
+        promptCount: prompts.length,
+        categories: [...new Set(prompts.map(p => p.category))]
+      },
+      prompts: this.groupPromptsByCategory(prompts)
+    };
+    
+    return exportData;
+  }
+  
+  async importPrompts(
+    importData: ExportData, 
+    options: ImportOptions
+  ): Promise<ImportResult> {
+    const result: ImportResult = {
+      imported: 0,
+      skipped: 0,
+      errors: [],
+      warnings: []
+    };
+    
+    // Validate import data
+    const validation = this.validateImportData(importData);
+    if (!validation.isValid) {
+      result.errors.push(...validation.errors);
+      return result;
+    }
+    
+    // Process prompts by category
+    for (const [category, categoryPrompts] of Object.entries(importData.prompts)) {
+      for (const prompt of categoryPrompts) {
+        try {
+          const importResult = await this.importSinglePrompt(prompt, options);
+          
+          if (importResult.imported) {
+            result.imported++;
+          } else {
+            result.skipped++;
+            if (importResult.reason) {
+              result.warnings.push(`Skipped ${prompt.name}: ${importResult.reason}`);
+            }
+          }
+        } catch (error) {
+          result.errors.push(`Failed to import ${prompt.name}: ${error.message}`);
+        }
+      }
+    }
+    
+    return result;
+  }
+  
+  private async importSinglePrompt(
+    prompt: AIPrompt, 
+    options: ImportOptions
+  ): Promise<SingleImportResult> {
+    const existing = await promptService.getPrompt(prompt.category, prompt.type);
+    
+    if (existing) {
+      if (options.overwriteExisting) {
+        // Update existing prompt
+        const updatedPrompt = {
+          ...existing,
+          promptText: prompt.promptText,
+          variables: prompt.variables,
+          modelCompatibility: prompt.modelCompatibility,
+          updated_at: new Date().toISOString(),
+          userModified: true
+        };
+        
+        await promptService.savePrompt(updatedPrompt);
+        return { imported: true, reason: 'overwrote existing' };
+      } else {
+        return { imported: false, reason: 'prompt already exists' };
+      }
+    } else {
+      // Create new prompt
+      const newPrompt = {
+        ...prompt,
+        id: generateId(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        userModified: true
+      };
+      
+      await promptService.savePrompt(newPrompt);
+      return { imported: true, reason: 'created new prompt' };
+    }
+  }
+}
+
+interface ExportData {
+  version: string;
+  exportDate: string;
+  metadata: {
+    source: string;
+    promptCount: number;
+    categories: string[];
+  };
+  prompts: Record<string, AIPrompt[]>;
+}
+
+interface ImportOptions {
+  overwriteExisting: boolean;
+  validateCompatibility: boolean;
+  backupBeforeImport: boolean;
+}
+
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+  warnings: string[];
+}
+```
+
+## Database Operations
+
+### Optimized Database Schema
+
+```sql
+-- Main prompts table with performance indexes
+CREATE TABLE ai_prompts (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  prompt_text TEXT NOT NULL,
+  variables TEXT,                        -- JSON array: ["var1", "var2"]
+  model_compatibility TEXT DEFAULT 'all', -- JSON array or 'all'
+  is_default BOOLEAN DEFAULT 0,
+  user_modified BOOLEAN DEFAULT 0,
+  system_used BOOLEAN DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  
+  -- Constraints
+  UNIQUE(category, type),
+  CHECK(category IN ('chat', 'analysis', 'speaker', 'validation')),
+  CHECK(json_valid(variables) OR variables IS NULL),
+  CHECK(json_valid(model_compatibility) OR model_compatibility = 'all')
+);
+
+-- Performance indexes
+CREATE INDEX idx_ai_prompts_category ON ai_prompts(category);
+CREATE INDEX idx_ai_prompts_type ON ai_prompts(type);
+CREATE INDEX idx_ai_prompts_category_type ON ai_prompts(category, type);
+CREATE INDEX idx_ai_prompts_system_used ON ai_prompts(system_used);
+CREATE INDEX idx_ai_prompts_user_modified ON ai_prompts(user_modified);
+
+-- Usage tracking table
+CREATE TABLE prompt_usage (
+  id TEXT PRIMARY KEY,
+  prompt_id TEXT NOT NULL,
+  service_name TEXT NOT NULL,
+  method_name TEXT NOT NULL,
+  usage_timestamp TEXT NOT NULL,
+  execution_time_ms INTEGER,
+  success BOOLEAN NOT NULL,
+  error_message TEXT,
+  
+  FOREIGN KEY (prompt_id) REFERENCES ai_prompts(id),
+  INDEX idx_prompt_usage_prompt_id (prompt_id),
+  INDEX idx_prompt_usage_timestamp (usage_timestamp),
+  INDEX idx_prompt_usage_service (service_name)
+);
+
+-- Prompt versions for change tracking
+CREATE TABLE prompt_versions (
+  id TEXT PRIMARY KEY,
+  prompt_id TEXT NOT NULL,
+  version_number INTEGER NOT NULL,
+  prompt_text TEXT NOT NULL,
+  changed_by TEXT NOT NULL,              -- 'user', 'system', 'import'
+  change_reason TEXT,
+  created_at TEXT NOT NULL,
+  
+  FOREIGN KEY (prompt_id) REFERENCES ai_prompts(id),
+  UNIQUE(prompt_id, version_number),
+  INDEX idx_prompt_versions_prompt_id (prompt_id)
+);
+```
+
+### Efficient CRUD Operations
+
+```typescript
+class PromptDatabase {
+  // Optimized retrieval with caching
+  async getPrompt(category: string, type: string): Promise<AIPrompt | null> {
+    try {
+      const result = await window.electronAPI.database.get(
+        `SELECT * FROM ai_prompts 
+         WHERE category = ? AND type = ? 
+         ORDER BY user_modified DESC, is_default ASC 
+         LIMIT 1`,
+        [category, type]
+      );
+      
+      if (result) {
+        return this.deserializePrompt(result);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to get prompt:', error);
+      return null;
+    }
+  }
+  
+  // Batch retrieval for categories
+  async getPromptsByCategory(category: string): Promise<AIPrompt[]> {
+    try {
+      const results = await window.electronAPI.database.all(
+        `SELECT * FROM ai_prompts 
+         WHERE category = ? 
+         ORDER BY system_used DESC, name ASC`,
+        [category]
+      );
+      
+      return results.map(result => this.deserializePrompt(result));
+    } catch (error) {
+      console.error('Failed to get prompts by category:', error);
+      return [];
+    }
+  }
+  
+  // Efficient save with conflict resolution
+  async savePrompt(prompt: AIPrompt): Promise<void> {
+    try {
+      const serializedPrompt = this.serializePrompt(prompt);
+      
+      // Upsert operation
+      await window.electronAPI.database.run(
+        `INSERT OR REPLACE INTO ai_prompts (
+          id, category, type, name, description, prompt_text,
+          variables, model_compatibility, is_default, user_modified,
+          system_used, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          serializedPrompt.id,
+          serializedPrompt.category,
+          serializedPrompt.type,
+          serializedPrompt.name,
+          serializedPrompt.description,
+          serializedPrompt.prompt_text,
+          serializedPrompt.variables,
+          serializedPrompt.model_compatibility,
+          serializedPrompt.is_default ? 1 : 0,
+          serializedPrompt.user_modified ? 1 : 0,
+          serializedPrompt.system_used ? 1 : 0,
+          serializedPrompt.created_at,
+          serializedPrompt.updated_at
+        ]
+      );
+      
+      // Create version record
+      await this.createVersionRecord(prompt, 'user_edit');
+      
+    } catch (error) {
+      console.error('Failed to save prompt:', error);
+      throw new Error(`Failed to save prompt: ${error.message}`);
+    }
+  }
+  
+  // Search with full-text support
+  async searchPrompts(searchTerm: string, category?: string): Promise<AIPrompt[]> {
+    let query = `
+      SELECT * FROM ai_prompts 
+      WHERE (name LIKE ? OR description LIKE ? OR prompt_text LIKE ?)
+    `;
+    const params = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`];
+    
+    if (category) {
+      query += ` AND category = ?`;
+      params.push(category);
+    }
+    
+    query += ` ORDER BY system_used DESC, name ASC`;
+    
+    try {
+      const results = await window.electronAPI.database.all(query, params);
+      return results.map(result => this.deserializePrompt(result));
+    } catch (error) {
+      console.error('Failed to search prompts:', error);
+      return [];
+    }
+  }
+  
+  // Usage tracking
+  async recordUsage(
+    promptId: string, 
+    serviceName: string, 
+    methodName: string,
+    executionTimeMs: number,
+    success: boolean,
+    errorMessage?: string
+  ): Promise<void> {
+    try {
+      await window.electronAPI.database.run(
+        `INSERT INTO prompt_usage (
+          id, prompt_id, service_name, method_name, usage_timestamp,
+          execution_time_ms, success, error_message
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          generateId(),
+          promptId,
+          serviceName,
+          methodName,
+          new Date().toISOString(),
+          executionTimeMs,
+          success ? 1 : 0,
+          errorMessage || null
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to record prompt usage:', error);
+    }
+  }
+  
+  // Data serialization
+  private serializePrompt(prompt: AIPrompt): any {
+    return {
+      ...prompt,
+      variables: JSON.stringify(prompt.variables || []),
+      model_compatibility: Array.isArray(prompt.modelCompatibility) 
+        ? JSON.stringify(prompt.modelCompatibility)
+        : prompt.modelCompatibility
+    };
+  }
+  
+  private deserializePrompt(row: any): AIPrompt {
+    return {
+      ...row,
+      variables: row.variables ? JSON.parse(row.variables) : [],
+      modelCompatibility: row.model_compatibility === 'all' 
+        ? 'all' 
+        : JSON.parse(row.model_compatibility),
+      isDefault: Boolean(row.is_default),
+      userModified: Boolean(row.user_modified),
+      systemUsed: Boolean(row.system_used)
+    };
+  }
+}
+```
+
+### IPC Communication Layer
+
+```typescript
+// Main process handlers
+class PromptIPCHandlers {
+  static register(): void {
+    ipcMain.handle('ai-prompts-get-by-category', this.getByCategory);
+    ipcMain.handle('ai-prompts-get', this.getPrompt);
+    ipcMain.handle('ai-prompts-save', this.savePrompt);
+    ipcMain.handle('ai-prompts-delete', this.deletePrompt);
+    ipcMain.handle('ai-prompts-reset-to-default', this.resetToDefault);
+    ipcMain.handle('ai-prompts-search', this.searchPrompts);
+    ipcMain.handle('ai-prompts-export', this.exportPrompts);
+    ipcMain.handle('ai-prompts-import', this.importPrompts);
+  }
+  
+  private static async getByCategory(
+    event: IpcMainInvokeEvent, 
+    category: string
+  ): Promise<AIPrompt[]> {
+    try {
+      return await promptDatabase.getPromptsByCategory(category);
+    } catch (error) {
+      console.error('IPC getByCategory failed:', error);
+      return [];
+    }
+  }
+  
+  private static async getPrompt(
+    event: IpcMainInvokeEvent,
+    { category, type }: { category: string; type: string }
+  ): Promise<AIPrompt | null> {
+    try {
+      return await promptDatabase.getPrompt(category, type);
+    } catch (error) {
+      console.error('IPC getPrompt failed:', error);
+      return null;
+    }
+  }
+  
+  private static async savePrompt(
+    event: IpcMainInvokeEvent,
+    prompt: AIPrompt
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await promptDatabase.savePrompt(prompt);
+      return { success: true };
+    } catch (error) {
+      console.error('IPC savePrompt failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  private static async resetToDefault(
+    event: IpcMainInvokeEvent,
+    { category, type }: { category: string; type: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Delete user customization
+      await promptDatabase.deleteUserPrompt(category, type);
+      return { success: true };
+    } catch (error) {
+      console.error('IPC resetToDefault failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+// Renderer process API
+declare global {
+  interface Window {
+    electronAPI: {
+      aiPrompts: {
+        getByCategory(category: string): Promise<AIPrompt[]>;
+        get(params: { category: string; type: string }): Promise<AIPrompt | null>;
+        save(prompt: AIPrompt): Promise<{ success: boolean; error?: string }>;
+        delete(id: string): Promise<{ success: boolean; error?: string }>;
+        resetToDefault(params: { category: string; type: string }): Promise<{ success: boolean; error?: string }>;
+        search(searchTerm: string, category?: string): Promise<AIPrompt[]>;
+        export(category?: string): Promise<ExportData>;
+        import(data: ExportData, options: ImportOptions): Promise<ImportResult>;
+      };
+    };
+  }
+}
+```
+
+## Error Handling & Fallbacks
+
+### Multi-Layer Fallback System
+
+The prompt system implements a comprehensive error handling strategy with multiple fallback layers:
+
+```typescript
+class PromptFallbackManager {
+  /**
+   * Primary method for getting processed prompts with full fallback chain
+   */
+  async getProcessedPromptWithFallbacks(
+    category: string,
+    type: string,
+    variables: Record<string, string>
+  ): Promise<string> {
+    const fallbackChain = [
+      () => this.tryUserCustomPrompt(category, type, variables),
+      () => this.tryDefaultPrompt(category, type, variables),
+      () => this.tryCategoryFallback(category, variables),
+      () => this.tryEmergencyFallback(variables)
+    ];
+    
+    for (const fallbackMethod of fallbackChain) {
+      try {
+        const result = await fallbackMethod();
+        if (result) {
+          return result;
+        }
+      } catch (error) {
+        console.warn(`Fallback method failed:`, error);
+        continue; // Try next fallback
+      }
+    }
+    
+    // Ultimate fallback - should never reach here
+    return this.getUltimateFallback(variables);
+  }
+  
+  /**
+   * Level 1: Try user-customized prompt
+   */
+  private async tryUserCustomPrompt(
+    category: string,
+    type: string,
+    variables: Record<string, string>
+  ): Promise<string | null> {
+    try {
+      const prompt = await window.electronAPI.aiPrompts.get({ category, type });
+      if (prompt && prompt.userModified) {
+        return this.processTemplate(prompt.promptText, variables);
+      }
+      return null;
+    } catch (error) {
+      console.warn('User custom prompt failed:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Level 2: Try default system prompt
+   */
+  private async tryDefaultPrompt(
+    category: string,
+    type: string,
+    variables: Record<string, string>
+  ): Promise<string | null> {
+    try {
+      const defaultPrompt = DefaultPromptRegistry.getDefault(category, type);
+      if (defaultPrompt) {
+        return this.processTemplate(defaultPrompt.promptText, variables);
+      }
+      return null;
+    } catch (error) {
+      console.warn('Default prompt failed:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Level 3: Try category-level fallback
+   */
+  private async tryCategoryFallback(
+    category: string,
+    variables: Record<string, string>
+  ): Promise<string | null> {
+    const categoryFallbacks = {
+      chat: `Answer this question about the content: {message}\n\nContent: {context}`,
+      analysis: `Analyze this content and provide insights: {transcript}`,
+      speaker: `Analyze the speakers in this content: {transcript}`,
+      validation: `Review and correct this text: {transcript}`
+    };
+    
+    const fallbackTemplate = categoryFallbacks[category];
+    if (fallbackTemplate) {
+      return this.processTemplate(fallbackTemplate, variables);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Level 4: Emergency fallback with minimal template
+   */
+  private async tryEmergencyFallback(
+    variables: Record<string, string>
+  ): Promise<string | null> {
+    const emergencyTemplate = `Please process this content: {transcript}{context}{message}`;
+    return this.processTemplate(emergencyTemplate, variables);
+  }
+  
+  /**
+   * Ultimate fallback - should never fail
+   */
+  private getUltimateFallback(variables: Record<string, string>): string {
+    const content = Object.values(variables).filter(Boolean).join('\n\n');
+    return `Please analyze and respond to the following content:\n\n${content}`;
+  }
+  
+  /**
+   * Template processing with error handling
+   */
+  private processTemplate(
+    template: string,
+    variables: Record<string, string>
+  ): string {
+    try {
+      let result = template;
+      
+      // Replace all variables
+      for (const [key, value] of Object.entries(variables)) {
+        if (value) {
+          const regex = new RegExp(`\\{${key}\\}`, 'g');
+          result = result.replace(regex, value);
+        }
+      }
+      
+      // Remove unreplaced variables
+      result = result.replace(/\{[^}]+\}/g, '');
+      
+      // Clean up extra whitespace
+      result = result.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
+      
+      return result;
+    } catch (error) {
+      console.error('Template processing failed:', error);
+      // Return raw template as last resort
+      return template;
+    }
+  }
+}
+```
+
+### Error Recovery Strategies
+
+```typescript
+class PromptErrorRecovery {
+  async handlePromptFailure(
+    category: string,
+    type: string,
+    error: Error,
+    context: ErrorContext
+  ): Promise<RecoveryAction> {
+    const errorType = this.classifyError(error);
+    
+    switch (errorType) {
+      case 'database_error':
+        return await this.handleDatabaseError(category, type, error, context);
+        
+      case 'template_error':
+        return await this.handleTemplateError(category, type, error, context);
+        
+      case 'validation_error':
+        return await this.handleValidationError(category, type, error, context);
+        
+      case 'network_error':
+        return await this.handleNetworkError(category, type, error, context);
+        
+      default:
+        return await this.handleUnknownError(category, type, error, context);
+    }
+  }
+  
+  private async handleDatabaseError(
+    category: string,
+    type: string,
+    error: Error,
+    context: ErrorContext
+  ): Promise<RecoveryAction> {
+    // Try to use in-memory defaults
+    const defaultPrompt = DefaultPromptRegistry.getDefault(category, type);
+    if (defaultPrompt) {
+      return {
+        action: 'use_default',
+        prompt: defaultPrompt.promptText,
+        message: 'Database unavailable, using default prompt',
+        severity: 'warning'
+      };
+    }
+    
+    return {
+      action: 'use_fallback',
+      prompt: this.getCategoryFallback(category),
+      message: 'Database and defaults unavailable, using emergency fallback',
+      severity: 'error'
+    };
+  }
+  
+  private async handleTemplateError(
+    category: string,
+    type: string,
+    error: Error,
+    context: ErrorContext
+  ): Promise<RecoveryAction> {
+    // Try to fix common template issues
+    const fixedTemplate = this.attemptTemplateFix(context.originalTemplate);
+    if (fixedTemplate) {
+      return {
+        action: 'use_fixed_template',
+        prompt: fixedTemplate,
+        message: 'Template had issues, used corrected version',
+        severity: 'warning'
+      };
+    }
+    
+    // Fall back to simpler template
+    return {
+      action: 'use_simple_template',
+      prompt: this.getSimpleTemplate(category, context.variables),
+      message: 'Template corrupted, using simplified version',
+      severity: 'error'
+    };
+  }
+  
+  private attemptTemplateFix(template: string): string | null {
+    try {
+      // Fix common issues
+      let fixed = template;
+      
+      // Fix unclosed braces
+      const openBraces = (fixed.match(/\{/g) || []).length;
+      const closeBraces = (fixed.match(/\}/g) || []).length;
+      if (openBraces > closeBraces) {
+        fixed += '}';
+      }
+      
+      // Remove invalid variable patterns
+      fixed = fixed.replace(/\{[^a-zA-Z_][^}]*\}/g, '');
+      
+      // Validate the fix
+      const variables = this.extractVariables(fixed);
+      if (variables.length > 0 && variables.every(v => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v))) {
+        return fixed;
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('Template fix attempt failed:', error);
+      return null;
+    }
+  }
+  
+  private getSimpleTemplate(category: string, variables: Record<string, string>): string {
+    const hasTranscript = variables.transcript || variables.content;
+    const hasMessage = variables.message || variables.question;
+    
+    switch (category) {
+      case 'chat':
+        return hasTranscript && hasMessage
+          ? `Based on this content: {transcript}\n\nPlease answer: {message}`
+          : `Please respond to: {message}`;
+          
+      case 'analysis':
+        return hasTranscript
+          ? `Please analyze: {transcript}`
+          : `Please analyze the provided content.`;
+          
+      case 'speaker':
+        return hasTranscript
+          ? `Identify speakers in: {transcript}`
+          : `Please identify speakers in the content.`;
+          
+      case 'validation':
+        return hasTranscript
+          ? `Please review and correct: {transcript}`
+          : `Please review the provided content.`;
+          
+      default:
+        return `Please process: ${Object.keys(variables).map(k => `{${k}}`).join(' ')}`;
+    }
+  }
+}
+```
+
+### User-Facing Error Handling
+
+```typescript
+class PromptErrorUI {
+  static showErrorToUser(error: PromptError, context: ErrorContext): void {
+    const errorMessage = this.getErrorMessage(error);
+    const recoveryOptions = this.getRecoveryOptions(error, context);
+    
+    // Show notification to user
+    this.showNotification({
+      type: error.severity,
+      title: 'Prompt System Issue',
+      message: errorMessage,
+      actions: recoveryOptions,
+      persistent: error.severity === 'error'
+    });
+  }
+  
+  private static getErrorMessage(error: PromptError): string {
+    switch (error.type) {
+      case 'database_error':
+        return 'Unable to access prompt database. Using default prompts.';
+        
+      case 'template_error':
+        return 'Prompt template has errors. Using simplified version.';
+        
+      case 'validation_error':
+        return 'Prompt validation failed. Check variables and syntax.';
+        
+      case 'network_error':
+        return 'Network error accessing prompts. Using cached version.';
+        
+      default:
+        return 'Prompt system encountered an issue. Functionality may be limited.';
+    }
+  }
+  
+  private static getRecoveryOptions(
+    error: PromptError, 
+    context: ErrorContext
+  ): NotificationAction[] {
+    const options: NotificationAction[] = [];
+    
+    if (error.type === 'template_error' && context.promptId) {
+      options.push({
+        label: 'Reset to Default',
+        action: () => this.resetPromptToDefault(context.promptId),
+        style: 'primary'
+      });
+    }
+    
+    if (error.type === 'database_error') {
+      options.push({
+        label: 'Retry',
+        action: () => this.retryDatabaseConnection(),
+        style: 'primary'
+      });
+    }
+    
+    options.push({
+      label: 'View Details',
+      action: () => this.showErrorDetails(error, context),
+      style: 'secondary'
+    });
+    
+    return options;
+  }
+  
+  private static async resetPromptToDefault(promptId: string): Promise<void> {
+    try {
+      await window.electronAPI.aiPrompts.resetToDefault(promptId);
+      this.showNotification({
+        type: 'success',
+        title: 'Prompt Reset',
+        message: 'Prompt has been reset to default version.'
+      });
+    } catch (error) {
+      this.showNotification({
+        type: 'error',
+        title: 'Reset Failed',
+        message: 'Unable to reset prompt. Please try again.'
+      });
+    }
+  }
+}
+```
+
+## API Reference
+
+### Core Service API
+
+```typescript
+interface PromptServiceAPI {
+  // Primary processing method
+  getProcessedPrompt(
+    category: string,
+    type: string,
+    variables: Record<string, string>
+  ): Promise<string>;
+  
+  // CRUD operations
+  getPrompt(category: string, type: string): Promise<AIPrompt | null>;
+  getPromptsByCategory(category: string): Promise<AIPrompt[]>;
+  getAllPrompts(): Promise<AIPrompt[]>;
+  savePrompt(prompt: AIPrompt): Promise<void>;
+  deletePrompt(id: string): Promise<void>;
+  
+  // Default management
+  getDefaultPrompt(category: string, type: string): AIPrompt | null;
+  resetToDefault(category: string, type: string): Promise<void>;
+  
+  // Template processing
+  replaceVariables(template: string, variables: Record<string, string>): string;
+  extractVariables(template: string): string[];
+  validateTemplate(template: string): TemplateValidation;
+  
+  // Search and filtering
+  searchPrompts(query: string, category?: string): Promise<AIPrompt[]>;
+  getSystemUsedPrompts(): Promise<AIPrompt[]>;
+  getCustomizedPrompts(): Promise<AIPrompt[]>;
+  
+  // Import/Export
+  exportPrompts(category?: string): Promise<ExportData>;
+  importPrompts(data: ExportData, options: ImportOptions): Promise<ImportResult>;
+  
+  // Utility methods
+  estimateTokens(text: string): number;
+  validatePrompt(prompt: AIPrompt): ValidationResult;
+  getUsageStatistics(category?: string, type?: string): Promise<UsageStatistics>;
+}
+```
+
+### Data Types
+
+```typescript
+interface AIPrompt {
+  id: string;
+  category: 'chat' | 'analysis' | 'speaker' | 'validation';
+  type: string;
+  name: string;
+  description?: string;
+  promptText: string;
+  variables: string[];
+  modelCompatibility: string[] | 'all';
+  isDefault: boolean;
+  userModified: boolean;
+  systemUsed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TemplateValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  variables: string[];
+  estimatedTokens: number;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+  compatibility: CompatibilityResult;
+}
+
+interface UsageStatistics {
+  totalUsage: number;
+  lastUsed?: string;
+  usageFrequency: 'high' | 'medium' | 'low' | 'none';
+  primaryServices: string[];
+  averageExecutionTime: number;
+}
+
+interface ExportData {
+  version: string;
+  exportDate: string;
+  metadata: {
+    source: string;
+    promptCount: number;
+    categories: string[];
+  };
+  prompts: Record<string, AIPrompt[]>;
+}
+
+interface ImportOptions {
+  overwriteExisting: boolean;
+  validateCompatibility: boolean;
+  backupBeforeImport: boolean;
+  importOnlyCategory?: string;
+}
+
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+  warnings: string[];
+  backupPath?: string;
+}
+```
+
+### Event System
+
+```typescript
+interface PromptEventEmitter {
+  // Event subscription
+  on(event: 'prompt_changed', callback: (category: string, type: string) => void): void;
+  on(event: 'prompt_deleted', callback: (category: string, type: string) => void): void;
+  on(event: 'prompt_reset', callback: (category: string, type: string) => void): void;
+  on(event: 'import_completed', callback: (result: ImportResult) => void): void;
+  on(event: 'validation_failed', callback: (prompt: AIPrompt, errors: string[]) => void): void;
+  
+  // Event emission
+  emit(event: string, ...args: any[]): void;
+  
+  // Event removal
+  off(event: string, callback: Function): void;
+  removeAllListeners(event?: string): void;
+}
+
+// Usage example
+promptService.on('prompt_changed', (category, type) => {
+  console.log(`Prompt changed: ${category}:${type}`);
+  // Invalidate caches, notify other services, etc.
+});
+```
+
+## Implementation Patterns
+
+### 1. Service Layer Pattern
+
+```typescript
+// Clear separation of concerns
+class PromptService {
+  // Business logic layer
+  async getProcessedPrompt(...): Promise<string> { /* ... */ }
+}
+
+class PromptDatabase {
+  // Data access layer
+  async getPrompt(...): Promise<AIPrompt | null> { /* ... */ }
+}
+
+class PromptCache {
+  // Caching layer
+  get(key: string): AIPrompt | null { /* ... */ }
+}
+```
+
+### 2. Template Method Pattern
+
+```typescript
+abstract class PromptProcessor {
+  // Template method defining the algorithm
+  async processPrompt(category: string, type: string, variables: Record<string, string>): Promise<string> {
+    const prompt = await this.retrievePrompt(category, type);
+    const validated = this.validatePrompt(prompt, variables);
+    const processed = this.applyVariables(validated, variables);
+    return this.postProcess(processed);
+  }
+  
+  // Abstract methods implemented by subclasses
+  protected abstract retrievePrompt(category: string, type: string): Promise<AIPrompt>;
+  protected abstract validatePrompt(prompt: AIPrompt, variables: Record<string, string>): AIPrompt;
+  protected abstract applyVariables(prompt: AIPrompt, variables: Record<string, string>): string;
+  protected abstract postProcess(processed: string): string;
+}
+```
+
+### 3. Chain of Responsibility Pattern
+
+```typescript
+abstract class FallbackHandler {
+  protected nextHandler?: FallbackHandler;
+  
+  setNext(handler: FallbackHandler): FallbackHandler {
+    this.nextHandler = handler;
+    return handler;
+  }
+  
+  async handle(category: string, type: string, variables: Record<string, string>): Promise<string | null> {
+    const result = await this.process(category, type, variables);
+    if (result) {
+      return result;
+    }
+    
+    if (this.nextHandler) {
+      return this.nextHandler.handle(category, type, variables);
+    }
+    
+    return null;
+  }
+  
+  protected abstract process(category: string, type: string, variables: Record<string, string>): Promise<string | null>;
+}
+
+// Specific handlers
+class UserPromptHandler extends FallbackHandler {
+  protected async process(category: string, type: string, variables: Record<string, string>): Promise<string | null> {
+    // Try user-customized prompt
+  }
+}
+
+class DefaultPromptHandler extends FallbackHandler {
+  protected async process(category: string, type: string, variables: Record<string, string>): Promise<string | null> {
+    // Try default prompt
+  }
+}
+```
+
+### 4. Observer Pattern
+
+```typescript
+interface PromptObserver {
+  onPromptChanged(category: string, type: string): void;
+  onPromptDeleted(category: string, type: string): void;
+}
+
+class PromptSubject {
+  private observers: PromptObserver[] = [];
+  
+  subscribe(observer: PromptObserver): void {
+    this.observers.push(observer);
+  }
+  
+  unsubscribe(observer: PromptObserver): void {
+    const index = this.observers.indexOf(observer);
+    if (index > -1) {
+      this.observers.splice(index, 1);
+    }
+  }
+  
+  notify(event: string, ...args: any[]): void {
+    this.observers.forEach(observer => {
+      if (event === 'changed' && observer.onPromptChanged) {
+        observer.onPromptChanged(...args);
+      } else if (event === 'deleted' && observer.onPromptDeleted) {
+        observer.onPromptDeleted(...args);
+      }
+    });
+  }
+}
+```
+
+## Best Practices
+
+### 1. Template Design
+
+```typescript
+// ✅ Good: Clear variable naming
+const goodTemplate = `Analyze this transcript titled "{title}" and provide insights about {focus_area}.
+
+Content: {transcript}
+
+Please format your response as JSON with the following structure:
+{
+  "summary": "Brief summary",
+  "insights": ["insight1", "insight2"],
+  "confidence": "high|medium|low"
+}`;
+
+// ❌ Bad: Unclear variables and complex logic
+const badTemplate = `Process {data} using {method} and return {format} with {options} if {condition} else {fallback}`;
+```
+
+### 2. Error Handling
+
+```typescript
+// ✅ Good: Comprehensive error handling with fallbacks
+async getProcessedPrompt(category: string, type: string, variables: Record<string, string>): Promise<string> {
+  try {
+    const prompt = await this.getPrompt(category, type);
+    if (!prompt) {
+      return this.getDefaultPrompt(category, type, variables);
+    }
+    return this.replaceVariables(prompt.promptText, variables);
+  } catch (error) {
+    console.warn('Prompt processing failed, using fallback:', error);
+    return this.getFallbackPrompt(category, variables);
+  }
+}
+
+// ❌ Bad: No error handling
+async getProcessedPrompt(category: string, type: string, variables: Record<string, string>): Promise<string> {
+  const prompt = await this.getPrompt(category, type);
+  return this.replaceVariables(prompt.promptText, variables);
+}
+```
+
+### 3. Variable Management
+
+```typescript
+// ✅ Good: Validate variables before processing
+private validateVariables(template: string, variables: Record<string, string>): ValidationResult {
+  const requiredVars = this.extractVariables(template);
+  const providedVars = Object.keys(variables);
+  const missingVars = requiredVars.filter(v => !providedVars.includes(v));
+  
+  return {
+    isValid: missingVars.length === 0,
+    errors: missingVars.map(v => `Missing required variable: {${v}}`),
+    warnings: this.checkVariableQuality(variables)
+  };
+}
+
+// ❌ Bad: Process without validation
+private processTemplate(template: string, variables: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (match, varName) => variables[varName] || match);
+}
+```
+
+### 4. Performance Optimization
+
+```typescript
+// ✅ Good: Cache frequently used prompts
+class PromptCache {
+  private cache = new Map<string, { prompt: AIPrompt; timestamp: number }>();
+  private readonly TTL = 5 * 60 * 1000; // 5 minutes
+  
+  get(category: string, type: string): AIPrompt | null {
+    const key = `${category}:${type}`;
+    const cached = this.cache.get(key);
+    
+    if (cached && Date.now() - cached.timestamp < this.TTL) {
+      return cached.prompt;
+    }
+    
+    this.cache.delete(key);
+    return null;
+  }
+  
+  set(category: string, type: string, prompt: AIPrompt): void {
+    const key = `${category}:${type}`;
+    this.cache.set(key, { prompt, timestamp: Date.now() });
+  }
+}
+
+// ❌ Bad: No caching, repeated database calls
+async getPrompt(category: string, type: string): Promise<AIPrompt | null> {
+  return await database.getPrompt(category, type);
+}
+```
+
+### 5. Configuration Management
+
+```typescript
+// ✅ Good: Centralized configuration with validation
+interface PromptSystemConfig {
+  enableFallbacks: boolean;
+  cacheEnabled: boolean;
+  cacheTTL: number;
+  maxTemplateSize: number;
+  enableUsageTracking: boolean;
+}
+
+class PromptConfigManager {
+  private config: PromptSystemConfig;
+  
+  updateConfig(newConfig: Partial<PromptSystemConfig>): void {
+    const validatedConfig = this.validateConfig({ ...this.config, ...newConfig });
+    this.config = validatedConfig;
+    this.notifyConfigChange();
+  }
+  
+  private validateConfig(config: PromptSystemConfig): PromptSystemConfig {
+    if (config.cacheTTL < 0) {
+      throw new Error('Cache TTL must be positive');
+    }
+    if (config.maxTemplateSize < 100) {
+      throw new Error('Max template size too small');
+    }
+    return config;
+  }
+}
+
+// ❌ Bad: Configuration scattered throughout code
+const CACHE_ENABLED = true;
+const MAX_SIZE = 10000;
+const ENABLE_TRACKING = false;
+```
+
+---
+
+This AI Prompt Management System provides a robust, scalable foundation for implementing configurable AI interactions in any application. The modular design, comprehensive error handling, and extensive customization options make it suitable for a wide range of AI-powered applications requiring dynamic prompt management.

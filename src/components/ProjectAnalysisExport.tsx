@@ -283,7 +283,7 @@ export const ProjectAnalysisExport: React.FC<ProjectAnalysisExportProps> = ({
     }
     
     lines.push('---');
-    lines.push(`*Exported on ${new Date(data.exported_at).toLocaleDateString()} from AudioScribe*`);
+    lines.push(`*Exported on ${new Date(data.exported_at).toLocaleDateString()} from DeepTalk*`);
     
     return lines.join('\n');
   };
