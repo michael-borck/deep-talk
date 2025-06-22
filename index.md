@@ -12,7 +12,7 @@ description: AI-powered conversation analysis and insight discovery platform
         </div>
         <div class="mt-10 flex flex-wrap flex-col sm:flex-row justify-center items-center gap-4">
             <a href="#features" class="inline-block rounded-lg bg-sky-600 px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-sky-700 transition-colors">Get Started</a>
-            <a href="{{ '/docs/' | relative_url }}" class="inline-flex items-center justify-center bg-white dark:bg-stone-700 px-6 py-3 text-base font-semibold text-sky-600 dark:text-sky-400 shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-600 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors rounded-lg">Documentation</a>
+            <a href="{{ '/docs/README/' | relative_url }}" class="inline-flex items-center justify-center bg-white dark:bg-stone-700 px-6 py-3 text-base font-semibold text-sky-600 dark:text-sky-400 shadow-sm ring-1 ring-inset ring-stone-300 dark:ring-stone-600 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors rounded-lg">Documentation</a>
             <a href="https://gitingest.com/michael-borck/deep-talk" target="_blank" class="inline-flex items-center justify-center bg-sky-700 hover:bg-sky-800 text-white px-6 py-3 text-base font-semibold shadow-sm rounded-lg transition-colors">Ingest</a>
             <a href="https://deepwiki.com/michael-borck/deep-talk" target="_blank" class="inline-flex items-center justify-center bg-stone-700 hover:bg-stone-800 text-white px-6 py-3 text-base font-semibold shadow-sm rounded-lg transition-colors">Deep Wiki</a>
         </div>
