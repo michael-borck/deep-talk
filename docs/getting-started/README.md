@@ -1,3 +1,9 @@
+---
+layout: page
+title: Getting Started
+description: Get up and running quickly with DeepTalk
+---
+
 # Getting Started with DeepTalk
 
 Welcome to DeepTalk! This section will help you get up and running quickly with your new AI-powered conversation analysis platform.

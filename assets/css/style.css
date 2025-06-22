@@ -1,0 +1,132 @@
+---
+---
+
+/* Custom styles extracted from index.html */
+body { 
+    font-family: 'Inter', sans-serif; 
+}
+
+.code-block { 
+    position: relative; 
+}
+
+.copy-button { 
+    position: absolute; 
+    top: 0.75rem; 
+    right: 0.75rem; 
+    padding: 0.25rem 0.5rem; 
+    font-size: 0.75rem; 
+    border-radius: 0.375rem; 
+    background-color: #44403c; 
+    color: white; 
+    cursor: pointer; 
+    opacity: 0; 
+    transition: opacity 0.2s ease-in-out, background-color 0.2s; 
+}
+
+.code-block:hover .copy-button { 
+    opacity: 1; 
+}
+
+.copy-button:hover { 
+    background-color: #292524; 
+}
+
+html.dark .copy-button { 
+    background-color: #1c1917; 
+}
+
+html.dark .copy-button:hover { 
+    background-color: #292524; 
+}
+
+.api-tab { 
+    padding: 1rem 0.25rem; 
+    margin-bottom: -2px; 
+    border-bottom-width: 2px; 
+    font-weight: 500; 
+    font-size: 0.875rem; 
+    line-height: 1.25rem; 
+    border-color: transparent; 
+    color: #57534e; 
+    transition: all 0.2s; 
+}
+
+.api-tab:hover { 
+    border-color: #d6d3d1; 
+    color: #44403c; 
+}
+
+.api-tab.active-tab { 
+    border-color: #0284c7; 
+    color: #0284c7; 
+}
+
+html.dark .api-tab { 
+    color: #a8a29e; 
+}
+
+html.dark .api-tab:hover { 
+    border-color: #57534e; 
+    color: #e7e5e4; 
+}
+
+html.dark .api-tab.active-tab { 
+    border-color: #0ea5e9; 
+    color: #0ea5e9; 
+}
+
+.prose-styles h1, .prose-styles h2, .prose-styles h3 { 
+    margin-top: 1.5em; 
+    margin-bottom: 0.8em; 
+}
+
+.prose-styles p { 
+    margin-bottom: 1em; 
+    line-height: 1.7; 
+}
+
+.prose-styles ul { 
+    list-style-type: disc; 
+    margin-left: 1.5em; 
+    margin-bottom: 1em; 
+}
+
+.prose-styles li { 
+    margin-bottom: 0.5em; 
+}
+
+.prose-styles a { 
+    color: #0284c7; 
+    text-decoration: underline; 
+}
+
+.prose-styles a:hover { 
+    color: #0369a1; 
+}
+
+.prose-styles code { 
+    font-family: monospace; 
+    background-color: #e7e5e4; 
+    color: #be185d; 
+    padding: 0.2em 0.4em; 
+    border-radius: 3px; 
+}
+
+.prose-styles pre > code { 
+    background-color: transparent; 
+    padding: 0; 
+}
+
+html.dark .prose-styles a { 
+    color: #38bdf8; 
+}
+
+html.dark .prose-styles a:hover { 
+    color: #7dd3fc; 
+}
+
+html.dark .prose-styles code { 
+    background-color: #44403c; 
+    color: #f9a8d4;
+}

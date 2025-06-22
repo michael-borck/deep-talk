@@ -1,0 +1,90 @@
+# DeepTalk Documentation Site Configuration
+# GitHub Pages Jekyll configuration
+
+title: DeepTalk
+description: AI-powered conversation analysis and insight discovery platform
+baseurl: "/deep-talk"
+url: "https://michael-borck.github.io"
+
+# Custom theme - no remote theme needed
+# theme: minima
+# remote_theme: pages-themes/minimal@v0.2.0
+
+# Markdown processing
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-relative-links
+
+# Navigation structure
+header_pages:
+  - index.md
+  - docs/getting-started/README.md
+  - docs/user-guide/README.md
+  - docs/features/README.md
+  - docs/tutorials/README.md
+  - docs/troubleshooting/README.md
+  - docs/reference/README.md
+
+# Site settings
+show_excerpts: false
+author:
+  name: Michael Borck
+  email: noreply@example.com
+
+# GitHub repository information
+github_username: michael-borck
+repository: deep-talk
+
+# Build settings
+safe: true
+incremental: false
+
+# Collections for better organization
+collections:
+  docs:
+    output: true
+    permalink: /docs/:path/
+
+# Exclude files from processing
+exclude:
+  - vendor/
+  - .bundle/
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
+# Include files that start with underscores
+include:
+  - _config.yml
+
+# SEO and social
+twitter:
+  username: # Add if desired
+  card: summary
+
+logo: /assets/icon-512x512.png
+
+# Google Analytics (add if desired)
+# google_analytics: # Add tracking ID if desired
+
+# Social links
+social:
+  name: DeepTalk
+  links:
+    - https://github.com/michael-borck/deep-talk

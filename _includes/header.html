@@ -1,0 +1,60 @@
+<header id="top" class="bg-white/90 dark:bg-stone-900/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="flex items-center justify-between h-16">
+            <div class="flex-shrink-0">
+                <a href="{{ '/' | relative_url }}" class="text-2xl font-bold text-stone-900 dark:text-white tracking-tight">{{ site.title }}</a>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-2">
+                {% if page.url == "/" %}
+                <a href="#features" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Features</a>
+                <a href="#installation" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Installation</a>
+                <a href="#development" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Development</a>
+                {% else %}
+                <a href="{{ '/docs/getting-started/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Getting Started</a>
+                <a href="{{ '/docs/user-guide/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">User Guide</a>
+                <a href="{{ '/docs/features/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Features</a>
+                <a href="{{ '/docs/tutorials/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 px-3 py-2 rounded-md text-sm font-medium transition-colors">Tutorials</a>
+                {% endif %}
+            </div>
+            
+            <div class="hidden md:flex items-center gap-4">
+                {% if page.url != "/" %}
+                <a href="{{ '/' | relative_url }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 transition-colors">Home</a>
+                {% endif %}
+                <a href="https://github.com/michael-borck/deep-talk" target="_blank" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-stone-800 hover:bg-stone-900 dark:bg-sky-600 dark:hover:bg-sky-700 transition-colors">
+                    GitHub
+                    <span class="ml-2 font-bold text-lg leading-none">&#8594;</span>
+                </a>
+                <button class="theme-toggle-btn p-2 rounded-md text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"></button>
+            </div>
+            
+            <div class="-mr-2 flex md:hidden">
+                <button class="theme-toggle-btn p-2 rounded-md text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"></button>
+                <button type="button" id="mobile-menu-button" class="bg-stone-100 dark:bg-stone-800 inline-flex items-center justify-center p-2 rounded-md text-stone-600 dark:text-stone-400 hover:text-stone-800 hover:bg-stone-200 focus:outline-none">
+                    <svg class="h-6 w-6 block" id="menu-open-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg class="h-6 w-6 hidden" id="menu-close-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </nav>
+    </div>
+    
+    <div class="md:hidden hidden" id="mobile-menu">
+        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {% if page.url == "/" %}
+            <a href="#features" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Features</a>
+            <a href="#installation" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Installation</a>
+            <a href="#development" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Development</a>
+            {% else %}
+            <a href="{{ '/docs/getting-started/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Getting Started</a>
+            <a href="{{ '/docs/user-guide/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">User Guide</a>
+            <a href="{{ '/docs/features/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Features</a>
+            <a href="{{ '/docs/tutorials/' | relative_url }}" class="text-stone-600 dark:text-stone-300 hover:text-sky-600 dark:hover:text-sky-500 hover:bg-stone-100 dark:hover:bg-stone-800 block px-3 py-2 rounded-md text-base font-medium">Tutorials</a>
+            {% endif %}
+        </div>
+    </div>
+</header>

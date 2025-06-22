@@ -1,3 +1,9 @@
+---
+layout: page
+title: User Guide
+description: Comprehensive guide to using DeepTalk effectively
+---
+
 # User Guide
 
 This comprehensive guide covers all aspects of using DeepTalk effectively. Whether you're a new user or looking to master advanced features, this section provides detailed explanations of the interface and core functionality.

@@ -1,3 +1,9 @@
+---
+layout: page
+title: Documentation
+description: Comprehensive documentation for DeepTalk - AI-powered conversation analysis platform
+---
+
 # DeepTalk Documentation
 
 Welcome to the comprehensive documentation for **DeepTalk** - the AI-powered conversation analysis and insight discovery platform with local processing and privacy-first design.
