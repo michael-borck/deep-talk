@@ -1,6 +1,12 @@
 # DeepTalk
 
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=flat&logo=github)](https://github.com/michael-borck/deep-talk)
+[![Docs](https://img.shields.io/badge/Docs-Documentation-blue?style=flat&logo=readthedocs)](https://michael-borck.github.io/deep-talk/)
+[![Ingest](https://img.shields.io/badge/GitIngest-View-orange?style=flat)](https://gitingest.com/michael-borck/deep-talk)
+[![Deep Wiki](https://img.shields.io/badge/Deep%20Wiki-Explore-green?style=flat)](https://deepwiki.com/michael-borck/deep-talk)
+
 AI-powered conversation analysis and insight discovery platform with local processing and privacy-first design.
+
 
 ## Features
 
