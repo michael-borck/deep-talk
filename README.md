@@ -1,5 +1,9 @@
 # DeepTalk
 
+<!-- BADGES:START -->
+[![ai-powered-transcription](https://img.shields.io/badge/-ai--powered--transcription-blue?style=flat-square)](https://github.com/topics/ai-powered-transcription) [![cross-platform](https://img.shields.io/badge/-cross--platform-blue?style=flat-square)](https://github.com/topics/cross-platform) [![desktop-app](https://img.shields.io/badge/-desktop--app-blue?style=flat-square)](https://github.com/topics/desktop-app) [![ffmpeg](https://img.shields.io/badge/-ffmpeg-blue?style=flat-square)](https://github.com/topics/ffmpeg) [![local-processing](https://img.shields.io/badge/-local--processing-blue?style=flat-square)](https://github.com/topics/local-processing) [![natural-language-processing](https://img.shields.io/badge/-natural--language--processing-blue?style=flat-square)](https://github.com/topics/natural-language-processing) [![privacy-first](https://img.shields.io/badge/-privacy--first-blue?style=flat-square)](https://github.com/topics/privacy-first) [![typescript](https://img.shields.io/badge/-typescript-3178c6?style=flat-square)](https://github.com/topics/typescript) [![audio-video-processing](https://img.shields.io/badge/-audio--video--processing-blue?style=flat-square)](https://github.com/topics/audio-video-processing) [![edtech](https://img.shields.io/badge/-edtech-4caf50?style=flat-square)](https://github.com/topics/edtech)
+<!-- BADGES:END -->
+
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=flat&logo=github)](https://github.com/michael-borck/deep-talk)
 [![Docs](https://img.shields.io/badge/Docs-Documentation-blue?style=flat&logo=readthedocs)](https://michael-borck.github.io/deep-talk/)
 [![Ingest](https://img.shields.io/badge/GitIngest-View-orange?style=flat)](https://gitingest.com/michael-borck/deep-talk)
