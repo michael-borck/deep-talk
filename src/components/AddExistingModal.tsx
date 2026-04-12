@@ -151,14 +151,14 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-elevated w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Add Existing Transcripts</h2>
+          <h2 className="text-xl font-semibold text-surface-900">Add Existing Transcripts</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-surface-400 hover:text-surface-600"
           >
             <X size={24} />
           </button>
@@ -169,21 +169,21 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
           <div className="mb-6">
             <div className="flex items-center space-x-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400" size={20} />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search transcripts..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="input pl-10 py-3"
                 />
               </div>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`flex items-center space-x-2 px-4 py-3 border rounded-lg transition-colors ${
                   showFilters 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                    : 'border-gray-300 hover:bg-gray-50'
+                    ? 'border-primary-400 bg-primary-100 text-primary-700' 
+                    : 'border-surface-200 hover:bg-surface-50'
                 }`}
               >
                 <Filter size={20} />
@@ -193,11 +193,11 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-surface-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Date Range Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-surface-700 mb-2">
                       <Calendar size={16} className="inline mr-1" />
                       Date Range
                     </label>
@@ -209,7 +209,7 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                           ...prev,
                           dateRange: { ...prev.dateRange, start: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
                       />
                       <input
                         type="date"
@@ -218,14 +218,14 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                           ...prev,
                           dateRange: { ...prev.dateRange, end: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
                       />
                     </div>
                   </div>
 
                   {/* Duration Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-surface-700 mb-2">
                       <Clock size={16} className="inline mr-1" />
                       Duration (seconds)
                     </label>
@@ -238,7 +238,7 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                           ...prev,
                           duration: { ...prev.duration, min: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
                       />
                       <input
                         type="number"
@@ -248,21 +248,21 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                           ...prev,
                           duration: { ...prev.duration, max: e.target.value }
                         }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                        className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
                       />
                     </div>
                   </div>
 
                   {/* Sentiment Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-surface-700 mb-2">
                       <Palette size={16} className="inline mr-1" />
                       Sentiment
                     </label>
                     <select
                       value={filters.sentiment}
                       onChange={(e) => setFilters(prev => ({ ...prev, sentiment: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
                     >
                       <option value="">All sentiments</option>
                       <option value="positive">Positive</option>
@@ -281,7 +281,7 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                       sentiment: '',
                       hasKeywords: []
                     })}
-                    className="text-sm text-gray-600 hover:text-gray-800"
+                    className="text-sm text-surface-600 hover:text-surface-800"
                   >
                     Clear all filters
                   </button>
@@ -292,22 +292,22 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
 
           {/* Selection Summary */}
           {selectedItems.size > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="bg-primary-100 border border-primary-200 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-900">
+                <span className="text-sm font-medium text-primary-900">
                   {selectedItems.size} transcript{selectedItems.size !== 1 ? 's' : ''} selected
                 </span>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={clearSelection}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+                    className="text-sm text-primary-800 hover:text-primary-900"
                   >
                     Clear selection
                   </button>
                   {results.length > 0 && (
                     <button
                       onClick={selectAll}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-primary-800 hover:text-primary-900"
                     >
                       Select all
                     </button>
@@ -320,21 +320,21 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
           {/* Results */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-surface-900">
                 {loading ? 'Searching...' : `${results.length} available transcripts`}
               </h3>
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="ml-3 text-gray-600">Searching...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <p className="ml-3 text-surface-600">Searching...</p>
               </div>
             ) : results.length === 0 ? (
               <div className="text-center py-12">
-                <Search className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-4 text-lg font-medium text-gray-900">No transcripts found</h3>
-                <p className="mt-2 text-gray-600">
+                <Search className="mx-auto h-12 w-12 text-surface-400" />
+                <h3 className="mt-4 text-lg font-medium text-surface-900">No transcripts found</h3>
+                <p className="mt-2 text-surface-600">
                   {excludeTranscriptIds.length > 0 
                     ? "All available transcripts are already in this project, or try adjusting your search terms"
                     : "Try adjusting your search terms or filters"
@@ -344,37 +344,37 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
             ) : (
               <div className="space-y-3">
                 {results.map((transcript) => (
-                  <div key={transcript.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                  <div key={transcript.id} className="border border-surface-200 rounded-lg p-4 hover:bg-surface-50">
                     <div className="flex items-start space-x-4">
                       <button
                         onClick={() => toggleItemSelection(transcript.id)}
-                        className="mt-1 text-gray-400 hover:text-gray-600"
+                        className="mt-1 text-surface-400 hover:text-surface-600"
                       >
                         {selectedItems.has(transcript.id) ? 
-                          <CheckSquare size={20} className="text-blue-600" /> : 
+                          <CheckSquare size={20} className="text-primary-800" /> : 
                           <Square size={20} />
                         }
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-medium text-gray-900 mb-1">
+                        <h4 className="text-lg font-medium text-surface-900 mb-1">
                           {transcript.title}
                         </h4>
 
                         {transcript.summary && (
-                          <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                          <p className="text-surface-600 text-sm mb-2 line-clamp-2">
                             {transcript.summary}
                           </p>
                         )}
 
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <div className="flex items-center space-x-4 text-sm text-surface-500">
                           <span>📅 {formatDate(transcript.created_at)}</span>
                           <span>⏱️ {formatDuration(transcript.duration)}</span>
                           {transcript.sentiment_overall && (
                             <span className={`px-2 py-1 rounded text-xs ${
                               transcript.sentiment_overall === 'positive' ? 'bg-green-100 text-green-800' :
                               transcript.sentiment_overall === 'negative' ? 'bg-red-100 text-red-800' :
-                              'bg-gray-100 text-gray-800'
+                              'bg-surface-100 text-surface-800'
                             }`}>
                               {transcript.sentiment_overall}
                             </span>
@@ -385,12 +385,12 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
                         {transcript.key_topics && transcript.key_topics.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {transcript.key_topics.slice(0, 3).map((topic, idx) => (
-                              <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                              <span key={idx} className="text-xs bg-surface-100 text-surface-700 px-2 py-1 rounded">
                                 {topic}
                               </span>
                             ))}
                             {transcript.key_topics.length > 3 && (
-                              <span className="text-xs text-gray-500">+{transcript.key_topics.length - 3} more</span>
+                              <span className="text-xs text-surface-500">+{transcript.key_topics.length - 3} more</span>
                             )}
                           </div>
                         )}
@@ -404,17 +404,17 @@ export const AddExistingModal: React.FC<AddExistingModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t bg-surface-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-surface-600 hover:text-surface-800"
           >
             Cancel
           </button>
           <button
             onClick={handleAdd}
             disabled={selectedItems.size === 0}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary px-6 py-2"
           >
             Add {selectedItems.size} Transcript{selectedItems.size !== 1 ? 's' : ''}
           </button>

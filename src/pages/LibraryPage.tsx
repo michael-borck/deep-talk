@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { Filter } from 'lucide-react';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { TranscriptCard } from '../components/TranscriptCard';
 import { SearchBar } from '../components/SearchBar';
@@ -11,7 +12,6 @@ export const LibraryPage: React.FC = () => {
   const [filterTag, setFilterTag] = useState<string>('all');
   const [sortBy] = useState<'date' | 'title' | 'duration'>('date');
 
-  // Reload transcripts when page is opened
   useEffect(() => {
     loadTranscripts();
   }, []);
@@ -23,12 +23,10 @@ export const LibraryPage: React.FC = () => {
   const filterAndSortTranscripts = async () => {
     let filtered = transcripts;
 
-    // Apply search
     if (searchQuery) {
       filtered = await searchTranscripts(searchQuery);
     }
 
-    // Apply tag filter
     if (filterTag !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -52,7 +50,6 @@ export const LibraryPage: React.FC = () => {
       });
     }
 
-    // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'title':
@@ -71,24 +68,20 @@ export const LibraryPage: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto p-8">
       {/* Header with search */}
-      <div className="flex items-center justify-between mb-6">
-        <SearchBar 
+      <div className="flex items-center justify-between mb-6 animate-fade-in">
+        <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Search transcripts..."
         />
-        
-        <button className="text-gray-600 hover:text-gray-900">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" 
-            />
-          </svg>
+
+        <button className="text-surface-400 hover:text-surface-700 p-2 rounded-lg hover:bg-surface-100 transition-colors">
+          <Filter size={18} />
         </button>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center space-x-6 mb-6 border-b border-gray-200">
+      <div className="flex items-center gap-1 mb-6 border-b border-surface-200">
         {[
           { id: 'all', label: 'All' },
           { id: 'today', label: 'Today' },
@@ -100,16 +93,16 @@ export const LibraryPage: React.FC = () => {
             key={tab.id}
             onClick={() => setFilterTag(tab.id)}
             className={`
-              pb-3 text-sm font-medium transition-colors relative
-              ${filterTag === tab.id 
-                ? 'text-primary-600' 
-                : 'text-gray-600 hover:text-gray-900'
+              pb-3 px-4 text-sm font-medium transition-colors relative
+              ${filterTag === tab.id
+                ? 'text-primary-800'
+                : 'text-surface-400 hover:text-surface-700'
               }
             `}
           >
             {tab.label}
             {filterTag === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-800 rounded-full" />
             )}
           </button>
         ))}
@@ -117,16 +110,15 @@ export const LibraryPage: React.FC = () => {
 
       {/* Transcripts grid */}
       {filteredTranscripts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No transcripts found</p>
+        <div className="text-center py-16 animate-fade-in">
+          <p className="text-surface-400 text-sm">No transcripts found</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredTranscripts.map(transcript => (
-            <TranscriptCard 
-              key={transcript.id} 
-              transcript={transcript}
-            />
+        <div className="space-y-3">
+          {filteredTranscripts.map((transcript, i) => (
+            <div key={transcript.id} className="animate-slide-up" style={{ animationDelay: `${i * 0.03}s`, opacity: 0 }}>
+              <TranscriptCard transcript={transcript} />
+            </div>
           ))}
         </div>
       )}
@@ -134,20 +126,20 @@ export const LibraryPage: React.FC = () => {
       {/* Pagination */}
       {filteredTranscripts.length > 20 && (
         <div className="mt-8 flex justify-center">
-          <nav className="flex space-x-2">
-            <button className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+          <nav className="flex gap-1">
+            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
               Previous
             </button>
-            <button className="px-3 py-2 text-sm bg-primary-600 text-white rounded">
+            <button className="btn-primary px-3 py-2">
               1
             </button>
-            <button className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
               2
             </button>
-            <button className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
               3
             </button>
-            <button className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900">
+            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
               Next
             </button>
           </nav>

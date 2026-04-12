@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FileText, Calendar, Clock, HardDrive, Eye, MessageCircle, Download, Archive, Trash2, Star, Loader } from 'lucide-react';
 import { Transcript, Project } from '../types';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
@@ -24,17 +25,15 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   useEffect(() => {
     const loadTranscriptProjects = async () => {
       try {
-        // Get project IDs that this transcript belongs to
         const projectRelations = await window.electronAPI.database.all(
           `SELECT project_id FROM project_transcripts WHERE transcript_id = ?`,
           [transcript.id]
         );
-        
-        // Find the corresponding project objects
-        const relatedProjects = projects.filter(project => 
+
+        const relatedProjects = projects.filter(project =>
           projectRelations.some(relation => relation.project_id === project.id)
         );
-        
+
         setTranscriptProjects(relatedProjects);
       } catch (error) {
         console.error('Error loading transcript projects:', error);
@@ -65,9 +64,7 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
         'UPDATE transcripts SET is_archived = 1, archived_at = ? WHERE id = ?',
         [now, transcript.id]
       );
-      
-      // Trigger a reload of transcripts
-      window.location.reload(); // Simple approach for now
+      window.location.reload();
     } catch (error) {
       console.error('Error archiving transcript:', error);
       alert('Failed to archive transcript. Please try again.');
@@ -93,17 +90,14 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
           }
           break;
         case 'remove-from-all':
-          // Remove from all projects but keep the transcript
           for (const project of transcriptProjects) {
             await removeTranscriptFromProject(project.id, transcript.id);
           }
           break;
         case 'move-to-trash':
-          // Move to trash (soft delete)
           await moveTranscriptToTrash(transcript.id);
           break;
         case 'delete-permanently':
-          // Permanently delete the transcript
           await deleteTranscript(transcript.id);
           break;
       }
@@ -121,142 +115,142 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
         'UPDATE transcripts SET is_deleted = 1, deleted_at = ? WHERE id = ?',
         [now, transcriptId]
       );
-      
-      // Trigger a reload of transcripts
-      window.location.reload(); // Simple approach for now
+      window.location.reload();
     } catch (error) {
       console.error('Error moving transcript to trash:', error);
       throw error;
     }
   };
 
-  const getStatusIcon = () => {
+  const getStatusBadge = () => {
     switch (transcript.status) {
       case 'processing':
-        return <span className="text-blue-500">📝</span>;
+        return <span className="badge badge-info"><Loader size={11} className="animate-spin" />Processing</span>;
       case 'error':
-        return <span className="text-red-500">⚠️</span>;
+        return <span className="badge badge-error">Error</span>;
+      case 'completed':
+        return <span className="badge badge-success">Completed</span>;
       default:
-        return <span>📝</span>;
+        return <span className="badge badge-neutral">{transcript.status}</span>;
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+    <div className="card-interactive p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center space-x-2 mb-2">
-            {getStatusIcon()}
-            <h3 className="text-lg font-medium text-gray-900 truncate">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText size={16} className="text-primary-500 flex-shrink-0" />
+            <h3 className="text-base font-display text-surface-900 truncate">
               {transcript.title}
             </h3>
             <button
               onClick={handleToggleStar}
-              className={`${transcript.starred ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 transition-colors`}
+              className={`flex-shrink-0 transition-colors ${transcript.starred ? 'text-accent-500' : 'text-surface-300 hover:text-accent-400'}`}
             >
-              {transcript.starred ? '⭐' : '☆'}
+              <Star size={15} fill={transcript.starred ? 'currentColor' : 'none'} />
             </button>
+            {getStatusBadge()}
           </div>
-          
-          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
-            <span>📅 {formatDate(transcript.created_at)}</span>
-            {transcript.duration > 0 && <span>⏱️ {formatDuration(transcript.duration)}</span>}
-            <span>📁 {formatFileSize(transcript.file_size)}</span>
+
+          <div className="flex items-center gap-4 text-xs text-surface-500 mb-2">
+            <span className="flex items-center gap-1"><Calendar size={12} />{formatDate(transcript.created_at)}</span>
+            {transcript.duration > 0 && <span className="flex items-center gap-1"><Clock size={12} />{formatDuration(transcript.duration)}</span>}
+            <span className="flex items-center gap-1"><HardDrive size={12} />{formatFileSize(transcript.file_size)}</span>
           </div>
-          
+
           {transcript.summary && (
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-              Summary: {transcript.summary}
+            <p className="text-sm text-surface-600 mb-2 line-clamp-2">
+              {transcript.summary}
             </p>
           )}
-          
+
           {transcript.key_topics && transcript.key_topics.length > 0 && (
-            <div className="flex items-center space-x-2 mb-3">
-              <span className="text-sm text-gray-500">Topics:</span>
-              <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-surface-500">Topics:</span>
+              <div className="flex flex-wrap gap-1.5">
                 {transcript.key_topics.slice(0, 3).map((topic, idx) => (
-                  <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                  <span key={idx} className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-lg">
                     {topic}
                   </span>
                 ))}
                 {transcript.key_topics.length > 3 && (
-                  <span className="text-xs text-gray-500">+{transcript.key_topics.length - 3} more</span>
+                  <span className="text-xs text-surface-400">+{transcript.key_topics.length - 3} more</span>
                 )}
               </div>
             </div>
           )}
-          
+
           {transcriptProjects.length > 0 && (
-            <div className="flex items-center space-x-2 mb-3">
-              <span className="text-sm text-gray-500">Projects:</span>
-              <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-surface-500">Projects:</span>
+              <div className="flex flex-wrap gap-1.5">
                 {transcriptProjects.slice(0, 2).map((project) => (
                   <button
                     key={project.id}
                     onClick={() => navigate(`/project/${project.id}`)}
-                    className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors flex items-center space-x-1"
+                    className="text-xs bg-accent-50 text-accent-700 px-2 py-0.5 rounded-lg hover:bg-accent-100 transition-colors"
                   >
-                    <span>{project.icon}</span>
-                    <span>{project.name}</span>
+                    {project.name}
                   </button>
                 ))}
                 {transcriptProjects.length > 2 && (
-                  <span className="text-xs text-gray-500">+{transcriptProjects.length - 2} more</span>
+                  <span className="text-xs text-surface-400">+{transcriptProjects.length - 2} more</span>
                 )}
               </div>
             </div>
           )}
         </div>
       </div>
-      
-      <div className="flex items-center space-x-3 mt-4 pt-4 border-t border-gray-100">
+
+      <div className="flex items-center gap-1 mt-4 pt-3 border-t border-surface-100">
         <button
           onClick={handleView}
-          className="flex items-center space-x-1 text-sm text-primary-600 hover:text-primary-700"
+          className="btn-ghost flex items-center gap-1.5"
         >
-          <span>👁️</span>
-          <span>View</span>
+          <Eye size={13} />
+          View
         </button>
-        
+
         <button
           onClick={handleChat}
           disabled={transcript.is_archived}
-          className={`flex items-center space-x-1 text-sm ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
             transcript.is_archived
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-primary-600 hover:text-primary-700'
+              ? 'text-surface-300 cursor-not-allowed'
+              : 'text-primary-800 hover:bg-primary-100'
           }`}
           title={transcript.is_archived ? 'Chat disabled for archived transcripts' : 'Chat with this transcript'}
         >
-          <span>💬</span>
-          <span>Chat</span>
+          <MessageCircle size={13} />
+          Chat
         </button>
-        
+
         <button
           onClick={handleExport}
-          className="flex items-center space-x-1 text-sm text-primary-600 hover:text-primary-700"
+          className="btn-ghost flex items-center gap-1.5"
         >
-          <span>📤</span>
-          <span>Export</span>
+          <Download size={13} />
+          Export
         </button>
-        
+
         <button
           onClick={handleArchive}
-          className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent-600 hover:bg-accent-50 rounded-lg transition-colors"
         >
-          <span>📦</span>
-          <span>Archive</span>
+          <Archive size={13} />
+          Archive
         </button>
-        
+
         <button
           onClick={handleDelete}
-          className="flex items-center space-x-1 text-sm text-red-600 hover:text-red-700 ml-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-auto"
         >
-          <span>🗑️</span>
-          <span>Delete</span>
+          <Trash2 size={13} />
+          Delete
         </button>
       </div>
-      
+
       {/* Enhanced Delete Modal */}
       <EnhancedDeleteModal
         isOpen={showDeleteModal}

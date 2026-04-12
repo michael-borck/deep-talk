@@ -4,13 +4,15 @@ import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { Transcript, Project } from '../types';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
-import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search } from 'lucide-react';
+import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search, Clock, FileText, HardDrive, Calendar, FileAudio, Tag, ListChecks, FolderOpen, Quote, Lightbulb, X } from 'lucide-react';
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
 import { TranscriptChatModal } from '../components/TranscriptChatModal';
 import { ExportModal } from '../components/ExportModal';
 import { CorrectionTrigger } from '../components/CorrectionTrigger';
 import { TranscriptEditor } from '../components/TranscriptEditor';
 import { TimestampedTranscript } from '../components/TimestampedTranscript';
+import { SentimentCard } from '../components/SentimentCard';
+import { ValidationChangesCard } from '../components/ValidationChangesCard';
 
 type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations' | 'notes';
 
@@ -23,7 +25,6 @@ export const TranscriptDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
-  const [showValidationChanges, setShowValidationChanges] = useState(false);
   const [showSpeakerTagging, setShowSpeakerTagging] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -263,7 +264,7 @@ export const TranscriptDetailPage: React.FC = () => {
   // Get speaker colors consistently
   const getSpeakerColor = (index: number) => {
     const colors = [
-      { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', accent: 'bg-blue-500' },
+      { bg: 'bg-primary-100', border: 'border-primary-200', text: 'text-primary-900', accent: 'bg-primary-500' },
       { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-900', accent: 'bg-green-500' },
       { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-900', accent: 'bg-yellow-500' },
       { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900', accent: 'bg-purple-500' },
@@ -274,11 +275,11 @@ export const TranscriptDetailPage: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'overview' as const, label: '📄 Overview', name: 'Overview' },
-    { id: 'transcript' as const, label: '📝 Transcript', name: 'Transcript' },
-    { id: 'analysis' as const, label: '🔍 Analysis', name: 'Analysis' },
-    { id: 'conversations' as const, label: '💬 Conversations', name: 'Conversations' },
-    { id: 'notes' as const, label: '📓 Notes', name: 'Notes' }
+    { id: 'overview' as const, label: 'Overview', name: 'Overview' },
+    { id: 'transcript' as const, label: 'Transcript', name: 'Transcript' },
+    { id: 'analysis' as const, label: 'Analysis', name: 'Analysis' },
+    { id: 'conversations' as const, label: 'Conversations', name: 'Conversations' },
+    { id: 'notes' as const, label: 'Notes', name: 'Notes' }
   ];
 
   if (loading) {
@@ -286,7 +287,7 @@ export const TranscriptDetailPage: React.FC = () => {
       <div className="max-w-6xl mx-auto p-8">
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading transcript...</p>
+          <p className="mt-4 text-surface-600">Loading transcript...</p>
         </div>
       </div>
     );
@@ -296,10 +297,10 @@ export const TranscriptDetailPage: React.FC = () => {
     return (
       <div className="max-w-6xl mx-auto p-8">
         <div className="text-center py-12">
-          <p className="text-gray-600">Transcript not found.</p>
+          <p className="text-surface-600">Transcript not found.</p>
           <button 
             onClick={() => navigate('/library')}
-            className="mt-4 text-primary-600 hover:text-primary-700"
+            className="mt-4 text-primary-800 hover:text-primary-900"
           >
             Return to Library
           </button>
@@ -311,71 +312,55 @@ export const TranscriptDetailPage: React.FC = () => {
   const renderOverviewTab = () => (
     <div className="space-y-6">
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Duration</p>
-              <p className="text-2xl font-bold text-gray-900">{formatDuration(transcript.duration)}</p>
-            </div>
-            <div className="text-blue-500">⏱️</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Word Count</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {transcript.full_text?.split(' ').length || 0}
-              </p>
-            </div>
-            <div className="text-green-500">📄</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Speakers</p>
-              <p className="text-2xl font-bold text-gray-900">{transcript.speaker_count || 1}</p>
-            </div>
-            <div className="text-purple-500">👥</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">File Size</p>
-              <p className="text-2xl font-bold text-gray-900">{formatFileSize(transcript.file_size)}</p>
-            </div>
-            <div className="text-orange-500">💾</div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard icon={Clock} label="Duration" value={formatDuration(transcript.duration)} color="text-primary-500" />
+        <StatCard icon={FileText} label="Word Count" value={(transcript.full_text?.split(/\s+/).filter(Boolean).length || 0).toString()} color="text-success" />
+        <StatCard icon={Users} label="Speakers" value={(transcript.speaker_count || 1).toString()} color="text-accent-500" />
+        <StatCard icon={HardDrive} label="File Size" value={formatFileSize(transcript.file_size)} color="text-warning" />
       </div>
 
       {/* Summary Card */}
       {transcript.summary && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">📋 AI Summary</h3>
-          <p className="text-gray-700 leading-relaxed">{transcript.summary}</p>
+        <div className="card-static p-6">
+          <h3 className="section-title flex items-center gap-2 mb-3">
+            <Lightbulb size={18} className="text-accent-500" />
+            AI Summary
+          </h3>
+          <p className="text-surface-700 leading-relaxed">{transcript.summary}</p>
         </div>
+      )}
+
+      {/* Sentiment + Emotions (compact) */}
+      {(transcript.sentiment_overall || (transcript.emotions && Object.keys(transcript.emotions).length > 0)) && (
+        <SentimentCard
+          sentiment={transcript.sentiment_overall}
+          score={transcript.sentiment_score}
+          emotions={transcript.emotions}
+          variant="compact"
+        />
+      )}
+
+      {/* AI Corrections (collapsed by default with summary) */}
+      {transcript.validation_changes && transcript.validation_changes.length > 0 && (
+        <ValidationChangesCard changes={transcript.validation_changes} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Key Topics */}
         {transcript.key_topics && transcript.key_topics.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">🏷️ Key Topics</h3>
+          <div className="card-static p-6">
+            <h3 className="section-title flex items-center gap-2 mb-3">
+              <Tag size={16} className="text-primary-500" />
+              Key Topics
+            </h3>
             <div className="flex flex-wrap gap-2">
               {transcript.key_topics.slice(0, 8).map((topic, idx) => (
-                <span key={idx} className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm">
+                <span key={idx} className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-xs font-medium">
                   {topic}
                 </span>
               ))}
               {transcript.key_topics.length > 8 && (
-                <span className="text-sm text-gray-500">+{transcript.key_topics.length - 8} more</span>
+                <span className="text-xs text-surface-500 self-center">+{transcript.key_topics.length - 8} more</span>
               )}
             </div>
           </div>
@@ -383,17 +368,20 @@ export const TranscriptDetailPage: React.FC = () => {
 
         {/* Action Items */}
         {transcript.action_items && transcript.action_items.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">📌 Action Items</h3>
+          <div className="card-static p-6">
+            <h3 className="section-title flex items-center gap-2 mb-3">
+              <ListChecks size={16} className="text-accent-500" />
+              Action Items
+            </h3>
             <div className="space-y-2">
               {transcript.action_items.slice(0, 5).map((item, idx) => (
-                <div key={idx} className="flex items-start space-x-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span className="text-gray-700 text-sm">{item}</span>
+                <div key={idx} className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-accent-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-surface-700 text-sm">{item}</span>
                 </div>
               ))}
               {transcript.action_items.length > 5 && (
-                <p className="text-sm text-gray-500 ml-4">+{transcript.action_items.length - 5} more actions</p>
+                <p className="text-xs text-surface-500 ml-3.5">+{transcript.action_items.length - 5} more</p>
               )}
             </div>
           </div>
@@ -402,25 +390,45 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Projects */}
       {transcriptProjects.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">📁 Projects</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="card-static p-6">
+          <h3 className="section-title flex items-center gap-2 mb-3">
+            <FolderOpen size={16} className="text-primary-500" />
+            Projects
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {transcriptProjects.map((project) => (
               <button
                 key={project.id}
                 onClick={() => navigate(`/project/${project.id}`)}
-                className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
+                className="flex items-center gap-3 p-3 border border-surface-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors text-left"
               >
-                <span className="text-2xl">{project.icon}</span>
+                <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                  <FolderOpen size={16} className="text-primary-700" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">{project.name}</h4>
-                  <p className="text-sm text-gray-500 truncate">{project.description}</p>
+                  <h4 className="font-medium text-surface-900 truncate text-sm">{project.name}</h4>
+                  {project.description && (
+                    <p className="text-xs text-surface-500 truncate">{project.description}</p>
+                  )}
                 </div>
               </button>
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+
+  // Local stat card helper
+  const StatCard: React.FC<{ icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string; color: string }> = ({ icon: Icon, label, value, color }) => (
+    <div className="card-static p-4">
+      <div className="flex items-center justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-surface-500 mb-1">{label}</p>
+          <p className="text-xl font-display font-bold text-surface-800 truncate">{value}</p>
+        </div>
+        <Icon size={18} className={`${color} flex-shrink-0 ml-2`} />
+      </div>
     </div>
   );
 
@@ -434,25 +442,25 @@ export const TranscriptDetailPage: React.FC = () => {
     
     // Create sub-tabs: Include original and corrected versions when available
     const transcriptSubTabs = [
-      { 
-        id: 'original', 
-        label: '📄 Original', 
+      {
+        id: 'original',
+        label: 'Original',
         name: 'Original',
         speaker: null,
         color: null,
         text: transcript.full_text
       },
-      ...(transcript.validated_text ? [{ 
-        id: 'corrected', 
-        label: '✏️ Corrected', 
+      ...(transcript.validated_text ? [{
+        id: 'corrected',
+        label: 'Corrected',
         name: 'Corrected',
         speaker: null,
         color: null,
         text: transcript.validated_text
       }] : []),
-      ...(transcript.processed_text ? [{ 
-        id: 'speaker-tagged', 
-        label: '👥 Speaker-Tagged', 
+      ...(transcript.processed_text ? [{
+        id: 'speaker-tagged',
+        label: 'Speaker-Tagged',
         name: 'Speaker-Tagged',
         speaker: null,
         color: null,
@@ -460,7 +468,7 @@ export const TranscriptDetailPage: React.FC = () => {
       }] : []),
       ...speakers.map((speaker, idx) => ({
         id: `speaker-${idx}`,
-        label: `👤 ${getAnonymizedSpeakerName(speaker)}`,
+        label: getAnonymizedSpeakerName(speaker),
         name: getAnonymizedSpeakerName(speaker),
         speaker,
         color: getSpeakerColor(idx)
@@ -475,6 +483,29 @@ export const TranscriptDetailPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* In-transcript search */}
+        <div className="card-static p-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+            <input
+              type="text"
+              placeholder="Find in this transcript..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-9 pr-9"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-700 transition-colors"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Correction Trigger */}
         <CorrectionTrigger
           transcript={transcript}
@@ -485,28 +516,28 @@ export const TranscriptDetailPage: React.FC = () => {
 
         {/* Manual Edit Controls */}
         {(transcript.validated_text || transcript.full_text) && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="bg-white rounded-lg border border-surface-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-medium text-gray-900">Manual Editing & Display</h3>
-                <p className="text-xs text-gray-600">
+                <h3 className="text-sm font-medium text-surface-900">Manual Editing & Display</h3>
+                <p className="text-xs text-surface-600">
                   Edit the {transcript.validated_text ? 'corrected' : 'original'} transcript manually or adjust display options
                 </p>
               </div>
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setShowTimestamps(!showTimestamps)}
-                  className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                  className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                     showTimestamps 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-primary-100 text-primary-700' 
+                      : 'bg-surface-100 text-surface-700 hover:bg-surface-200'
                   }`}
                 >
                   🕐 Timestamps
                 </button>
                 <button
                   onClick={() => handleManualEdit()}
-                  className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                  className="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
                 >
                   Edit Transcript
                 </button>
@@ -515,41 +546,13 @@ export const TranscriptDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* Corrections Applied */}
-        {transcript.validation_changes && transcript.validation_changes.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">📝 Corrections Applied</h3>
-              <button
-                onClick={() => setShowValidationChanges(!showValidationChanges)}
-                className="px-3 py-1 text-sm rounded text-purple-600 hover:bg-purple-100"
-              >
-                {showValidationChanges ? 'Hide' : 'Show'} Changes ({transcript.validation_changes.length})
-              </button>
-            </div>
-            
-            {showValidationChanges && (
-              <div className="space-y-2">
-                {transcript.validation_changes.slice(0, 10).map((change, idx) => (
-                  <div key={idx} className="text-sm">
-                    <span className="font-medium text-purple-700 capitalize">{change.type}:</span>
-                    <span className="text-red-600 line-through ml-2">{change.original}</span>
-                    <span className="text-green-600 ml-2">→ {change.corrected}</span>
-                  </div>
-                ))}
-                {transcript.validation_changes.length > 10 && (
-                  <p className="text-xs text-purple-600">... and {transcript.validation_changes.length - 10} more changes</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Corrections shown on Overview tab now */}
 
         {/* Transcript Sub-tabs */}
         {transcriptSubTabs.length > 1 && (
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-white rounded-lg border border-surface-200">
             {/* Sub-tab Navigation */}
-            <div className="border-b border-gray-200 px-4">
+            <div className="border-b border-surface-200 px-4">
               <div className="flex space-x-6 overflow-x-auto">
                 {transcriptSubTabs.map(subTab => (
                   <button
@@ -558,14 +561,14 @@ export const TranscriptDetailPage: React.FC = () => {
                     className={`
                       py-3 text-sm font-medium transition-colors relative whitespace-nowrap
                       ${activeTranscriptSubTab === subTab.id 
-                        ? 'text-primary-600' 
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'text-primary-800' 
+                        : 'text-surface-600 hover:text-surface-900'
                       }
                     `}
                   >
                     {subTab.label}
                     {activeTranscriptSubTab === subTab.id && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-800" />
                     )}
                   </button>
                 ))}
@@ -596,9 +599,10 @@ export const TranscriptDetailPage: React.FC = () => {
                       version={getVersionFromTabId(activeTranscriptSubTab)}
                       showTimestamps={showTimestamps}
                       editable={false}
+                      searchQuery={searchQuery}
                     />
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-surface-500">
                       <p>No transcript available for this version.</p>
                       {transcript.status === 'processing' && (
                         <p className="mt-2">Transcript is still being processed...</p>
@@ -615,7 +619,7 @@ export const TranscriptDetailPage: React.FC = () => {
                   const selectedSubTab = transcriptSubTabs.find(tab => tab.id === activeTranscriptSubTab);
                   if (!selectedSubTab?.speaker || !selectedSubTab?.color || !currentText) {
                     return (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className="text-center py-8 text-surface-500">
                         <p>No text found for this speaker.</p>
                       </div>
                     );
@@ -670,7 +674,7 @@ export const TranscriptDetailPage: React.FC = () => {
                             </p>
                             <button
                               onClick={() => setShowSpeakerTagging(true)}
-                              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+                              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
                             >
                               Add Speaker Tags
                             </button>
@@ -687,7 +691,7 @@ export const TranscriptDetailPage: React.FC = () => {
 
         {/* Fallback: Single transcript view if no speakers */}
         {transcriptSubTabs.length <= 1 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white rounded-lg border border-surface-200 p-6">
             {currentText ? (
               <TimestampedTranscript
                 transcript={currentText}
@@ -695,9 +699,10 @@ export const TranscriptDetailPage: React.FC = () => {
                 version={transcript.validated_text ? 'corrected' : 'original'}
                 showTimestamps={showTimestamps}
                 editable={false}
+                searchQuery={searchQuery}
               />
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 <p>No transcript available.</p>
                 {transcript.status === 'processing' && (
                   <p className="mt-2">Transcript is still being processed...</p>
@@ -715,73 +720,24 @@ export const TranscriptDetailPage: React.FC = () => {
 
   const renderAnalysisTab = () => (
     <div className="space-y-6">
-      {/* Sentiment & Emotions */}
-      {(transcript.sentiment_overall || transcript.emotions) && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">😊 Sentiment & Emotions</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {transcript.sentiment_overall && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Overall Sentiment</h4>
-                <div className="flex items-center space-x-2">
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    transcript.sentiment_overall === 'positive' ? 'bg-green-100 text-green-800' :
-                    transcript.sentiment_overall === 'negative' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {transcript.sentiment_overall === 'positive' ? '😊 Positive' :
-                     transcript.sentiment_overall === 'negative' ? '😔 Negative' :
-                     '😐 Neutral'}
-                  </div>
-                  {transcript.sentiment_score !== undefined && (
-                    <span className="text-sm text-gray-500">
-                      ({transcript.sentiment_score > 0 ? '+' : ''}{transcript.sentiment_score.toFixed(2)})
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {transcript.emotions && Object.keys(transcript.emotions).length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Emotional Tone</h4>
-                <div className="space-y-2">
-                  {Object.entries(transcript.emotions)
-                    .filter(([_, value]) => value > 0.1)
-                    .sort(([,a], [,b]) => b - a)
-                    .slice(0, 5)
-                    .map(([emotion, value]) => (
-                      <div key={emotion} className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 capitalize">{emotion}</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-primary-500 h-2 rounded-full" 
-                              style={{ width: `${Math.round(value * 100)}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-gray-500 w-8">{Math.round(value * 100)}%</span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Sentiment & Emotions (full) */}
+      <SentimentCard
+        sentiment={transcript.sentiment_overall}
+        score={transcript.sentiment_score}
+        emotions={transcript.emotions}
+        variant="full"
+      />
 
       {/* Speaker Analysis */}
       {transcript.speakers && transcript.speakers.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">👥 Speaker Analysis</h3>
+        <div className="bg-white rounded-lg border border-surface-200 p-6">
+          <h3 className="section-title flex items-center gap-2 mb-4"><Users size={16} className="text-primary-500" />Speaker Analysis</h3>
           
           <div className="space-y-3">
             {transcript.speakers.map((speaker, idx) => {
               const totalSegments = transcript.speakers?.reduce((sum, s) => sum + (s?.segments || 0), 0) ?? 0;
               const percentage = totalSegments > 0 ? (speaker.segments / totalSegments) * 100 : 0;
-              const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
+              const colors = ['bg-primary-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500', 'bg-pink-500'];
               const color = colors[idx % colors.length];
               
               return (
@@ -789,15 +745,15 @@ export const TranscriptDetailPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${color}`}></div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-surface-900">
                         {getAnonymizedSpeakerName(speaker)}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-surface-600">
                       {speaker.segments} segments ({Math.round(percentage)}%)
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-surface-200 rounded-full h-3">
                     <div 
                       className={`h-3 rounded-full ${color} transition-all duration-500`}
                       style={{ width: `${Math.max(percentage, 3)}%` }}
@@ -812,25 +768,25 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Notable Quotes */}
       {transcript.notable_quotes && transcript.notable_quotes.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">💬 Notable Quotes</h3>
+        <div className="bg-white rounded-lg border border-surface-200 p-6">
+          <h3 className="section-title flex items-center gap-2 mb-4"><Quote size={16} className="text-accent-500" />Notable Quotes</h3>
           <div className="space-y-4">
             {transcript.notable_quotes.slice(0, 5).map((quote, idx) => (
-              <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded-r-lg">
-                <blockquote className="text-gray-700 italic">"{quote.text}"</blockquote>
+              <div key={idx} className="border-l-4 border-primary-400 pl-4 py-2 bg-primary-100 rounded-r-lg">
+                <blockquote className="text-surface-700 italic">"{quote.text}"</blockquote>
                 <div className="flex items-center justify-between mt-2">
                   {quote.speaker && (
-                    <span className="text-xs text-gray-500">— {quote.speaker}</span>
+                    <span className="text-xs text-surface-500">— {quote.speaker}</span>
                   )}
                   <div className="flex items-center space-x-1">
-                    <span className="text-xs text-gray-500">Relevance:</span>
-                    <div className="w-12 bg-gray-200 rounded-full h-1">
+                    <span className="text-xs text-surface-500">Relevance:</span>
+                    <div className="w-12 bg-surface-200 rounded-full h-1">
                       <div 
-                        className="bg-blue-500 h-1 rounded-full" 
+                        className="bg-primary-500 h-1 rounded-full" 
                         style={{ width: `${Math.round(quote.relevance * 100)}%` }}
                       ></div>
                     </div>
-                    <span className="text-xs text-gray-500">{Math.round(quote.relevance * 100)}%</span>
+                    <span className="text-xs text-surface-500">{Math.round(quote.relevance * 100)}%</span>
                   </div>
                 </div>
               </div>
@@ -841,8 +797,8 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Research Themes */}
       {transcript.research_themes && transcript.research_themes.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏷️ Research Themes</h3>
+        <div className="bg-white rounded-lg border border-surface-200 p-6">
+          <h3 className="section-title flex items-center gap-2 mb-4"><Tag size={16} className="text-primary-500" />Research Themes</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {transcript.research_themes.map((theme, idx) => (
               <div key={idx} className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
@@ -866,21 +822,21 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Q&A Pairs */}
       {transcript.qa_pairs && transcript.qa_pairs.length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">❓ Question-Answer Pairs</h3>
+        <div className="bg-white rounded-lg border border-surface-200 p-6">
+          <h3 className="text-lg font-semibold text-surface-900 mb-4">❓ Question-Answer Pairs</h3>
           <div className="space-y-4">
             {transcript.qa_pairs.slice(0, 3).map((qa, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg p-4">
+              <div key={idx} className="border border-surface-200 rounded-lg p-4">
                 <div className="mb-2">
                   <span className="text-xs font-medium text-green-600 uppercase tracking-wide">Question</span>
-                  <p className="text-sm text-gray-800 mt-1">{qa.question}</p>
+                  <p className="text-sm text-surface-800 mt-1">{qa.question}</p>
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-blue-600 uppercase tracking-wide">Answer</span>
-                  <p className="text-sm text-gray-700 mt-1">{qa.answer}</p>
+                  <span className="text-xs font-medium text-primary-800 uppercase tracking-wide">Answer</span>
+                  <p className="text-sm text-surface-700 mt-1">{qa.answer}</p>
                 </div>
                 {qa.speaker && (
-                  <div className="mt-2 text-xs text-gray-500">— {qa.speaker}</div>
+                  <div className="mt-2 text-xs text-surface-500">— {qa.speaker}</div>
                 )}
               </div>
             ))}
@@ -890,8 +846,8 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Concept Frequency */}
       {transcript.concept_frequency && Object.keys(transcript.concept_frequency).length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Concept Frequency</h3>
+        <div className="bg-white rounded-lg border border-surface-200 p-6">
+          <h3 className="section-title flex items-center gap-2 mb-4"><FileText size={16} className="text-primary-500" />Concept Frequency</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {Object.entries(transcript.concept_frequency)
               .sort(([,a], [,b]) => b.count - a.count)
@@ -900,7 +856,7 @@ export const TranscriptDetailPage: React.FC = () => {
                 <div key={concept} className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-orange-900 capitalize">{concept}</span>
-                    <span className="text-lg font-bold text-orange-600">{data.count}</span>
+                    <span className="text-lg font-display text-orange-600">{data.count}</span>
                   </div>
                   <div className="text-xs text-orange-700">
                     {data.contexts && data.contexts.length > 0 && data.contexts[0]}
@@ -915,16 +871,16 @@ export const TranscriptDetailPage: React.FC = () => {
 
   const renderConversationsTab = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-surface-200 p-6">
         <div className="text-center py-8">
-          <MessageCircle size={48} className="text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Chat History</h3>
-          <p className="text-gray-600 mb-4">
+          <MessageCircle size={48} className="text-surface-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-surface-900 mb-2">Chat History</h3>
+          <p className="text-surface-600 mb-4">
             Chat conversations with this transcript will appear here.
           </p>
           <button
             onClick={() => setShowChatModal(true)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+            className="btn-primary"
           >
             Start New Conversation
           </button>
@@ -935,16 +891,16 @@ export const TranscriptDetailPage: React.FC = () => {
 
   const renderNotesTab = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-surface-200 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">📓 Personal Notes</h3>
+          <h3 className="text-lg font-semibold text-surface-900">📓 Personal Notes</h3>
           {!isEditingNotes ? (
             <button
               onClick={() => {
                 setIsEditingNotes(true);
                 setEditedNotes(transcript.personal_notes || '');
               }}
-              className="flex items-center space-x-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+              className="flex items-center space-x-1 px-4 py-2 text-sm text-surface-600 hover:text-surface-900 border border-surface-200 rounded-lg hover:bg-surface-50"
             >
               <Edit size={16} />
               <span>Edit Notes</span>
@@ -953,7 +909,7 @@ export const TranscriptDetailPage: React.FC = () => {
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleSaveNotes}
-                className="px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="btn-primary"
               >
                 Save
               </button>
@@ -962,7 +918,7 @@ export const TranscriptDetailPage: React.FC = () => {
                   setIsEditingNotes(false);
                   setEditedNotes(transcript.personal_notes || '');
                 }}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 text-sm border border-surface-200 rounded-lg hover:bg-surface-50"
               >
                 Cancel
               </button>
@@ -974,7 +930,7 @@ export const TranscriptDetailPage: React.FC = () => {
           <textarea
             value={editedNotes}
             onChange={(e) => setEditedNotes(e.target.value)}
-            className="w-full h-96 p-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y font-mono text-sm"
+            className="w-full h-96 p-4 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y font-mono text-sm"
             placeholder="Add your personal notes about this transcript here...
 
 💡 Tips:
@@ -988,12 +944,12 @@ export const TranscriptDetailPage: React.FC = () => {
         ) : (
           <div className="prose max-w-none">
             {transcript.personal_notes ? (
-              <div className="text-gray-700 whitespace-pre-wrap font-mono text-sm leading-relaxed">
+              <div className="text-surface-700 whitespace-pre-wrap font-mono text-sm leading-relaxed">
                 {transcript.personal_notes}
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">
+                <p className="text-surface-500 mb-4">
                   No personal notes added yet.
                 </p>
                 <button
@@ -1001,7 +957,7 @@ export const TranscriptDetailPage: React.FC = () => {
                     setIsEditingNotes(true);
                     setEditedNotes('');
                   }}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                  className="btn-primary"
                 >
                   Add Notes
                 </button>
@@ -1013,8 +969,8 @@ export const TranscriptDetailPage: React.FC = () => {
 
       {/* Note Statistics */}
       {transcript.personal_notes && (
-        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="bg-surface-50 rounded-lg border border-surface-200 p-4">
+          <div className="flex items-center justify-between text-sm text-surface-600">
             <span>📅 Last updated: {formatDate(transcript.updated_at)}</span>
             <span>📦 {transcript.personal_notes.length} characters</span>
           </div>
@@ -1029,7 +985,7 @@ export const TranscriptDetailPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate('/library')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+          className="flex items-center space-x-2 text-surface-600 hover:text-surface-900"
         >
           <ArrowLeft size={20} />
           <span>Back to Library</span>
@@ -1039,14 +995,14 @@ export const TranscriptDetailPage: React.FC = () => {
         <div className="flex items-center space-x-3">
           <button
             onClick={handleToggleStar}
-            className={`${transcript.starred ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 transition-colors`}
+            className={`${transcript.starred ? 'text-yellow-500' : 'text-surface-300'} hover:text-yellow-500 transition-colors`}
           >
             <Star size={20} fill={transcript.starred ? 'currentColor' : 'none'} />
           </button>
           
           <button
             onClick={() => setShowChatModal(true)}
-            className="flex items-center space-x-1 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-md"
+            className="flex items-center space-x-1 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg"
             disabled={transcript.is_archived}
           >
             <MessageCircle size={16} />
@@ -1055,7 +1011,7 @@ export const TranscriptDetailPage: React.FC = () => {
           
           <button
             onClick={handleCopyTranscript}
-            className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center space-x-1 px-3 py-2 text-sm text-surface-600 hover:text-surface-900 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <Copy size={16} />
             <span>Copy</span>
@@ -1063,7 +1019,7 @@ export const TranscriptDetailPage: React.FC = () => {
           
           <button
             onClick={() => setShowSpeakerTagging(true)}
-            className="flex items-center space-x-1 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 border border-purple-300 rounded-md hover:bg-purple-50"
+            className="flex items-center space-x-1 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50"
           >
             <Users size={16} />
             <span>Speakers</span>
@@ -1071,7 +1027,7 @@ export const TranscriptDetailPage: React.FC = () => {
           
           <button
             onClick={handleExportTranscript}
-            className="flex items-center space-x-1 px-3 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-md"
+            className="flex items-center space-x-1 px-3 py-2 text-sm text-white bg-primary-800 hover:bg-primary-900 rounded-lg"
           >
             <Download size={16} />
             <span>Export</span>
@@ -1080,7 +1036,7 @@ export const TranscriptDetailPage: React.FC = () => {
       </div>
 
       {/* Title Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-card border border-surface-200 p-6 mb-6">
         <div className="flex items-center justify-between">
           {isEditing ? (
             <div className="flex-1 flex items-center space-x-3">
@@ -1088,12 +1044,12 @@ export const TranscriptDetailPage: React.FC = () => {
                 type="text"
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
-                className="flex-1 text-xl font-semibold border border-gray-300 rounded px-3 py-2"
+                className="flex-1 text-xl font-semibold border border-surface-200 rounded px-3 py-2"
                 autoFocus
               />
               <button
                 onClick={handleSaveTitle}
-                className="px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
+                className="btn-primary px-3 py-2"
               >
                 Save
               </button>
@@ -1102,63 +1058,49 @@ export const TranscriptDetailPage: React.FC = () => {
                   setIsEditing(false);
                   setEditedTitle(transcript.title);
                 }}
-                className="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                className="px-3 py-2 text-sm border border-surface-200 rounded hover:bg-surface-50"
               >
                 Cancel
               </button>
             </div>
           ) : (
             <div className="flex items-center space-x-3 flex-1">
-              <h1 className="text-2xl font-semibold text-gray-900">{transcript.title}</h1>
+              <h1 className="page-title">{transcript.title}</h1>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-surface-400 hover:text-surface-600 transition-colors"
               >
-                <Edit size={18} />
+                <Edit size={16} />
               </button>
             </div>
           )}
         </div>
-        
-        <div className="flex items-center space-x-6 text-sm text-gray-500 mt-4">
-          <span>📅 {formatDate(transcript.created_at)}</span>
-          <span>⏱️ {formatDuration(transcript.duration)}</span>
-          <span>📁 {formatFileSize(transcript.file_size)}</span>
-          <span>📄 {transcript.file_path?.split('/').pop() || transcript.filename}</span>
-        </div>
-      </div>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search transcript content..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
+        <div className="flex items-center gap-5 text-xs text-surface-500 mt-4">
+          <span className="flex items-center gap-1.5"><Calendar size={12} />{formatDate(transcript.created_at)}</span>
+          <span className="flex items-center gap-1.5"><Clock size={12} />{formatDuration(transcript.duration)}</span>
+          <span className="flex items-center gap-1.5"><HardDrive size={12} />{formatFileSize(transcript.file_size)}</span>
+          <span className="flex items-center gap-1.5"><FileAudio size={12} />{transcript.file_path?.split('/').pop() || transcript.filename}</span>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-6 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 mb-6 border-b border-surface-200">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`
-              pb-3 text-sm font-medium transition-colors relative
-              ${activeTab === tab.id 
-                ? 'text-primary-600' 
-                : 'text-gray-600 hover:text-gray-900'
+              pb-3 px-4 text-sm font-medium transition-colors relative
+              ${activeTab === tab.id
+                ? 'text-primary-800'
+                : 'text-surface-500 hover:text-surface-800'
               }
             `}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-800" />
             )}
           </button>
         ))}

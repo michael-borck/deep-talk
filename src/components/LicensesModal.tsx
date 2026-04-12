@@ -104,22 +104,22 @@ SOFTWARE.`
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-elevated max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 p-6">
+        <div className="border-b border-surface-200 p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">Open Source Licenses</h2>
+            <h2 className="text-2xl font-semibold text-surface-900">Open Source Licenses</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-surface-400 hover:text-surface-600 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <p className="text-gray-600 mt-2">
+          <p className="text-surface-600 mt-2">
             DeepTalk is built with open source software. Here are the licenses for the components we use:
           </p>
         </div>
@@ -128,16 +128,16 @@ SOFTWARE.`
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             {licenses.map((license, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
+              <div key={index} className="border border-surface-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">{license.name}</h3>
-                    <p className="text-sm text-gray-600">{license.description}</p>
+                    <h3 className="text-lg font-medium text-surface-900">{license.name}</h3>
+                    <p className="text-sm text-surface-600">{license.description}</p>
                     <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      <span className="text-xs bg-surface-100 text-surface-700 px-2 py-1 rounded">
                         v{license.version}
                       </span>
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      <span className="text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded">
                         {license.license}
                       </span>
                     </div>
@@ -146,7 +146,7 @@ SOFTWARE.`
                     {license.url && (
                       <button
                         onClick={() => window.open(license.url, '_blank')}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        className="text-xs text-primary-800 hover:text-primary-900 underline"
                       >
                         Project
                       </button>
@@ -154,7 +154,7 @@ SOFTWARE.`
                     {license.licenseUrl && (
                       <button
                         onClick={() => window.open(license.licenseUrl, '_blank')}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        className="text-xs text-primary-800 hover:text-primary-900 underline"
                       >
                         License
                       </button>
@@ -170,10 +170,10 @@ SOFTWARE.`
 
                 {license.licenseText && (
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                    <summary className="cursor-pointer text-sm font-medium text-surface-700 hover:text-surface-900">
                       View License Text
                     </summary>
-                    <pre className="mt-2 text-xs text-gray-600 bg-gray-50 p-3 rounded border max-h-64 overflow-y-auto whitespace-pre-wrap">
+                    <pre className="mt-2 text-xs text-surface-600 bg-surface-50 p-3 rounded border max-h-64 overflow-y-auto whitespace-pre-wrap">
                       {license.licenseText}
                     </pre>
                   </details>
@@ -183,9 +183,9 @@ SOFTWARE.`
           </div>
 
           {/* Footer Notice */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-2">License Compliance</h4>
-            <div className="text-sm text-gray-600 space-y-2">
+          <div className="mt-8 p-4 bg-surface-50 rounded-lg">
+            <h4 className="font-medium text-surface-900 mb-2">License Compliance</h4>
+            <div className="text-sm text-surface-600 space-y-2">
               <p>
                 • <strong>FFmpeg:</strong> Distributed under LGPL v2.1. No modifications made to FFmpeg source code.
                 FFmpeg binaries are dynamically linked and distributed separately.
@@ -202,14 +202,14 @@ SOFTWARE.`
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
+        <div className="border-t border-surface-200 p-4 bg-surface-50">
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-surface-600">
               For questions about licensing, please contact the project maintainers.
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-surface-600 text-white rounded-lg hover:bg-surface-700 transition-colors"
             >
               Close
             </button>

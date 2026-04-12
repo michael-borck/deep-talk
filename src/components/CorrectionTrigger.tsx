@@ -174,9 +174,9 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
     switch (status) {
       case 'loading':
         return {
-          icon: <RefreshCw size={16} className="animate-spin text-gray-400" />,
+          icon: <RefreshCw size={16} className="animate-spin text-surface-400" />,
           text: 'Loading settings...',
-          color: 'text-gray-500'
+          color: 'text-surface-500'
         };
       case 'disabled':
         return {
@@ -192,9 +192,9 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
         };
       case 'available':
         return {
-          icon: <Edit3 size={16} className="text-blue-500" />,
+          icon: <Edit3 size={16} className="text-primary-500" />,
           text: 'Ready to generate correction',
-          color: 'text-blue-600'
+          color: 'text-primary-800'
         };
     }
   };
@@ -204,12 +204,12 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white rounded-lg border border-surface-200 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {statusInfo.icon}
             <div>
-              <h3 className="text-sm font-medium text-gray-900">Transcript Correction</h3>
+              <h3 className="text-sm font-medium text-surface-900">Transcript Correction</h3>
               <p className={`text-xs ${statusInfo.color}`}>
                 {statusInfo.text}
               </p>
@@ -219,12 +219,12 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
           <button
             onClick={handleCorrectionClick}
             disabled={!canCorrect}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               canCorrect
                 ? hasExistingCorrection
                   ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                : 'bg-surface-100 text-surface-400 cursor-not-allowed'
             }`}
           >
             {isProcessing ? (
@@ -241,7 +241,7 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
         </div>
 
         {validationSettings && (
-          <div className="mt-3 text-xs text-gray-500">
+          <div className="mt-3 text-xs text-surface-500">
             <strong>Active validation options:</strong>{' '}
             {Object.entries(validationSettings.options)
               .filter(([_, enabled]) => enabled)
@@ -253,16 +253,16 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-elevated max-w-md w-full p-6">
             <div className="flex items-center space-x-3 mb-4">
               <AlertTriangle size={24} className="text-orange-500" />
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-surface-900">
                 Overwrite Existing Correction?
               </h3>
             </div>
             
-            <p className="text-gray-600 mb-6">
+            <p className="text-surface-600 mb-6">
               This transcript already has a corrected version. Re-correcting will overwrite 
               the existing corrections with new AI-generated ones based on your current settings.
             </p>
@@ -270,13 +270,13 @@ export const CorrectionTrigger: React.FC<CorrectionTriggerProps> = ({
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowConfirmDialog(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-surface-200 text-surface-700 rounded-lg hover:bg-surface-50"
               >
                 Cancel
               </button>
               <button
                 onClick={startCorrection}
-                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
               >
                 Overwrite
               </button>

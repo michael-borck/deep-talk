@@ -4,7 +4,7 @@ import { ServiceContext } from '../contexts/ServiceContext';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { formatDistanceToNow, formatDuration } from '../utils/helpers';
-import { Clock, FolderOpen, ArrowRight, Activity, TrendingUp } from 'lucide-react';
+import { Clock, FolderOpen, ArrowRight, Activity, TrendingUp, FileText, Star } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,134 +12,136 @@ export const HomePage: React.FC = () => {
   const { recentTranscripts, loadTranscripts } = useContext(TranscriptContext);
   const { projects } = useProjects();
 
-  // Reload transcripts when page is opened
   useEffect(() => {
     loadTranscripts();
   }, []);
 
   const getConnectionStatus = () => {
     if (serviceStatus.speechToText === 'connected' && serviceStatus.aiAnalysis === 'connected') {
-      return { text: 'All services connected', color: 'text-green-600', icon: '●' };
+      return { text: 'All services connected', color: 'text-success', dotColor: 'bg-success' };
     } else if (serviceStatus.speechToText === 'error' || serviceStatus.aiAnalysis === 'error') {
-      return { text: 'Service connection error', color: 'text-red-600', icon: '●' };
+      return { text: 'Service connection error', color: 'text-error', dotColor: 'bg-error' };
     } else {
-      return { text: 'Connecting to services...', color: 'text-yellow-600', icon: '●' };
+      return { text: 'Connecting to services...', color: 'text-warning', dotColor: 'bg-warning' };
     }
   };
 
   const connectionStatus = getConnectionStatus();
-  
-  // Get 3 most active projects (sorted by last used, not created)
+
   const mostActiveProjects = projects
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     .slice(0, 3);
 
-  // Get 5 most recent transcripts
   const mostRecentTranscripts = recentTranscripts.slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-10 animate-fade-in">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">
-            Welcome to DeepTalk 👋
+          <h1 className="text-3xl font-display text-surface-900 tracking-tight">
+            Welcome to DeepTalk
           </h1>
-          <p className="text-gray-600 mt-1">Your recent activity and quick access</p>
+          <p className="text-surface-500 mt-1 text-sm">Your recent activity and quick access</p>
         </div>
-        <div className={`flex items-center space-x-2 ${connectionStatus.color}`}>
-          <span>{connectionStatus.icon}</span>
-          <span className="text-sm">{connectionStatus.text}</span>
+        <div className={`flex items-center gap-2 ${connectionStatus.color}`}>
+          <div className={`w-2 h-2 rounded-full ${connectionStatus.dotColor}`} />
+          <span className="text-xs font-medium">{connectionStatus.text}</span>
         </div>
       </div>
 
       {/* Recent Activity Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Recent Transcripts - Now showing 5 */}
-        <div className="bg-white rounded-lg border shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Transcripts</h2>
-            <div className="flex items-center space-x-2">
-              <Activity className="text-green-600" size={20} />
-              <span className="text-sm text-gray-500">{mostRecentTranscripts.length} of {recentTranscripts.length}</span>
+        {/* Recent Transcripts */}
+        <div className="card-interactive p-6 animate-slide-up" style={{ animationDelay: '0.05s', opacity: 0 }}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-display text-surface-900">Recent Transcripts</h2>
+            <div className="flex items-center gap-2">
+              <Activity className="text-success" size={16} />
+              <span className="text-xs text-surface-500">{mostRecentTranscripts.length} of {recentTranscripts.length}</span>
             </div>
           </div>
           {mostRecentTranscripts.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-1">
               {mostRecentTranscripts.map((transcript) => (
                 <div
                   key={transcript.id}
-                  className="cursor-pointer hover:bg-gray-50 p-3 -m-3 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                  className={`cursor-pointer hover:bg-surface-50 p-3 rounded-lg transition-all duration-200 group`}
                   onClick={() => navigate(`/transcript/${transcript.id}`)}
                 >
-                  <h3 className="font-medium text-gray-900 text-sm truncate">
-                    {transcript.title}
-                  </h3>
-                  <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2">
+                    <FileText size={14} className="text-primary-400 flex-shrink-0" />
+                    <h3 className="font-medium text-surface-800 text-sm truncate group-hover:text-primary-900 transition-colors">
+                      {transcript.title}
+                    </h3>
+                    {transcript.starred && <Star size={12} className="text-accent-500 flex-shrink-0" fill="currentColor" />}
+                  </div>
+                  <div className="text-xs text-surface-400 flex items-center gap-2 mt-1 ml-[22px]">
                     <span>{formatDistanceToNow(new Date(transcript.created_at))} ago</span>
-                    <span>•</span>
+                    <span className="text-surface-200">&middot;</span>
                     <span>{formatDuration(transcript.duration)}</span>
-                    <span>•</span>
-                    <span className={`capitalize ${
-                      transcript.status === 'completed' ? 'text-green-600' :
-                      transcript.status === 'processing' ? 'text-blue-600' :
-                      transcript.status === 'error' ? 'text-red-600' : 'text-gray-500'
+                    <span className="text-surface-200">&middot;</span>
+                    <span className={`badge text-[10px] py-0 px-1.5 ${
+                      transcript.status === 'completed' ? 'badge-success' :
+                      transcript.status === 'processing' ? 'badge-info' :
+                      transcript.status === 'error' ? 'badge-error' : 'badge-neutral'
                     }`}>
                       {transcript.status}
                     </span>
-                    {transcript.starred && <span>⭐</span>}
                   </div>
                 </div>
               ))}
               <button
                 onClick={() => navigate('/library')}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-4 w-full justify-center py-2 border border-blue-200 hover:border-blue-300 rounded-lg"
+                className="link-accent text-sm flex items-center gap-1 mt-3 w-full justify-center py-2.5 border border-accent-200 hover:border-accent-300 rounded-lg transition-colors"
               >
                 View all transcripts ({recentTranscripts.length})
-                <ArrowRight size={16} />
+                <ArrowRight size={14} />
               </button>
             </div>
           ) : (
-            <div className="text-center text-gray-500 text-sm py-8">
-              <Clock className="mx-auto mb-3 text-gray-400" size={32} />
-              <p className="font-medium">No transcripts yet</p>
-              <p className="mt-1">Use the Upload & Process button in the sidebar to get started!</p>
+            <div className="text-center text-surface-400 text-sm py-10">
+              <Clock className="mx-auto mb-3 text-surface-300" size={28} />
+              <p className="font-medium text-surface-600">No transcripts yet</p>
+              <p className="mt-1 text-xs">Use Upload & Process in the sidebar to get started</p>
             </div>
           )}
         </div>
 
-        {/* Most Active Projects - Now labeled as such */}
-        <div className="bg-white rounded-lg border shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Most Active Projects</h2>
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="text-purple-600" size={20} />
-              <span className="text-sm text-gray-500">{mostActiveProjects.length} of {projects.length}</span>
+        {/* Most Active Projects */}
+        <div className="card-interactive p-6 animate-slide-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-display text-surface-900">Most Active Projects</h2>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="text-accent-500" size={16} />
+              <span className="text-xs text-surface-500">{mostActiveProjects.length} of {projects.length}</span>
             </div>
           </div>
           {mostActiveProjects.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-1">
               {mostActiveProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="cursor-pointer hover:bg-gray-50 p-3 -m-3 rounded-lg transition-colors border border-transparent hover:border-gray-200"
+                  className="cursor-pointer hover:bg-surface-50 p-3 rounded-lg transition-all duration-200 group"
                   onClick={() => navigate(`/project/${project.id}`)}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{project.icon || '📁'}</span>
+                    <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                      <FolderOpen size={15} className="text-primary-500" />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 text-sm truncate">
+                      <h3 className="font-medium text-surface-800 text-sm truncate group-hover:text-primary-900 transition-colors">
                         {project.name}
                       </h3>
-                      <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                      <div className="text-xs text-surface-400 flex items-center gap-2 mt-0.5">
                         <span>{project.transcript_count || 0} transcripts</span>
                         {project.total_duration && project.total_duration > 0 && (
                           <>
-                            <span>•</span>
+                            <span className="text-surface-200">&middot;</span>
                             <span>{formatDuration(project.total_duration)}</span>
                           </>
                         )}
-                        <span>•</span>
+                        <span className="text-surface-200">&middot;</span>
                         <span>Updated {formatDistanceToNow(new Date(project.updated_at))} ago</span>
                       </div>
                     </div>
@@ -148,19 +150,19 @@ export const HomePage: React.FC = () => {
               ))}
               <button
                 onClick={() => navigate('/projects')}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1 mt-4 w-full justify-center py-2 border border-blue-200 hover:border-blue-300 rounded-lg"
+                className="link-accent text-sm flex items-center gap-1 mt-3 w-full justify-center py-2.5 border border-accent-200 hover:border-accent-300 rounded-lg transition-colors"
               >
                 View all projects ({projects.length})
-                <ArrowRight size={16} />
+                <ArrowRight size={14} />
               </button>
             </div>
           ) : (
-            <div className="text-center text-gray-500 text-sm py-8">
-              <FolderOpen className="mx-auto mb-3 text-gray-400" size={32} />
-              <p className="font-medium">No projects yet</p>
+            <div className="text-center text-surface-400 text-sm py-10">
+              <FolderOpen className="mx-auto mb-3 text-surface-300" size={28} />
+              <p className="font-medium text-surface-600">No projects yet</p>
               <button
                 onClick={() => navigate('/projects')}
-                className="text-blue-600 hover:text-blue-700 font-medium mt-2"
+                className="link-accent mt-2 text-sm"
               >
                 Create your first project
               </button>
@@ -170,31 +172,33 @@ export const HomePage: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Activity</h2>
+      <div className="bg-surface-100 rounded-xl p-6 animate-slide-up" style={{ animationDelay: '0.15s', opacity: 0 }}>
+        <h2 className="text-lg font-display text-surface-900 mb-4">Your Activity</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-2xl font-bold text-blue-600">{recentTranscripts.length}</div>
-            <div className="text-sm text-gray-600">Total Transcripts</div>
-          </div>
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-2xl font-bold text-purple-600">{projects.length}</div>
-            <div className="text-sm text-gray-600">Projects</div>
-          </div>
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {recentTranscripts.reduce((total, t) => total + (t.duration || 0), 0) > 0
+          {[
+            { value: recentTranscripts.length, label: 'Total Transcripts', color: 'text-primary-800', icon: FileText },
+            { value: projects.length, label: 'Projects', color: 'text-accent-600', icon: FolderOpen },
+            {
+              value: recentTranscripts.reduce((total, t) => total + (t.duration || 0), 0) > 0
                 ? formatDuration(recentTranscripts.reduce((total, t) => total + (t.duration || 0), 0))
-                : '0m'}
-            </div>
-            <div className="text-sm text-gray-600">Total Duration</div>
-          </div>
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {recentTranscripts.filter(t => t.starred).length}
-            </div>
-            <div className="text-sm text-gray-600">Starred Items</div>
-          </div>
+                : '0m',
+              label: 'Total Duration',
+              color: 'text-success',
+              icon: Clock
+            },
+            { value: recentTranscripts.filter(t => t.starred).length, label: 'Starred Items', color: 'text-accent-500', icon: Star },
+          ].map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="bg-white rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon size={14} className={stat.color} />
+                  <span className="text-xs text-surface-500">{stat.label}</span>
+                </div>
+                <div className={`text-2xl font-display ${stat.color}`}>{stat.value}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

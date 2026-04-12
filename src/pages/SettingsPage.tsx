@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { Mic, Cog, MessageCircle, Bot, Settings } from 'lucide-react';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { formatFileSize } from '../utils/helpers';
 import { PromptsSettings } from '../components/PromptsSettings';
@@ -13,6 +14,7 @@ export const SettingsPage: React.FC = () => {
   
   // Settings state
   const [speechToTextUrl, setSpeechToTextUrl] = useState('http://localhost:8000');
+  const [speechToTextKey, setSpeechToTextKey] = useState('');
   const [speechToTextModel, setSpeechToTextModel] = useState('Systran/faster-distil-whisper-small.en');
   const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434');
   const [aiModel, setAiModel] = useState('llama2');
@@ -67,6 +69,7 @@ export const SettingsPage: React.FC = () => {
       }, {});
 
       setSpeechToTextUrl(settingsMap.speechToTextUrl || 'http://localhost:8000');
+      setSpeechToTextKey(settingsMap.speechToTextKey || '');
       setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-medium.en');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
       setAiModel(settingsMap.aiModel || 'llama2');
@@ -264,11 +267,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'transcription' as const, label: '🎤 Transcription', name: 'Transcription' },
-    { id: 'processing' as const, label: '🔧 Processing', name: 'Processing' },
-    { id: 'chat' as const, label: '💬 Chat', name: 'Chat' },
-    { id: 'prompts' as const, label: '🤖 Prompts', name: 'Prompts' },
-    { id: 'general' as const, label: '⚙️ General', name: 'General' }
+    { id: 'transcription' as const, label: 'Transcription', name: 'Transcription', icon: Mic },
+    { id: 'processing' as const, label: 'Processing', name: 'Processing', icon: Cog },
+    { id: 'chat' as const, label: 'Chat', name: 'Chat', icon: MessageCircle },
+    { id: 'prompts' as const, label: 'AI Prompts', name: 'Prompts', icon: Bot },
+    { id: 'general' as const, label: 'General', name: 'General', icon: Settings }
   ];
 
   // Search functionality
@@ -344,15 +347,15 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* Speech-to-Text Service */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
-                Speech-to-Text Service (Speaches)
+            <div className="panel">
+              <h3 className="section-title mb-4">
+                Transcription Service
               </h3>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Service URL
+                  <label className="label">
+                    Server Address
                   </label>
                   <div className="flex space-x-2">
                     <input
@@ -362,20 +365,40 @@ export const SettingsPage: React.FC = () => {
                         setSpeechToTextUrl(e.target.value);
                         saveSetting('speechToTextUrl', e.target.value);
                       }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="input flex-1"
+                      placeholder="e.g., http://localhost:8000"
                     />
                     <button
                       onClick={() => handleTestConnection('speaches')}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                      className="btn-primary"
                     >
                       Test
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Speech-to-Text Model
+                  <label className="label">
+                    Authentication Key (optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={speechToTextKey}
+                    onChange={(e) => {
+                      setSpeechToTextKey(e.target.value);
+                      saveSetting('speechToTextKey', e.target.value);
+                    }}
+                    className="input"
+                    placeholder="Leave blank if your server doesn't require a key"
+                  />
+                  <p className="text-xs text-surface-500 mt-1">
+                    If your transcription server requires a bearer token or API key, enter it here
+                  </p>
+                </div>
+
+                <div>
+                  <label className="label">
+                    Transcription Model
                   </label>
                   <div className="flex space-x-2">
                     <input
@@ -384,20 +407,20 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => setSpeechToTextModel(e.target.value)}
                       onBlur={(e) => saveSetting('speechToTextModel', e.target.value)}
                       placeholder="Enter model name (e.g., Systran/faster-distil-whisper-medium.en)"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="input flex-1"
                     />
                     <button 
                       onClick={fetchSttModels}
                       disabled={loadingSttModels}
-                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                      className="btn-secondary"
                     >
                       {loadingSttModels ? 'Loading...' : 'Refresh'}
                     </button>
                   </div>
                   {availableSttModels.length > 0 && (
                     <div className="mt-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Available whisper models:
+                      <label className="label">
+                        Available models:
                       </label>
                       <div className="flex flex-wrap gap-1">
                         {availableSttModels.map(model => (
@@ -407,7 +430,7 @@ export const SettingsPage: React.FC = () => {
                               setSpeechToTextModel(model);
                               saveSetting('speechToTextModel', model);
                             }}
-                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
+                            className="text-xs px-2 py-1 bg-surface-100 hover:bg-surface-200 rounded text-surface-700"
                           >
                             {model.split('/').pop() || model}
                           </button>
@@ -418,12 +441,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Status:</span>
+                  <span className="text-sm text-surface-600">Status:</span>
                   <div className={`w-2 h-2 rounded-full ${
                     serviceStatus.speechToText === 'connected' ? 'bg-green-500' :
                     serviceStatus.speechToText === 'error' ? 'bg-red-500' : 'bg-yellow-500'
                   }`} />
-                  <span className="text-sm text-gray-700 capitalize">
+                  <span className="text-sm text-surface-700 capitalize">
                     {serviceStatus.speechToText}
                   </span>
                 </div>
@@ -431,15 +454,15 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             {/* Audio Processing */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Audio Processing
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Audio Chunk Size (for long files)
+                  <label className="label">
+                    Split Length for Long Recordings
                   </label>
                   <div className="flex items-center space-x-4">
                     <input
@@ -455,12 +478,12 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="flex-1"
                     />
-                    <span className="text-sm text-gray-600 w-20 text-right">
+                    <span className="text-sm text-surface-600 w-20 text-right">
                       {audioChunkSize}s ({Math.floor(audioChunkSize / 60)}:{(audioChunkSize % 60).toString().padStart(2, '0')})
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Splits long audio into chunks for better transcription accuracy (30s to 5min)
+                  <p className="text-xs text-surface-500 mt-1">
+                    Long recordings are split into shorter segments for better accuracy (30 seconds to 5 minutes)
                   </p>
                 </div>
               </div>
@@ -472,14 +495,14 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* AI Analysis Service */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
-                AI Analysis Service (Ollama)
+            <div className="panel">
+              <h3 className="section-title mb-4">
+                AI Analysis Service
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Service URL
                   </label>
                   <div className="flex space-x-2">
@@ -490,11 +513,11 @@ export const SettingsPage: React.FC = () => {
                         setAiAnalysisUrl(e.target.value);
                         saveSetting('aiAnalysisUrl', e.target.value);
                       }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="input flex-1"
                     />
                     <button
                       onClick={() => handleTestConnection('ollama')}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                      className="btn-primary"
                     >
                       Test
                     </button>
@@ -502,7 +525,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Model
                   </label>
                   <div className="flex space-x-2">
@@ -512,19 +535,19 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => setAiModel(e.target.value)}
                       onBlur={(e) => saveSetting('aiModel', e.target.value)}
                       placeholder="Enter model name (e.g., llama2, mistral, codellama)"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="input flex-1"
                     />
                     <button 
                       onClick={fetchOllamaModels}
                       disabled={loadingModels}
-                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                      className="btn-secondary"
                     >
                       {loadingModels ? 'Loading...' : 'Refresh'}
                     </button>
                   </div>
                   {availableModels.length > 0 && (
                     <div className="mt-2">
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                      <label className="label">
                         Available models:
                       </label>
                       <div className="flex flex-wrap gap-1">
@@ -535,7 +558,7 @@ export const SettingsPage: React.FC = () => {
                               setAiModel(model);
                               saveSetting('aiModel', model);
                             }}
-                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
+                            className="text-xs px-2 py-1 bg-surface-100 hover:bg-surface-200 rounded text-surface-700"
                           >
                             {model}
                           </button>
@@ -546,12 +569,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Status:</span>
+                  <span className="text-sm text-surface-600">Status:</span>
                   <div className={`w-2 h-2 rounded-full ${
                     serviceStatus.aiAnalysis === 'connected' ? 'bg-green-500' :
                     serviceStatus.aiAnalysis === 'error' ? 'bg-red-500' : 'bg-yellow-500'
                   }`} />
-                  <span className="text-sm text-gray-700 capitalize">
+                  <span className="text-sm text-surface-700 capitalize">
                     {serviceStatus.aiAnalysis}
                   </span>
                 </div>
@@ -559,8 +582,8 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             {/* Transcript Enhancement */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Transcript Enhancement
               </h3>
               
@@ -575,11 +598,11 @@ export const SettingsPage: React.FC = () => {
                         setEnableTranscriptValidation(e.target.checked);
                         saveSetting('enableTranscriptValidation', e.target.checked.toString());
                       }}
-                      className="rounded text-primary-600 focus:ring-primary-500"
+                      className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">Enable transcript correction</span>
+                    <span className="text-sm font-medium text-surface-700">Enable transcript correction</span>
                   </label>
-                  <p className="text-xs text-gray-500 ml-6">
+                  <p className="text-xs text-surface-500 ml-6">
                     Use AI to correct spelling, grammar, and punctuation errors
                   </p>
                 </div>
@@ -587,7 +610,7 @@ export const SettingsPage: React.FC = () => {
                 {/* Correction Options */}
                 {enableTranscriptValidation && (
                   <div className="ml-6 space-y-2">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Correction options:</p>
+                    <p className="text-sm font-medium text-surface-700 mb-2">Correction options:</p>
                     {Object.entries(validationOptions).map(([key, value]) => (
                       <label key={key} className="flex items-center space-x-2">
                         <input
@@ -598,9 +621,9 @@ export const SettingsPage: React.FC = () => {
                             setValidationOptions(newOptions);
                             saveSetting('validationOptions', JSON.stringify(newOptions));
                           }}
-                          className="rounded text-primary-600 focus:ring-primary-500"
+                          className="rounded text-primary-800 focus:ring-primary-500"
                         />
-                        <span className="text-sm text-gray-600 capitalize">{key}</span>
+                        <span className="text-sm text-surface-600 capitalize">{key}</span>
                       </label>
                     ))}
                   </div>
@@ -617,11 +640,11 @@ export const SettingsPage: React.FC = () => {
                           setAnalyzeValidatedTranscript(e.target.checked);
                           saveSetting('analyzeValidatedTranscript', e.target.checked.toString());
                         }}
-                        className="rounded text-primary-600 focus:ring-primary-500"
+                        className="rounded text-primary-800 focus:ring-primary-500"
                       />
-                      <span className="text-sm font-medium text-gray-700">Analyze corrected transcript</span>
+                      <span className="text-sm font-medium text-surface-700">Analyze corrected transcript</span>
                     </label>
-                    <p className="text-xs text-gray-500 ml-6">
+                    <p className="text-xs text-surface-500 ml-6">
                       Use the corrected transcript for AI analysis (unchecked uses original)
                     </p>
                   </div>
@@ -637,11 +660,11 @@ export const SettingsPage: React.FC = () => {
                         setEnableSpeakerTagging(e.target.checked);
                         saveSetting('enableSpeakerTagging', e.target.checked.toString());
                       }}
-                      className="rounded text-primary-600 focus:ring-primary-500"
+                      className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">Automatic speaker tagging</span>
+                    <span className="text-sm font-medium text-surface-700">Automatic speaker tagging</span>
                   </label>
-                  <p className="text-xs text-gray-500 ml-6">
+                  <p className="text-xs text-surface-500 ml-6">
                     Automatically add speaker labels like "[Speaker 1]:" when multiple speakers are detected
                   </p>
                 </div>
@@ -656,11 +679,11 @@ export const SettingsPage: React.FC = () => {
                         setEnableDuplicateRemoval(e.target.checked);
                         saveSetting('enableDuplicateRemoval', e.target.checked.toString());
                       }}
-                      className="rounded text-primary-600 focus:ring-primary-500"
+                      className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">Remove duplicate sentences</span>
+                    <span className="text-sm font-medium text-surface-700">Remove duplicate sentences</span>
                   </label>
-                  <p className="text-xs text-gray-500 ml-6">
+                  <p className="text-xs text-surface-500 ml-6">
                     Automatically detect and remove repeated sentences during processing
                   </p>
                 </div>
@@ -675,11 +698,11 @@ export const SettingsPage: React.FC = () => {
                         setOneTaskAtATime(e.target.checked);
                         saveSetting('oneTaskAtATime', e.target.checked.toString());
                       }}
-                      className="rounded text-primary-600 focus:ring-primary-500"
+                      className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">One-task-at-a-time analysis (recommended)</span>
+                    <span className="text-sm font-medium text-surface-700">One-task-at-a-time analysis (recommended)</span>
                   </label>
-                  <p className="text-xs text-gray-500 ml-6">
+                  <p className="text-xs text-surface-500 ml-6">
                     Run individual analysis tasks separately for better accuracy and reliability. Fixes speaker detection issues.
                   </p>
                 </div>
@@ -692,19 +715,19 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* Conversation Modes */}
-            <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="bg-primary-100 rounded-lg p-6 border border-primary-200">
+              <h3 className="section-title mb-4">
                 💬 Conversation Modes
               </h3>
               
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-surface-600">
                   Choose how the chat system interacts with your transcripts. Each mode offers different trade-offs between speed, accuracy, and context.
                 </p>
 
                 {/* Conversation Mode Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-surface-700 mb-3">
                     Conversation Mode
                   </label>
                   <div className="space-y-3">
@@ -718,15 +741,15 @@ export const SettingsPage: React.FC = () => {
                           setConversationMode(e.target.value);
                           saveChatSetting('conversationMode', e.target.value);
                         }}
-                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                        className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">🔍 Vector Search Only</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="font-medium text-surface-900">🔍 Vector Search Only</div>
+                        <div className="text-sm text-surface-600 mt-1">
                           Returns relevant transcript excerpts directly without AI interpretation. 
                           <strong>Fastest</strong> and most factual - shows exact quotes with timestamps and relevance scores.
                         </div>
-                        <div className="text-xs text-blue-600 mt-1">
+                        <div className="text-xs text-primary-800 mt-1">
                           Best for: Finding specific information, quotes, or references
                         </div>
                       </div>
@@ -742,11 +765,11 @@ export const SettingsPage: React.FC = () => {
                           setConversationMode(e.target.value);
                           saveChatSetting('conversationMode', e.target.value);
                         }}
-                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                        className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">🤖 RAG Mode (Recommended)</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="font-medium text-surface-900">🤖 RAG Mode (Recommended)</div>
+                        <div className="text-sm text-surface-600 mt-1">
                           Retrieves relevant chunks and sends them to AI for interpretation and analysis. 
                           <strong>Balanced</strong> approach providing context-aware responses with good performance.
                         </div>
@@ -766,11 +789,11 @@ export const SettingsPage: React.FC = () => {
                           setConversationMode(e.target.value);
                           saveChatSetting('conversationMode', e.target.value);
                         }}
-                        className="mt-0.5 text-primary-600 focus:ring-primary-500"
+                        className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-gray-900">📄 Direct LLM Mode</div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="font-medium text-surface-900">📄 Direct LLM Mode</div>
+                        <div className="text-sm text-surface-600 mt-1">
                           Sends the full transcript directly to AI for comprehensive analysis. 
                           <strong>Most thorough</strong> but slower and may hit context limits with long transcripts.
                         </div>
@@ -785,9 +808,9 @@ export const SettingsPage: React.FC = () => {
                 {/* Mode-specific Settings */}
                 {conversationMode === 'vector-only' && (
                   <div className="bg-white p-4 rounded-lg border">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Vector Search Settings</h4>
+                    <h4 className="text-sm font-medium text-surface-900 mb-2">Vector Search Settings</h4>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="label">
                         Number of Excerpts to Show
                       </label>
                       <div className="flex items-center space-x-4">
@@ -803,11 +826,11 @@ export const SettingsPage: React.FC = () => {
                           }}
                           className="flex-1"
                         />
-                        <span className="text-sm text-gray-600 w-12 text-right">
+                        <span className="text-sm text-surface-600 w-12 text-right">
                           {vectorOnlyChunkCount}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-surface-500 mt-1">
                         More excerpts provide broader context but may include less relevant results
                       </p>
                     </div>
@@ -816,9 +839,9 @@ export const SettingsPage: React.FC = () => {
 
                 {conversationMode === 'direct-llm' && (
                   <div className="bg-white p-4 rounded-lg border">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Direct LLM Settings</h4>
+                    <h4 className="text-sm font-medium text-surface-900 mb-2">Direct LLM Settings</h4>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="label">
                         Context Limit (characters)
                       </label>
                       <div className="flex items-center space-x-4">
@@ -835,11 +858,11 @@ export const SettingsPage: React.FC = () => {
                           }}
                           className="flex-1"
                         />
-                        <span className="text-sm text-gray-600 w-20 text-right">
+                        <span className="text-sm text-surface-600 w-20 text-right">
                           {(directLlmContextLimit / 1000).toFixed(0)}k
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-surface-500 mt-1">
                         Higher limits allow longer transcripts but may impact performance. Transcripts exceeding this limit will be truncated.
                       </p>
                     </div>
@@ -848,15 +871,15 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Advanced Chat Settings
               </h3>
               
               <div className="space-y-4">
                 {/* Context Chunks */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Context Chunks
                   </label>
                   <div className="flex items-center space-x-4">
@@ -872,18 +895,18 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="flex-1"
                     />
-                    <span className="text-sm text-gray-600 w-12 text-right">
+                    <span className="text-sm text-surface-600 w-12 text-right">
                       {chatContextChunks}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     Number of relevant transcript chunks to include in chat context (1-10)
                   </p>
                 </div>
 
                 {/* Chunking Method */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Chunking Method
                   </label>
                   <select
@@ -892,20 +915,20 @@ export const SettingsPage: React.FC = () => {
                       setChatChunkingMethod(e.target.value);
                       saveChatSetting('chatChunkingMethod', e.target.value);
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="input"
                   >
                     <option value="speaker">Speaker-based (recommended)</option>
                     <option value="time">Time-based</option>
                     <option value="hybrid">Hybrid (speaker + time limits)</option>
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     How to split transcripts for chat analysis
                   </p>
                 </div>
 
                 {/* Max Chunk Size */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Max Chunk Size (for chat)
                   </label>
                   <div className="flex items-center space-x-4">
@@ -922,18 +945,18 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="flex-1"
                     />
-                    <span className="text-sm text-gray-600 w-20 text-right">
+                    <span className="text-sm text-surface-600 w-20 text-right">
                       {chatMaxChunkSize}s ({Math.floor(chatMaxChunkSize / 60)}:{(chatMaxChunkSize % 60).toString().padStart(2, '0')})
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     Maximum duration for each chat chunk (30s to 3min)
                   </p>
                 </div>
 
                 {/* Chunk Overlap */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Chunk Overlap
                   </label>
                   <div className="flex items-center space-x-4">
@@ -950,18 +973,18 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="flex-1"
                     />
-                    <span className="text-sm text-gray-600 w-12 text-right">
+                    <span className="text-sm text-surface-600 w-12 text-right">
                       {chatChunkOverlap}s
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     Overlap between chunks for better context continuity (0-30s)
                   </p>
                 </div>
 
                 {/* Memory Limit */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Conversation Memory Limit
                   </label>
                   <div className="flex items-center space-x-4">
@@ -978,11 +1001,11 @@ export const SettingsPage: React.FC = () => {
                       }}
                       className="flex-1"
                     />
-                    <span className="text-sm text-gray-600 w-20 text-right">
+                    <span className="text-sm text-surface-600 w-20 text-right">
                       {chatMemoryLimit} msgs
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     Number of messages to remember before compacting conversation history
                   </p>
                 </div>
@@ -998,17 +1021,17 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* Storage & Backup */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Storage & Backup
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600 break-all">
+                  <p className="text-sm text-surface-600 break-all">
                     {databaseInfo?.path || 'Loading...'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-surface-500 mt-1">
                     Size: {databaseInfo ? formatFileSize(databaseInfo.size) : '...'} | 
                     Modified: {databaseInfo ? new Date(databaseInfo.modified).toLocaleDateString() : '...'}
                   </p>
@@ -1017,19 +1040,19 @@ export const SettingsPage: React.FC = () => {
                 <div className="flex space-x-2">
                   <button 
                     onClick={handleChangeLocation}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="btn-secondary"
                   >
                     Change Location
                   </button>
                   <button 
                     onClick={handleOpenFolder}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="btn-secondary"
                   >
                     Open Folder
                   </button>
                   <button 
                     onClick={handleBackupNow}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                    className="btn-primary"
                   >
                     Backup Now
                   </button>
@@ -1044,9 +1067,9 @@ export const SettingsPage: React.FC = () => {
                         setAutoBackup(e.target.checked);
                         saveSetting('autoBackup', e.target.checked.toString());
                       }}
-                      className="rounded text-primary-600 focus:ring-primary-500"
+                      className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm text-gray-700">Auto-backup</span>
+                    <span className="text-sm text-surface-700">Auto-backup</span>
                   </label>
                   
                   {autoBackup && (
@@ -1057,7 +1080,7 @@ export const SettingsPage: React.FC = () => {
                           setBackupFrequency(e.target.value);
                           saveSetting('backupFrequency', e.target.value);
                         }}
-                        className="text-sm px-3 py-1 border border-gray-300 rounded-md"
+                        className="text-sm px-3 py-1 border border-surface-200 rounded-lg"
                       >
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
@@ -1070,33 +1093,33 @@ export const SettingsPage: React.FC = () => {
             </div>
             
             {/* Vector Database Management */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 🤖 Chat Vector Database
               </h3>
               
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-surface-600">
                   The vector database stores embeddings for chat functionality. Reset if you experience chat issues or after system updates.
                 </p>
                 
                 <div className="flex space-x-2">
                   <button 
                     onClick={handleResetVectorDB}
-                    className="px-4 py-2 border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50"
+                    className="px-4 py-2 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50"
                   >
                     Reset Vector Database
                   </button>
                   <button 
                     onClick={handleGetVectorStats}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                    className="btn-secondary"
                   >
                     View Statistics
                   </button>
                 </div>
                 
                 {vectorStats && (
-                  <div className="text-sm text-gray-600 bg-white p-3 rounded border">
+                  <div className="text-sm text-surface-600 bg-white p-3 rounded border">
                     <p><strong>Total Chunks:</strong> {vectorStats.totalChunks}</p>
                     <p><strong>Processed Transcripts:</strong> {vectorStats.transcripts.length}</p>
                     <p><strong>Average Chunk Size:</strong> {vectorStats.avgChunkSize.toFixed(1)}s</p>
@@ -1107,14 +1130,14 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             {/* Appearance */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Appearance
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="label">
                     Theme
                   </label>
                   <select
@@ -1123,7 +1146,7 @@ export const SettingsPage: React.FC = () => {
                       setTheme(e.target.value);
                       saveSetting('theme', e.target.value);
                     }}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="input"
                   >
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
@@ -1134,11 +1157,11 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             {/* Privacy */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4">
+            <div className="panel">
+              <h3 className="section-title mb-4">
                 Privacy
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-surface-600">
                 DeepTalk stores all data locally on your computer. No data is sent to external services
                 except for transcription and analysis processing through your configured services.
               </p>
@@ -1151,7 +1174,7 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
+        <h1 className="page-title">Settings</h1>
         
         {/* Search */}
         <div className="relative">
@@ -1160,10 +1183,10 @@ export const SettingsPage: React.FC = () => {
             placeholder="Search settings..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 w-64 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="pl-9 pr-4 py-2 w-64 border border-surface-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
           />
           <svg 
-            className="absolute left-3 top-2.5 w-4 h-4 text-gray-400"
+            className="absolute left-3 top-2.5 w-4 h-4 text-surface-400"
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -1175,8 +1198,8 @@ export const SettingsPage: React.FC = () => {
 
       {/* Search results hint */}
       {searchResults && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-md">
-          <p className="text-sm text-blue-800">
+        <div className="mb-4 p-3 bg-primary-100 rounded-xl">
+          <p className="text-sm text-primary-800">
             Found {searchResults.length} matching setting{searchResults.length !== 1 ? 's' : ''}:
             {searchResults.map((result, idx) => (
               <button
@@ -1185,7 +1208,7 @@ export const SettingsPage: React.FC = () => {
                   setActiveTab(result.tab);
                   setSearchQuery('');
                 }}
-                className="ml-2 text-blue-600 hover:underline"
+                className="ml-2 text-primary-800 hover:underline"
               >
                 {result.setting} ({tabs.find(t => t.id === result.tab)?.name})
               </button>
@@ -1195,25 +1218,21 @@ export const SettingsPage: React.FC = () => {
       )}
       
       {/* Tab navigation */}
-      <div className="flex space-x-6 mb-6 border-b border-gray-200">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              pb-3 text-sm font-medium transition-colors relative
-              ${activeTab === tab.id 
-                ? 'text-primary-600' 
-                : 'text-gray-600 hover:text-gray-900'
-              }
-            `}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
-            )}
-          </button>
-        ))}
+      <div className="tab-bar">
+        {tabs.map(tab => {
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`tab flex items-center gap-1.5 ${activeTab === tab.id ? 'tab-active' : ''}`}
+            >
+              <TabIcon size={14} />
+              {tab.label}
+              {activeTab === tab.id && <div className="tab-indicator" />}
+            </button>
+          );
+        })}
       </div>
       
       {/* Tab content */}
@@ -1228,7 +1247,7 @@ export const SettingsPage: React.FC = () => {
               window.location.reload();
             }
           }}
-          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          className="btn-secondary"
         >
           Reset to Defaults
         </button>

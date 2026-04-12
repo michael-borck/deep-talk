@@ -134,20 +134,20 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="modal-backdrop">
       <div className="bg-white rounded-lg w-4/5 h-4/5 max-w-4xl max-h-[800px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center space-x-3">
-            <MessageSquare className="w-6 h-6 text-blue-600" />
+            <MessageSquare className="w-6 h-6 text-primary-800" />
             <div>
               <h2 className="text-lg font-semibold">Project Chat</h2>
-              <p className="text-sm text-gray-600">{project.name}</p>
+              <p className="text-sm text-surface-600">{project.name}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-surface-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -157,11 +157,11 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isInitializing ? (
             <div className="flex items-center justify-center py-8">
-              <Loader className="w-6 h-6 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Initializing project chat...</span>
+              <Loader className="w-6 h-6 animate-spin text-primary-800" />
+              <span className="ml-2 text-surface-600">Initializing project chat...</span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-surface-500">
               <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>Start a conversation about this project!</p>
               <p className="text-sm mt-1">
@@ -177,8 +177,8 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
                 <div
                   className={`max-w-3/4 rounded-lg p-3 ${
                     message.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                      ? 'bg-primary-800 text-white'
+                      : 'bg-surface-100 text-surface-900'
                   }`}
                 >
                   <div className="whitespace-pre-wrap">{message.content}</div>
@@ -207,9 +207,9 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
           )}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg p-3 flex items-center space-x-2">
-                <Loader className="w-4 h-4 animate-spin text-blue-600" />
-                <span className="text-gray-600">Analyzing project...</span>
+              <div className="bg-surface-100 rounded-lg p-3 flex items-center space-x-2">
+                <Loader className="w-4 h-4 animate-spin text-primary-800" />
+                <span className="text-surface-600">Analyzing project...</span>
               </div>
             </div>
           )}
@@ -224,14 +224,14 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask about patterns, themes, or insights across project transcripts..."
-              className="flex-1 resize-none border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 resize-none border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400"
               rows={2}
               disabled={isLoading || isInitializing || !conversationId}
             />
             <button
               onClick={handleSendMessage}
               disabled={!input.trim() || isLoading || isInitializing || !conversationId}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              className="btn-primary flex items-center space-x-2"
             >
               {isLoading ? (
                 <Loader className="w-4 h-4 animate-spin" />
@@ -241,7 +241,7 @@ export const ProjectChatModal: React.FC<ProjectChatModalProps> = ({
               <span>Send</span>
             </button>
           </div>
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-surface-500">
             Press Enter to send, Shift+Enter for new line
           </div>
         </div>

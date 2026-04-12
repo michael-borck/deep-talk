@@ -197,23 +197,23 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
+    <div className="modal-backdrop">
+      <div className="bg-white rounded-lg shadow-elevated w-full max-w-4xl h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-surface-200">
           <div className="flex items-center space-x-3">
-            <MessageCircle size={20} className="text-blue-600" />
+            <MessageCircle size={20} className="text-primary-800" />
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-surface-900">
                 Chat with Transcript
               </h2>
               <div className="flex items-center space-x-2">
-                <p className="text-sm text-gray-600">{transcript.title}</p>
+                <p className="text-sm text-surface-600">{transcript.title}</p>
                 {chatReady && (
                   <select
                     value={currentMode}
                     onChange={(e) => handleModeChange(e.target.value)}
-                    className="text-xs px-2 py-1 bg-gray-100 border border-gray-200 rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    className="text-xs px-2 py-1 bg-surface-100 border border-surface-200 rounded-full text-surface-600 hover:bg-surface-200 focus:outline-none focus:ring-2 focus:ring-primary-400 cursor-pointer"
                   >
                     <option value="vector-only">🔍 Vector Search</option>
                     <option value="rag">🤖 RAG Mode</option>
@@ -225,7 +225,7 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-surface-400 hover:text-surface-600 transition-colors"
           >
             <X size={24} />
           </button>
@@ -235,25 +235,25 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
         {isProcessingTranscript && (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center space-y-4">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-surface-900 mb-2">
                   Preparing Chat
                 </h3>
                 {processingProgress && (
                   <div className="space-y-2">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-surface-600">
                       {processingProgress.message}
                     </p>
-                    <div className="w-64 bg-gray-200 rounded-full h-2 mx-auto">
+                    <div className="w-64 bg-surface-200 rounded-full h-2 mx-auto">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-primary-800 h-2 rounded-full transition-all duration-300"
                         style={{ 
                           width: `${(processingProgress.progress / processingProgress.total) * 100}%` 
                         }}
                       />
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-surface-500">
                       {processingProgress.progress}/{processingProgress.total}
                     </p>
                   </div>
@@ -268,13 +268,13 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
             <div className="text-center space-y-4">
               <AlertCircle size={48} className="text-red-500 mx-auto" />
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-surface-900 mb-2">
                   Error
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">{error}</p>
+                <p className="text-sm text-surface-600 mb-4">{error}</p>
                 <button
                   onClick={initializeChat}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="btn-primary"
                 >
                   Try Again
                 </button>
@@ -290,21 +290,21 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 && (
                 <div className="text-center py-8">
-                  <MessageCircle size={48} className="text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <MessageCircle size={48} className="text-surface-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-surface-900 mb-2">
                     Start a conversation
                   </h3>
-                  <p className="text-gray-600 mb-2">
+                  <p className="text-surface-600 mb-2">
                     Ask questions about the transcript content, request summaries, or explore specific topics.
                   </p>
                   {currentMode && (
-                    <div className="text-xs text-gray-500 space-y-1">
+                    <div className="text-xs text-surface-500 space-y-1">
                       <p>
                         {currentMode === 'vector-only' && 'Vector Search mode - you\'ll get direct transcript excerpts with timestamps.'}
                         {currentMode === 'rag' && 'RAG mode - AI will interpret relevant transcript sections to answer your questions.'}
                         {currentMode === 'direct-llm' && 'Direct LLM mode - AI analyzes the full transcript for comprehensive responses.'}
                       </p>
-                      <p className="text-gray-400">
+                      <p className="text-surface-400">
                         You can change the conversation mode using the dropdown in the header.
                       </p>
                     </div>
@@ -320,13 +320,13 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
                   <div
                     className={`max-w-[70%] rounded-lg p-3 ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-primary-800 text-white'
+                        : 'bg-surface-100 text-surface-900'
                     }`}
                   >
                     <div className="flex items-start space-x-2">
                       {message.role === 'assistant' && (
-                        <Bot size={16} className="text-gray-500 mt-1 flex-shrink-0" />
+                        <Bot size={16} className="text-surface-500 mt-1 flex-shrink-0" />
                       )}
                       {message.role === 'user' && (
                         <User size={16} className="text-white mt-1 flex-shrink-0" />
@@ -335,7 +335,7 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
                         <p className="whitespace-pre-wrap">{message.content}</p>
                         <p
                           className={`text-xs mt-1 ${
-                            message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                            message.role === 'user' ? 'text-primary-100' : 'text-surface-500'
                           }`}
                         >
                           {formatTime(message.timestamp)}
@@ -360,13 +360,13 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-lg p-3 max-w-[70%]">
+                  <div className="bg-surface-100 rounded-lg p-3 max-w-[70%]">
                     <div className="flex items-center space-x-2">
-                      <Bot size={16} className="text-gray-500" />
+                      <Bot size={16} className="text-surface-500" />
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-surface-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-surface-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-surface-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   </div>
@@ -377,7 +377,7 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
             </div>
 
             {/* Input */}
-            <div className="border-t border-gray-200 p-4">
+            <div className="border-t border-surface-200 p-4">
               <div className="flex space-x-3">
                 <textarea
                   ref={textareaRef}
@@ -385,14 +385,14 @@ export const TranscriptChatModal: React.FC<TranscriptChatModalProps> = ({
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ask a question about the transcript..."
-                  className="flex-1 resize-none px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 resize-none px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-primary-400"
                   rows={2}
                   disabled={isLoading}
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!currentMessage.trim() || isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="btn-primary"
                 >
                   <Send size={20} />
                 </button>

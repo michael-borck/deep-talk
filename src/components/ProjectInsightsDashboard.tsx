@@ -156,12 +156,12 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">🔍 Project Analysis</h2>
+        <h2 className="text-xl font-semibold text-surface-900">🔍 Project Analysis</h2>
         <div className="flex gap-2">
           {project.last_analysis_at && (
             <button
               onClick={() => setShowExportModal(true)}
-              className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              className="px-4 py-2 text-primary-800 border border-primary-600 rounded-lg hover:bg-primary-100 transition-colors"
             >
               Export
             </button>
@@ -169,7 +169,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="btn-primary px-4 py-2"
           >
             {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
           </button>
@@ -178,7 +178,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
       {/* Last Analysis Info */}
       {project.last_analysis_at && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-surface-500">
           Last analyzed: {formatDate(project.last_analysis_at)}
         </div>
       )}
@@ -198,8 +198,8 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
             onClick={() => setActiveView(key as any)}
             className={`pb-2 px-3 border-b-2 transition-colors ${
               activeView === key
-                ? 'border-blue-600 text-blue-600 font-medium'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-primary-600 text-primary-800 font-medium'
+                : 'border-transparent text-surface-600 hover:text-surface-900'
             }`}
           >
             {label}
@@ -213,45 +213,45 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
           <div className="p-6 space-y-6">
             {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-600">{project.transcript_count || 0}</div>
-                <div className="text-sm text-gray-600">Transcripts</div>
+              <div className="bg-primary-100 rounded-lg p-4">
+                <div className="text-2xl font-display text-primary-800">{project.transcript_count || 0}</div>
+                <div className="text-sm text-surface-600">Transcripts</div>
               </div>
               <div className="bg-green-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-display text-green-600">
                   {project.total_duration ? formatDuration(project.total_duration) : '0h 0m'}
                 </div>
-                <div className="text-sm text-gray-600">Total Duration</div>
+                <div className="text-sm text-surface-600">Total Duration</div>
               </div>
               <div className="bg-purple-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-purple-600">{project.themes?.length || 0}</div>
-                <div className="text-sm text-gray-600">Key Themes</div>
+                <div className="text-2xl font-display text-purple-600">{project.themes?.length || 0}</div>
+                <div className="text-sm text-surface-600">Key Themes</div>
               </div>
               <div className="bg-orange-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-display text-orange-600">
                   {detailedAnalysis?.speakerAnalysis?.totalSpeakers || 0}
                 </div>
-                <div className="text-sm text-gray-600">Total Speakers</div>
+                <div className="text-sm text-surface-600">Total Speakers</div>
               </div>
             </div>
 
             {/* Project Summary */}
             {project.summary && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">📝 Project Summary</h3>
-                <p className="text-gray-700 leading-relaxed">{project.summary}</p>
+                <h3 className="text-lg font-medium text-surface-900 mb-3">📝 Project Summary</h3>
+                <p className="text-surface-700 leading-relaxed">{project.summary}</p>
               </div>
             )}
 
             {/* Key Themes */}
             {project.themes && project.themes.length > 0 && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">🏷️ Key Themes</h3>
+                <h3 className="text-lg font-medium text-surface-900 mb-3">🏷️ Key Themes</h3>
                 <div className="flex flex-wrap gap-2">
                   {project.themes.map((theme, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                      className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium"
                     >
                       {theme}
                     </span>
@@ -263,12 +263,12 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
             {/* Key Insights */}
             {project.key_insights && project.key_insights.length > 0 && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-3">💡 Key Insights</h3>
+                <h3 className="text-lg font-medium text-surface-900 mb-3">💡 Key Insights</h3>
                 <ul className="space-y-2">
                   {project.key_insights.map((insight, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <span className="text-blue-600 mt-1 text-sm">•</span>
-                      <span className="text-gray-700 text-sm">{insight}</span>
+                      <span className="text-primary-800 mt-1 text-sm">•</span>
+                      <span className="text-surface-700 text-sm">{insight}</span>
                     </li>
                   ))}
                 </ul>
@@ -279,42 +279,42 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
         {activeView === 'themes' && (
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">🏷️ Theme Evolution Analysis</h3>
+            <h3 className="text-lg font-medium text-surface-900 mb-4">🏷️ Theme Evolution Analysis</h3>
             
             {detailedAnalysis?.themeEvolution ? (
               <div className="space-y-4">
                 {detailedAnalysis.themeEvolution.slice(0, 10).map((theme: any, index: number) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{theme.theme}</h4>
+                      <h4 className="font-medium text-surface-900">{theme.theme}</h4>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           theme.trend === 'increasing' ? 'bg-green-100 text-green-800' :
                           theme.trend === 'decreasing' ? 'bg-red-100 text-red-800' :
-                          theme.trend === 'emerging' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
+                          theme.trend === 'emerging' ? 'bg-primary-100 text-primary-800' :
+                          'bg-surface-100 text-surface-800'
                         }`}>
                           {theme.trend}
                         </span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-surface-500">
                           {theme.totalOccurrences} occurrences
                         </span>
                       </div>
                     </div>
                     
-                    <div className="text-sm text-gray-600 mb-3">
+                    <div className="text-sm text-surface-600 mb-3">
                       Appears in {theme.occurrences.length} transcript(s) • 
                       Avg relevance: {(theme.avgRelevance * 100).toFixed(1)}%
                     </div>
                     
                     {/* Timeline */}
                     <div className="mb-3">
-                      <div className="text-xs text-gray-500 mb-1">Timeline:</div>
+                      <div className="text-xs text-surface-500 mb-1">Timeline:</div>
                       <div className="flex gap-1">
                         {theme.occurrences.slice(0, 8).map((occ: any, i: number) => (
                           <div
                             key={i}
-                            className="h-2 bg-blue-200 rounded flex-1"
+                            className="h-2 bg-primary-200 rounded flex-1"
                             title={`${occ.transcript_title} (${formatDate(occ.date)})`}
                           />
                         ))}
@@ -324,8 +324,8 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                     {/* Sample quotes */}
                     {theme.occurrences.some((occ: any) => occ.quotes.length > 0) && (
                       <div>
-                        <div className="text-xs text-gray-500 mb-1">Sample quotes:</div>
-                        <div className="text-sm text-gray-700 italic">
+                        <div className="text-xs text-surface-500 mb-1">Sample quotes:</div>
+                        <div className="text-sm text-surface-700 italic">
                           {theme.occurrences
                             .flatMap((occ: any) => occ.quotes)
                             .slice(0, 2)
@@ -340,7 +340,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 Run analysis to see theme evolution patterns
               </div>
             )}
@@ -349,36 +349,36 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
         {activeView === 'concepts' && (
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">🔍 Concept Frequency Analysis</h3>
+            <h3 className="text-lg font-medium text-surface-900 mb-4">🔍 Concept Frequency Analysis</h3>
             
             {detailedAnalysis?.conceptFrequency ? (
               <div className="grid gap-4 md:grid-cols-2">
                 {Object.entries(detailedAnalysis.conceptFrequency).slice(0, 12).map(([concept, data]: [string, any]) => (
                   <div key={concept} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{concept}</h4>
+                      <h4 className="font-medium text-surface-900">{concept}</h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         data.trend === 'increasing' ? 'bg-green-100 text-green-800' :
                         data.trend === 'decreasing' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                        'bg-surface-100 text-surface-800'
                       }`}>
                         {data.trend}
                       </span>
                     </div>
                     
-                    <div className="text-sm text-gray-600 mb-2">
+                    <div className="text-sm text-surface-600 mb-2">
                       Total: {data.totalCount} • Avg: {data.avgFrequency.toFixed(1)} per transcript
                     </div>
                     
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-surface-600">
                       Appears in {data.transcriptCount} transcript(s)
                     </div>
                     
                     {/* Context examples */}
                     {data.contexts.length > 0 && data.contexts[0].examples.length > 0 && (
                       <div className="mt-2">
-                        <div className="text-xs text-gray-500 mb-1">Example context:</div>
-                        <div className="text-xs text-gray-700 italic truncate">
+                        <div className="text-xs text-surface-500 mb-1">Example context:</div>
+                        <div className="text-xs text-surface-700 italic truncate">
                           "{data.contexts[0].examples[0]}"
                         </div>
                       </div>
@@ -387,7 +387,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 Run analysis to see concept frequency patterns
               </div>
             )}
@@ -396,26 +396,26 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
         {activeView === 'speakers' && (
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">👥 Speaker Analysis</h3>
+            <h3 className="text-lg font-medium text-surface-900 mb-4">👥 Speaker Analysis</h3>
             
             {detailedAnalysis?.speakerAnalysis ? (
               <div className="space-y-6">
                 {/* Speaker Distribution */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Speaker Distribution</h4>
+                  <h4 className="font-medium text-surface-900 mb-3">Speaker Distribution</h4>
                   <div className="grid gap-3 md:grid-cols-2">
                     {Object.entries(detailedAnalysis.speakerAnalysis.speakerDistribution).map(([speaker, data]: [string, any]) => (
                       <div key={speaker} className="border rounded-lg p-3">
-                        <div className="font-medium text-gray-900 mb-1">{speaker}</div>
-                        <div className="text-sm text-gray-600">
+                        <div className="font-medium text-surface-900 mb-1">{speaker}</div>
+                        <div className="text-sm text-surface-600">
                           {data.transcriptCount} transcript(s) • {data.totalSegments} segments
                         </div>
                         {data.themes.length > 0 && (
                           <div className="mt-2">
-                            <div className="text-xs text-gray-500 mb-1">Key themes:</div>
+                            <div className="text-xs text-surface-500 mb-1">Key themes:</div>
                             <div className="flex flex-wrap gap-1">
                               {data.themes.slice(0, 3).map((theme: string, i: number) => (
-                                <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                <span key={i} className="px-2 py-1 bg-surface-100 text-surface-700 rounded text-xs">
                                   {theme}
                                 </span>
                               ))}
@@ -429,22 +429,22 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
                 {/* Speaker Interactions */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Interaction Patterns</h4>
+                  <h4 className="font-medium text-surface-900 mb-3">Interaction Patterns</h4>
                   <div className="space-y-2">
                     {detailedAnalysis.speakerAnalysis.speakerInteractions.slice(0, 5).map((interaction: any, index: number) => (
                       <div key={index} className="border rounded p-3">
                         <div className="flex items-center justify-between">
-                          <div className="font-medium text-gray-900">{interaction.transcript_title}</div>
+                          <div className="font-medium text-surface-900">{interaction.transcript_title}</div>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            interaction.interactionPattern === 'interview' ? 'bg-blue-100 text-blue-800' :
+                            interaction.interactionPattern === 'interview' ? 'bg-primary-100 text-primary-800' :
                             interaction.interactionPattern === 'discussion' ? 'bg-green-100 text-green-800' :
                             interaction.interactionPattern === 'presentation' ? 'bg-purple-100 text-purple-800' :
-                            'bg-gray-100 text-gray-800'
+                            'bg-surface-100 text-surface-800'
                           }`}>
                             {interaction.interactionPattern}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm text-surface-600 mt-1">
                           Speakers: {interaction.speakers.join(', ')}
                         </div>
                       </div>
@@ -453,7 +453,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 Run analysis to see speaker patterns
               </div>
             )}
@@ -462,33 +462,33 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
         {activeView === 'timeline' && (
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">📅 Timeline Analysis</h3>
+            <h3 className="text-lg font-medium text-surface-900 mb-4">📅 Timeline Analysis</h3>
             
             {detailedAnalysis?.timelineAnalysis ? (
               <div className="space-y-6">
                 {/* Date Range */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm font-medium text-gray-700">Project Timeline</div>
-                  <div className="text-lg font-semibold text-gray-900">
+                <div className="bg-surface-50 rounded-lg p-4">
+                  <div className="text-sm font-medium text-surface-700">Project Timeline</div>
+                  <div className="text-lg font-semibold text-surface-900">
                     {formatDate(detailedAnalysis.timelineAnalysis.dateRange.start)} → {formatDate(detailedAnalysis.timelineAnalysis.dateRange.end)}
                   </div>
                 </div>
 
                 {/* Transcripts by Period */}
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Activity by Month</h4>
+                  <h4 className="font-medium text-surface-900 mb-3">Activity by Month</h4>
                   <div className="space-y-2">
                     {detailedAnalysis.timelineAnalysis.transcriptsByPeriod.map((period: any, index: number) => (
                       <div key={index} className="flex items-center justify-between border rounded p-3">
                         <div>
-                          <div className="font-medium text-gray-900">{period.period}</div>
-                          <div className="text-sm text-gray-600">
+                          <div className="font-medium text-surface-900">{period.period}</div>
+                          <div className="text-sm text-surface-600">
                             {period.count} transcript(s) • {formatDuration(period.totalDuration)}
                           </div>
                         </div>
                         <div className="text-right">
                           {period.themes.slice(0, 2).map((theme: string, i: number) => (
-                            <div key={i} className="text-xs text-gray-500">{theme}</div>
+                            <div key={i} className="text-xs text-surface-500">{theme}</div>
                           ))}
                         </div>
                       </div>
@@ -499,18 +499,18 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 {/* Sentiment Trend */}
                 {detailedAnalysis.timelineAnalysis.sentimentTrend.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Sentiment Trend</h4>
+                    <h4 className="font-medium text-surface-900 mb-3">Sentiment Trend</h4>
                     <div className="space-y-2">
                       {detailedAnalysis.timelineAnalysis.sentimentTrend.map((point: any, index: number) => (
                         <div key={index} className="flex items-center justify-between border rounded p-2">
-                          <div className="text-sm text-gray-700">{formatDate(point.date)}</div>
+                          <div className="text-sm text-surface-700">{formatDate(point.date)}</div>
                           <div className="flex items-center gap-2">
                             <div className={`w-3 h-3 rounded-full ${
                               point.avgSentiment > 0.1 ? 'bg-green-400' :
                               point.avgSentiment < -0.1 ? 'bg-red-400' :
-                              'bg-gray-400'
+                              'bg-surface-400'
                             }`} />
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-surface-600">
                               {point.avgSentiment.toFixed(2)} ({point.transcriptCount} transcript{point.transcriptCount !== 1 ? 's' : ''})
                             </span>
                           </div>
@@ -521,7 +521,7 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 )}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 Run analysis to see timeline patterns
               </div>
             )}
@@ -530,24 +530,24 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
         {activeView === 'patterns' && (
           <div className="p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">🔗 Cross-Transcript Patterns</h3>
+            <h3 className="text-lg font-medium text-surface-900 mb-4">🔗 Cross-Transcript Patterns</h3>
             
             {detailedAnalysis?.crossTranscriptPatterns ? (
               <div className="space-y-4">
                 {detailedAnalysis.crossTranscriptPatterns.map((pattern: any, index: number) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{pattern.description}</h4>
+                      <h4 className="font-medium text-surface-900">{pattern.description}</h4>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          pattern.type === 'theme_consistency' ? 'bg-blue-100 text-blue-800' :
+                          pattern.type === 'theme_consistency' ? 'bg-primary-100 text-primary-800' :
                           pattern.type === 'concept_emergence' ? 'bg-green-100 text-green-800' :
                           pattern.type === 'sentiment_shift' ? 'bg-orange-100 text-orange-800' :
-                          'bg-gray-100 text-gray-800'
+                          'bg-surface-100 text-surface-800'
                         }`}>
                           {pattern.type.replace('_', ' ')}
                         </span>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-surface-500">
                           Strength: {(pattern.strength * 100).toFixed(0)}%
                         </div>
                       </div>
@@ -555,12 +555,12 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
 
                     {/* Evidence */}
                     <div className="mb-3">
-                      <div className="text-sm text-gray-600 mb-2">
+                      <div className="text-sm text-surface-600 mb-2">
                         Evidence from {pattern.evidence.length} transcript(s):
                       </div>
                       <div className="space-y-1">
                         {pattern.evidence.slice(0, 3).map((evidence: any, i: number) => (
-                          <div key={i} className="text-sm text-gray-700">
+                          <div key={i} className="text-sm text-surface-700">
                             • {evidence.transcript_title} ({formatDate(evidence.date)})
                           </div>
                         ))}
@@ -570,9 +570,9 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                     {/* Insights */}
                     {pattern.insights.length > 0 && (
                       <div>
-                        <div className="text-sm font-medium text-gray-700 mb-1">Insights:</div>
+                        <div className="text-sm font-medium text-surface-700 mb-1">Insights:</div>
                         {pattern.insights.map((insight: string, i: number) => (
-                          <div key={i} className="text-sm text-gray-600 italic">
+                          <div key={i} className="text-sm text-surface-600 italic">
                             • {insight}
                           </div>
                         ))}
@@ -582,13 +582,13 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                 ))}
 
                 {detailedAnalysis.crossTranscriptPatterns.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-surface-500">
                     No significant cross-transcript patterns detected
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-surface-500">
                 Run analysis to identify cross-transcript patterns
               </div>
             )}
@@ -598,17 +598,17 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
         {/* No Analysis State */}
         {!project.last_analysis_at && !detailedAnalysis && (
           <div className="p-12 text-center">
-            <div className="text-gray-400 mb-4">
+            <div className="text-surface-400 mb-4">
               <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Analysis Yet</h3>
-            <p className="text-gray-500 mb-4">Run analysis to see comprehensive insights across all project transcripts</p>
+            <h3 className="text-lg font-medium text-surface-900 mb-2">No Analysis Yet</h3>
+            <p className="text-surface-500 mb-4">Run analysis to see comprehensive insights across all project transcripts</p>
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="btn-primary px-6 py-2"
             >
               {isAnalyzing ? 'Analyzing...' : 'Start Analysis'}
             </button>

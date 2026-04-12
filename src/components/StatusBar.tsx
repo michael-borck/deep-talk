@@ -3,45 +3,45 @@ import { ServiceContext } from '../contexts/ServiceContext';
 
 export const StatusBar: React.FC = () => {
   const { serviceStatus, processingQueue } = useContext(ServiceContext);
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'connected':
-        return 'bg-green-500';
+        return 'bg-emerald-500';
       case 'disconnected':
-        return 'bg-red-500';
+        return 'bg-red-400';
       case 'error':
-        return 'bg-yellow-500';
+        return 'bg-amber-500';
       default:
-        return 'bg-gray-500';
+        return 'bg-surface-400';
     }
   };
 
-  const activeProcessing = processingQueue.filter(item => 
+  const activeProcessing = processingQueue.filter(item =>
     item.status === 'transcribing' || item.status === 'analyzing'
   ).length;
 
   return (
-    <div className="bg-white border-t border-gray-200 px-6 py-2">
-      <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <span className="text-gray-600">Speech-to-Text:</span>
-            <div className={`w-2 h-2 rounded-full ${getStatusColor(serviceStatus.speechToText)}`} />
-            <span className="text-gray-700 capitalize">{serviceStatus.speechToText}</span>
+    <div className="bg-surface-50 border-t border-surface-200 px-6 py-1.5">
+      <div className="flex items-center justify-between text-xs font-sans">
+        <div className="flex items-center space-x-5">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-surface-500">Speech-to-Text</span>
+            <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(serviceStatus.speechToText)}`} />
+            <span className="text-surface-600 capitalize">{serviceStatus.speechToText}</span>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <span className="text-gray-600">AI Analysis:</span>
-            <div className={`w-2 h-2 rounded-full ${getStatusColor(serviceStatus.aiAnalysis)}`} />
-            <span className="text-gray-700 capitalize">{serviceStatus.aiAnalysis}</span>
+
+          <div className="flex items-center space-x-1.5">
+            <span className="text-surface-500">AI Analysis</span>
+            <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(serviceStatus.aiAnalysis)}`} />
+            <span className="text-surface-600 capitalize">{serviceStatus.aiAnalysis}</span>
           </div>
         </div>
-        
+
         {activeProcessing > 0 && (
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            <span className="text-gray-600">
+          <div className="flex items-center space-x-1.5">
+            <div className="w-1.5 h-1.5 bg-accent-500 rounded-full animate-pulse" />
+            <span className="text-surface-600">
               Processing {activeProcessing} file{activeProcessing > 1 ? 's' : ''}
             </span>
           </div>

@@ -399,19 +399,19 @@ etc.`;
   const progress = segments.length > 0 ? (taggedCount / segments.length) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-elevated w-full max-w-7xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Speaker Tagging</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-semibold text-surface-900">Speaker Tagging</h2>
+            <p className="text-sm text-surface-600 mt-1">
               Each sentence is a separate segment. Click any sentence to assign it to the selected speaker. Perfect for tagging short responses like "Yes" or "No".
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-surface-400 hover:text-surface-600"
           >
             <X size={24} />
           </button>
@@ -419,25 +419,25 @@ etc.`;
 
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar */}
-          <div className="w-80 border-r p-6 overflow-y-auto bg-gray-50">
+          <div className="w-80 border-r p-6 overflow-y-auto bg-surface-50">
             {/* Progress */}
             <div className="mb-6">
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <div className="flex justify-between text-sm text-surface-600 mb-2">
                 <span>Progress</span>
                 <span>{taggedCount} / {segments.length} segments</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-surface-200 rounded-full h-3">
                 <div 
-                  className="bg-blue-600 h-3 rounded-full transition-all"
+                  className="bg-primary-800 h-3 rounded-full transition-all"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
 
             {/* Instructions */}
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-900 mb-2">How to Tag:</h3>
-              <ol className="text-xs text-blue-800 space-y-1">
+            <div className="mb-6 p-4 bg-primary-100 rounded-lg">
+              <h3 className="text-sm font-medium text-primary-900 mb-2">How to Tag:</h3>
+              <ol className="text-xs text-primary-800 space-y-1">
                 <li>1. Select a speaker below</li>
                 <li>2. Click on sentences to assign them</li>
                 <li>3. Tag short responses like "Yes", "No" easily</li>
@@ -447,9 +447,9 @@ etc.`;
 
             {/* Selected Speaker */}
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Selected Speaker:</h3>
+              <h3 className="text-sm font-medium text-surface-700 mb-2">Selected Speaker:</h3>
               {selectedSpeaker && (
-                <div className="p-3 rounded-lg border-2 border-blue-500 bg-blue-50">
+                <div className="p-3 rounded-lg border-2 border-primary-400 bg-primary-100">
                   <div className="flex items-center space-x-3">
                     <div
                       className="w-4 h-4 rounded-full"
@@ -463,7 +463,7 @@ etc.`;
 
             {/* Speakers */}
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Available Speakers:</h3>
+              <h3 className="text-sm font-medium text-surface-700 mb-3">Available Speakers:</h3>
               <div className="space-y-2">
                 {speakers.map((speaker) => {
                   const segmentCount = segments.filter(s => s.speaker === speaker.id).length;
@@ -472,8 +472,8 @@ etc.`;
                       key={speaker.id}
                       className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-all ${
                         selectedSpeaker === speaker.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          ? 'border-primary-400 bg-primary-100'
+                          : 'border-surface-200 hover:border-surface-200 bg-white'
                       }`}
                       onClick={() => setSelectedSpeaker(speaker.id)}
                     >
@@ -484,7 +484,7 @@ etc.`;
                         />
                         <div>
                           <span className="font-medium text-sm">{speaker.name}</span>
-                          <div className="text-xs text-gray-500">{segmentCount} segments</div>
+                          <div className="text-xs text-surface-500">{segmentCount} segments</div>
                         </div>
                       </div>
                       {speakers.length > 2 && (
@@ -493,7 +493,7 @@ etc.`;
                             e.stopPropagation();
                             removeSpeaker(speaker.id);
                           }}
-                          className="text-gray-400 hover:text-red-600"
+                          className="text-surface-400 hover:text-red-600"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -511,11 +511,11 @@ etc.`;
                   onChange={(e) => setNewSpeakerName(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addSpeaker()}
                   placeholder="Add speaker..."
-                  className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
                 />
                 <button
                   onClick={addSpeaker}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                  className="p-2 text-primary-800 hover:bg-primary-100 rounded-lg"
                 >
                   <Plus size={20} />
                 </button>
@@ -529,7 +529,7 @@ etc.`;
                 disabled={isProcessing || taggedCount < 2}
                 className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-colors ${
                   isProcessing || taggedCount < 2
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ? 'bg-surface-100 text-surface-400 cursor-not-allowed'
                     : 'bg-purple-600 text-white hover:bg-purple-700'
                 }`}
               >
@@ -538,7 +538,7 @@ etc.`;
               </button>
               
               {taggedCount < 2 && (
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-surface-500 text-center">
                   Tag at least 2 segments to enable AI assistance
                 </p>
               )}
@@ -548,7 +548,7 @@ etc.`;
           {/* Transcript segments */}
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="space-y-4 max-w-4xl">
-              <div className="text-sm text-gray-600 mb-4">
+              <div className="text-sm text-surface-600 mb-4">
                 <strong>Instructions:</strong> Click on any sentence below to assign it to the selected speaker ({speakers.find(s => s.id === selectedSpeaker)?.name}). Even single words like "Yes" will be separate segments you can tag.
               </div>
               
@@ -560,8 +560,8 @@ etc.`;
                     key={segment.id}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       segment.speaker
-                        ? 'border-gray-400 shadow-sm'
-                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                        ? 'border-surface-300 shadow-card'
+                        : 'border-surface-200 hover:border-primary-200 hover:bg-primary-100'
                     }`}
                     style={{
                       backgroundColor: speaker ? `${speaker.color}15` : undefined,
@@ -575,27 +575,27 @@ etc.`;
                         {speaker ? (
                           <div className="flex items-center space-x-2">
                             <div
-                              className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
+                              className="w-4 h-4 rounded-full border-2 border-white shadow-card"
                               style={{ backgroundColor: speaker.color }}
                             />
                             <span className="text-sm font-medium" style={{ color: speaker.color }}>
                               {speaker.name}
                             </span>
                             {segment.isManuallyTagged && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">manual</span>
+                              <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded">manual</span>
                             )}
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white" />
-                            <span className="text-sm text-gray-500">Click to assign</span>
+                            <div className="w-4 h-4 rounded-full bg-surface-300 border-2 border-white" />
+                            <span className="text-sm text-surface-500">Click to assign</span>
                           </div>
                         )}
                       </div>
 
                       {/* Text */}
                       <div className="flex-1">
-                        <p className="text-gray-800 leading-relaxed">{segment.text}</p>
+                        <p className="text-surface-800 leading-relaxed">{segment.text}</p>
                       </div>
                     </div>
                   </div>
@@ -606,10 +606,10 @@ etc.`;
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t bg-surface-50">
           <button
             onClick={onClose}
-            className="px-6 py-2 text-gray-600 hover:text-gray-800"
+            className="px-6 py-2 text-surface-600 hover:text-surface-800"
           >
             Cancel
           </button>
@@ -618,8 +618,8 @@ etc.`;
             disabled={taggedCount === 0}
             className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium transition-colors ${
               taggedCount === 0
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-surface-100 text-surface-400 cursor-not-allowed'
+                : 'bg-primary-800 text-white hover:bg-primary-900'
             }`}
           >
             <Save size={18} />

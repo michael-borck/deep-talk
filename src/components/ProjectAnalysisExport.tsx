@@ -328,19 +328,19 @@ export const ProjectAnalysisExport: React.FC<ProjectAnalysisExportProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Export Project Analysis</h2>
+    <div className="modal-backdrop">
+      <div className="modal-content max-w-md">
+        <h2 className="text-xl font-display mb-4">Export Project Analysis</h2>
         
         {/* Export Format */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-surface-700 mb-2">
             Export Format
           </label>
           <select
             value={exportFormat}
             onChange={(e) => setExportFormat(e.target.value as any)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
           >
             <option value="json">JSON (Complete Data)</option>
             <option value="csv">CSV (Tabular Data)</option>
@@ -351,7 +351,7 @@ export const ProjectAnalysisExport: React.FC<ProjectAnalysisExportProps> = ({
         
         {/* Export Sections */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-surface-700 mb-2">
             Include Sections
           </label>
           <div className="space-y-2">
@@ -364,9 +364,9 @@ export const ProjectAnalysisExport: React.FC<ProjectAnalysisExportProps> = ({
                     ...prev,
                     [section]: e.target.checked
                   }))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-surface-200 text-primary-800 focus:ring-primary-400"
                 />
-                <span className="ml-2 text-sm text-gray-700 capitalize">
+                <span className="ml-2 text-sm text-surface-700 capitalize">
                   {section.replace(/([A-Z])/g, ' $1').toLowerCase()}
                 </span>
               </label>
@@ -378,14 +378,14 @@ export const ProjectAnalysisExport: React.FC<ProjectAnalysisExportProps> = ({
         <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="btn-secondary border-0"
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={isExporting || !Object.values(exportSections).some(Boolean)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary"
           >
             {isExporting ? 'Exporting...' : 'Export'}
           </button>

@@ -2,36 +2,273 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar */
+@layer base {
+  body {
+    @apply font-sans text-surface-900 antialiased;
+    -webkit-app-region: no-drag;
+    user-select: text;
+    overflow: hidden;
+  }
+
+  h1 { @apply font-display font-bold; }
+  h2 { @apply font-display font-semibold; }
+  h3 { @apply font-display font-medium; }
+}
+
+@layer components {
+  /* ============================================
+     BUTTONS
+     ============================================ */
+
+  /* Primary filled button — charcoal with warm text */
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-800 text-primary-100 text-sm font-medium rounded-lg
+           hover:bg-primary-900 transition-colors shadow-sm
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Accent filled button — warm gold */
+  .btn-accent {
+    @apply px-4 py-2 bg-accent-600 text-white text-sm font-medium rounded-lg
+           hover:bg-accent-700 transition-all shadow-sm hover:shadow-md
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary/outline button — warm border */
+  .btn-secondary {
+    @apply px-4 py-2 border border-surface-200 text-surface-700 text-sm rounded-lg
+           hover:bg-surface-50 transition-colors
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Ghost button — subtle actions */
+  .btn-ghost {
+    @apply px-3 py-1.5 text-xs font-medium text-primary-700
+           hover:bg-primary-50 rounded-lg transition-colors;
+  }
+
+  /* Danger button — destructive actions */
+  .btn-danger {
+    @apply px-3 py-2 text-sm text-red-500 hover:text-red-600 border border-red-200
+           rounded-lg hover:bg-red-50 transition-colors;
+  }
+
+  /* Small outline button — used in result rows, cards */
+  .btn-outline-sm {
+    @apply px-3 py-1.5 text-xs font-medium text-primary-700
+           hover:bg-primary-50 border border-surface-200 rounded-lg transition-colors;
+  }
+
+  /* Icon-only button */
+  .btn-icon {
+    @apply p-2 rounded-lg text-surface-400 hover:text-surface-700
+           hover:bg-surface-100 transition-colors;
+  }
+
+  /* ============================================
+     FORM INPUTS
+     ============================================ */
+
+  /* Standard text input */
+  .input {
+    @apply w-full px-3 py-2 border border-surface-200 rounded-lg
+           text-sm bg-white
+           focus:outline-none focus:ring-2 focus:ring-accent-300 focus:border-accent-300
+           placeholder-surface-400 transition-shadow;
+  }
+
+  /* Select dropdown */
+  .input-select {
+    @apply w-full px-3 py-2 border border-surface-200 rounded-lg
+           text-sm bg-white
+           focus:outline-none focus:ring-2 focus:ring-accent-300
+           transition-shadow;
+  }
+
+  /* Textarea */
+  .input-textarea {
+    @apply w-full px-3 py-2 border border-surface-200 rounded-lg
+           text-sm bg-white resize-none
+           focus:outline-none focus:ring-2 focus:ring-accent-300
+           placeholder-surface-400 transition-shadow;
+  }
+
+  /* Checkbox */
+  .input-checkbox {
+    @apply w-4 h-4 text-primary-600 rounded border-surface-300
+           focus:ring-primary-500;
+  }
+
+  /* Form label */
+  .label {
+    @apply block text-xs font-medium text-surface-500 uppercase tracking-wider mb-1.5;
+  }
+
+  /* ============================================
+     CARDS & SURFACES
+     ============================================ */
+
+  /* Interactive card with hover lift */
+  .card-interactive {
+    @apply bg-white rounded-xl border border-surface-200 shadow-card
+           transition-all duration-300 ease-out;
+  }
+  .card-interactive:hover {
+    @apply shadow-card-hover border-surface-300 -translate-y-0.5;
+  }
+
+  /* Static card — no hover effect */
+  .card-static {
+    @apply bg-white rounded-xl border border-surface-200 shadow-card;
+  }
+
+  /* Section panel — used inside cards/pages */
+  .panel {
+    @apply bg-surface-50 rounded-xl p-6;
+  }
+
+  /* ============================================
+     MODAL / OVERLAY
+     ============================================ */
+
+  /* Modal backdrop */
+  .modal-backdrop {
+    @apply fixed inset-0 bg-surface-900/40 backdrop-blur-sm
+           flex items-center justify-center z-50 animate-fade-in;
+  }
+
+  /* Modal content container */
+  .modal-content {
+    @apply bg-white rounded-2xl shadow-elevated p-6 w-full animate-scale-in;
+  }
+
+  /* ============================================
+     PAGE LAYOUT
+     ============================================ */
+
+  /* Page title — h1 */
+  .page-title {
+    @apply text-2xl font-display font-bold text-surface-800;
+  }
+
+  /* Page subtitle */
+  .page-subtitle {
+    @apply text-sm text-surface-500 mt-1;
+  }
+
+  /* Section title — h2 inside cards */
+  .section-title {
+    @apply text-base font-display font-semibold text-surface-800;
+  }
+
+  /* ============================================
+     TABS
+     ============================================ */
+
+  /* Tab bar container */
+  .tab-bar {
+    @apply flex gap-1 border-b border-surface-200;
+  }
+
+  /* Individual tab */
+  .tab {
+    @apply pb-3 px-4 text-sm font-medium transition-colors relative
+           text-surface-400 hover:text-surface-700;
+  }
+  .tab-active {
+    @apply text-primary-600;
+  }
+
+  /* Tab underline indicator */
+  .tab-indicator {
+    @apply absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full;
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ============================================
+     STATUS BADGES
+     ============================================ */
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  .badge-success { @apply bg-emerald-50 text-emerald-700; }
+  .badge-warning { @apply bg-amber-50 text-amber-700; }
+  .badge-error   { @apply bg-red-50 text-red-700; }
+  .badge-info    { @apply bg-primary-100 text-primary-700; }
+  .badge-neutral { @apply bg-surface-100 text-surface-700; }
+
+  /* Topic/theme tag pill */
+  .tag {
+    @apply text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-lg;
+  }
+
+  /* ============================================
+     LINKS
+     ============================================ */
+
+  .link-accent {
+    @apply text-accent-600 hover:text-accent-700 font-medium transition-colors;
+  }
+
+  .link-primary {
+    @apply text-primary-800 hover:text-primary-900 font-medium transition-colors;
+  }
+
+  /* ============================================
+     UTILITY
+     ============================================ */
+
+  /* Focus ring — for keyboard accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-300
+           focus:ring-offset-2 focus:ring-offset-surface-50;
+  }
+
+  /* Bulk action bar */
+  .bulk-action-bar {
+    @apply bg-primary-50 border border-primary-200 rounded-xl p-4 animate-scale-in;
+  }
+
+  /* Empty state container */
+  .empty-state {
+    @apply text-center py-16;
+  }
+  .empty-state-icon {
+    @apply w-16 h-16 mx-auto mb-4 rounded-2xl bg-surface-100
+           flex items-center justify-center;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full h-6 w-6
+           border-2 border-primary-200 border-t-primary-600 mx-auto;
+  }
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded;
+  @apply bg-surface-300 rounded-full;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  @apply bg-surface-400;
 }
 
-/* Electron-specific styles */
-body {
-  -webkit-app-region: no-drag;
-  user-select: text;
-  overflow: hidden;
-}
-
-/* Draggable title bar area */
+/* ============================================
+   ELECTRON-SPECIFIC
+   ============================================ */
 .titlebar-drag {
   -webkit-app-region: drag;
 }
-
 .titlebar-drag button,
 .titlebar-drag a,
 .titlebar-drag input,
@@ -39,21 +276,37 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* Loading animation */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
-
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Tab indicator animation */
-.tab-indicator {
-  transition: transform 150ms ease-in-out;
+/* Staggered animation delays for lists */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+.stagger-7 { animation-delay: 0.35s; }
+.stagger-8 { animation-delay: 0.4s; }
+
+/* Noise texture overlay for depth */
+.bg-noise {
+  position: relative;
+}
+.bg-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
 }

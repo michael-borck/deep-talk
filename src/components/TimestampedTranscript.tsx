@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Clock, Copy, ExternalLink } from 'lucide-react';
+import { Clock, Copy, ExternalLink, User } from 'lucide-react';
 import { sentenceSegmentsService } from '../services/sentenceSegmentsService';
 import { SentenceSegment } from '../types';
+import { HighlightedText, countMatches } from './HighlightedText';
 
 interface TimestampSegment {
   timestamp: string;
   text: string;
   startSeconds?: number;
+  speaker?: string;
 }
 
 interface TimestampedTranscriptProps {
@@ -17,7 +19,23 @@ interface TimestampedTranscriptProps {
   editable?: boolean;
   onTextChange?: (newText: string) => void;
   className?: string;
+  searchQuery?: string;
 }
+
+// Stable colour palette for speaker labels
+const SPEAKER_COLORS = [
+  'bg-primary-100 text-primary-800 border-primary-200',
+  'bg-accent-100 text-accent-800 border-accent-200',
+  'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'bg-amber-50 text-amber-700 border-amber-200',
+  'bg-rose-50 text-rose-700 border-rose-200',
+  'bg-violet-50 text-violet-700 border-violet-200',
+];
+
+const speakerColorFor = (speaker: string, allSpeakers: string[]): string => {
+  const idx = allSpeakers.indexOf(speaker);
+  return SPEAKER_COLORS[idx >= 0 ? idx % SPEAKER_COLORS.length : 0];
+};
 
 export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
   transcript,
@@ -26,7 +44,8 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
   showTimestamps = true,
   editable = false,
   onTextChange,
-  className = ""
+  className = "",
+  searchQuery = "",
 }) => {
   const [highlightedSegment, setHighlightedSegment] = useState<number | null>(null);
   const [sentenceSegments, setSentenceSegments] = useState<SentenceSegment[]>([]);
@@ -106,7 +125,8 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
       const processedSegments = sentenceSegments.map(segment => ({
         timestamp: segment.start_time ? formatTimestampFromSeconds(segment.start_time) : '',
         text: segment.text,
-        startSeconds: segment.start_time
+        startSeconds: segment.start_time,
+        speaker: segment.speaker,
       }));
       
       console.log('Processed sentence segments:', {
@@ -190,24 +210,33 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
     return (
       <div className={`prose max-w-none ${className}`}>
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Creating sentence segments...</span>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+          <span className="ml-2 text-surface-600">Creating sentence segments...</span>
         </div>
       </div>
     );
   }
 
-  // If no segments available, show plain text  
+  // If no segments available, show plain text
   if (segments.length === 0) {
-    console.log('Showing plain text view (no segments):', { showTimestamps, segmentsLength: segments.length, useSegments, sentenceSegmentsLength: sentenceSegments.length });
     return (
       <div className={`prose max-w-none ${className}`}>
-        <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
-          {transcript}
+        <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-surface-800">
+          <HighlightedText text={transcript} query={searchQuery} />
         </div>
       </div>
     );
   }
+
+  // Collect unique speakers for stable colour assignment
+  const uniqueSpeakers = Array.from(
+    new Set(segments.map(s => s.speaker).filter((s): s is string => !!s))
+  );
+
+  // When searching, count total matches across all segments
+  const totalMatches = searchQuery
+    ? segments.reduce((acc, s) => acc + countMatches(s.text, searchQuery), 0)
+    : 0;
 
   // Count segments with actual timestamps
   const segmentsWithTimestamps = segments.filter(s => s.timestamp && s.timestamp.length > 0);
@@ -220,107 +249,111 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Controls */}
-      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-        <div className="flex items-center space-x-2">
-          <Clock size={16} className="text-blue-600" />
-          <span className="text-sm font-medium text-gray-700">
-            {segmentsWithTimestamps.length > 0 
-              ? `${segmentsWithTimestamps.length} timestamped segments` 
-              : `${segments.length} sentence segments (no timestamps)`
-            }
-          </span>
-          {segmentsWithTimestamps.length === 0 && (
-            <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
-              No timing data available
+      <div className="flex items-center justify-between bg-surface-50 rounded-lg p-3">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2">
+            <Clock size={14} className="text-primary-800" />
+            <span className="text-xs font-medium text-surface-700">
+              {segmentsWithTimestamps.length > 0
+                ? `${segmentsWithTimestamps.length} timestamped segments`
+                : `${segments.length} sentence segments`
+              }
+            </span>
+          </div>
+          {searchQuery && (
+            <span className="badge badge-info text-[10px]">
+              {totalMatches} match{totalMatches !== 1 ? 'es' : ''}
             </span>
           )}
         </div>
-        
+
         <button
           onClick={generateExternalToolFormat}
-          className="flex items-center space-x-1 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+          className="btn-ghost flex items-center gap-1.5"
           title="Copy timestamp format for external audio tools"
         >
           <ExternalLink size={12} />
-          <span>External Tool Format</span>
+          <span>Copy for audio tools</span>
         </button>
       </div>
 
       {/* Timestamped Segments */}
-      <div className="space-y-3">
-        {segments.map((segment, index) => (
-          <div
-            key={index}
-            className={`border rounded-lg transition-colors ${
-              highlightedSegment === index 
-                ? 'border-blue-300 bg-blue-50' 
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-            onMouseEnter={() => setHighlightedSegment(index)}
-            onMouseLeave={() => setHighlightedSegment(null)}
-          >
-            {segment.timestamp ? (
-              <div className="flex items-center justify-between bg-gray-50 px-4 py-2 border-b">
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono text-sm font-semibold text-blue-600">
-                    {formatTimestamp(segment.timestamp)}
-                  </span>
-                  {segment.startSeconds !== undefined && (
-                    <span className="text-xs text-gray-500">
-                      ({segment.startSeconds}s)
+      <div className="space-y-2">
+        {segments.map((segment, index) => {
+          const hasMatch = searchQuery && countMatches(segment.text, searchQuery) > 0;
+          return (
+            <div
+              key={index}
+              className={`border rounded-lg transition-colors ${
+                hasMatch
+                  ? 'border-accent-300 bg-accent-50/50'
+                  : highlightedSegment === index
+                    ? 'border-surface-300 bg-surface-50'
+                    : 'border-surface-200 bg-white hover:border-surface-300'
+              }`}
+              onMouseEnter={() => setHighlightedSegment(index)}
+              onMouseLeave={() => setHighlightedSegment(null)}
+            >
+              {/* Segment header: timestamp + speaker */}
+              <div className="flex items-center justify-between bg-surface-50 px-4 py-1.5 border-b border-surface-100 rounded-t-lg">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {segment.speaker && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${speakerColorFor(segment.speaker, uniqueSpeakers)}`}>
+                      <User size={10} />
+                      {segment.speaker}
+                    </span>
+                  )}
+                  {segment.timestamp ? (
+                    <span className="font-mono text-xs font-semibold text-surface-700">
+                      {formatTimestamp(segment.timestamp)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-surface-400">
+                      #{index + 1}
                     </span>
                   )}
                 </div>
-                
-                <button
-                  onClick={() => copyTimestamp(segment.timestamp)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded"
-                  title="Copy timestamp"
-                >
-                  <Copy size={12} />
-                </button>
+
+                {segment.timestamp && (
+                  <button
+                    onClick={() => copyTimestamp(segment.timestamp)}
+                    className="p-1 text-surface-400 hover:text-surface-600 hover:bg-surface-200 rounded transition-colors"
+                    title="Copy timestamp"
+                  >
+                    <Copy size={11} />
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="flex items-center justify-between bg-gray-100 px-4 py-2 border-b">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-600">
-                    Sentence {index + 1}
-                  </span>
-                  <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                    No timestamp
-                  </span>
-                </div>
+
+              <div className="p-4">
+                {editable ? (
+                  <textarea
+                    value={segment.text}
+                    onChange={(e) => {
+                      const newSegments = [...segments];
+                      newSegments[index] = { ...segment, text: e.target.value };
+                      const newTranscript = newSegments
+                        .map(s => s.timestamp ? `${formatTimestamp(s.timestamp)} ${s.text}` : s.text)
+                        .join('\n');
+                      onTextChange?.(newTranscript);
+                    }}
+                    className="w-full resize-none border-none outline-none font-sans text-sm leading-relaxed"
+                    rows={Math.max(2, Math.ceil(segment.text.length / 80))}
+                  />
+                ) : (
+                  <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-surface-800">
+                    <HighlightedText text={segment.text} query={searchQuery} />
+                  </div>
+                )}
               </div>
-            )}
-            
-            <div className="p-4">
-              {editable ? (
-                <textarea
-                  value={segment.text}
-                  onChange={(e) => {
-                    const newSegments = [...segments];
-                    newSegments[index] = { ...segment, text: e.target.value };
-                    const newTranscript = newSegments
-                      .map(s => s.timestamp ? `${formatTimestamp(s.timestamp)} ${s.text}` : s.text)
-                      .join('\n');
-                    onTextChange?.(newTranscript);
-                  }}
-                  className="w-full resize-none border-none outline-none font-mono text-sm leading-relaxed"
-                  rows={Math.max(2, Math.ceil(segment.text.length / 80))}
-                />
-              ) : (
-                <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
-                  {segment.text}
-                </div>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {segments.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <Clock size={48} className="mx-auto mb-4 text-gray-300" />
+        <div className="text-center py-8 text-surface-500">
+          <Clock size={48} className="mx-auto mb-4 text-surface-300" />
           <p>No timestamps found in transcript</p>
           <p className="text-sm">
             Add timestamps in format [MM:SS] or [HH:MM:SS] for time-indexed editing

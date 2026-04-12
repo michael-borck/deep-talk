@@ -29,9 +29,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
   const helpItems = [
     { path: '/docs', icon: BookOpen, label: 'Documentation' },
     { path: '/shortcuts', icon: Keyboard, label: 'Keyboard Shortcuts' },
-    { 
-      path: 'https://michael-borck.github.io/deep-talk/troubleshooting', 
-      icon: HelpCircle, 
+    {
+      path: 'https://michael-borck.github.io/deep-talk/troubleshooting',
+      icon: HelpCircle,
       label: 'Help & Support',
       external: true
     },
@@ -44,49 +44,51 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
   };
 
   return (
-    <div className={`bg-gray-800 text-white h-full transition-all duration-300 ease-in-out ${
+    <div className={`bg-[#2d3436] text-white h-full transition-all duration-300 ease-out ${
       isCollapsed ? 'w-16' : 'w-64'
     } flex flex-col`}>
       {/* Logo/Brand */}
-      <div className="p-4 border-b border-gray-700">
+      <div className="p-4 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
-            <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-            {!isCollapsed && <span className="ml-3 text-xl font-semibold">DeepTalk</span>}
+            <div className="w-8 h-8 rounded-lg bg-accent-300/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-accent-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </div>
+            {!isCollapsed && <span className="ml-3 text-xl font-display font-bold text-primary-100 tracking-tight">DeepTalk</span>}
           </div>
           <button
             onClick={() => onToggleCollapse(!isCollapsed)}
-            className={`p-1 hover:bg-gray-700 rounded transition-colors ${isCollapsed ? 'mx-auto mt-2' : ''}`}
+            className={`p-1.5 hover:bg-white/10 rounded-lg transition-colors ${isCollapsed ? 'mx-auto mt-2' : ''}`}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-4 space-y-6">
+      <nav className="flex-1 p-3 space-y-6 overflow-y-auto">
         {/* Main Navigation */}
         <div>
-          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Navigation</h3>}
-          <ul className="space-y-2">
+          {!isCollapsed && <h3 className="text-[10px] font-sans font-semibold text-[#6b6358] uppercase tracking-widest mb-2 px-3">Navigation</h3>}
+          <ul className="space-y-0.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 ${
                       isActive(item.path)
-                        ? 'bg-blue-600 text-white'
-                        : 'hover:bg-gray-700 text-gray-300'
+                        ? 'bg-accent-300/15 text-primary-100 border-l-2 border-accent-300'
+                        : 'hover:bg-white/5 text-[#a09585] hover:text-primary-100'
                     }`}
                     title={isCollapsed ? item.label : ''}
                   >
-                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                    <Icon size={18} className={isCollapsed ? 'mx-auto' : ''} strokeWidth={isActive(item.path) ? 2.5 : 1.5} />
+                    {!isCollapsed && <span className="ml-3 text-sm font-sans">{item.label}</span>}
                   </Link>
                 </li>
               );
@@ -96,23 +98,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
 
         {/* Data Management */}
         <div>
-          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Data</h3>}
-          <ul className="space-y-2">
+          {!isCollapsed && <h3 className="text-[10px] font-sans font-semibold text-[#6b6358] uppercase tracking-widest mb-2 px-3">Data</h3>}
+          <ul className="space-y-0.5">
             {dataItems.map((item) => {
               const Icon = item.icon;
               return (
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 ${
                       isActive(item.path)
-                        ? 'bg-blue-600 text-white'
-                        : 'hover:bg-gray-700 text-gray-300'
+                        ? 'bg-accent-300/15 text-primary-100 border-l-2 border-accent-300'
+                        : 'hover:bg-white/5 text-[#a09585] hover:text-primary-100'
                     }`}
                     title={isCollapsed ? item.label : ''}
                   >
-                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                    <Icon size={18} className={isCollapsed ? 'mx-auto' : ''} strokeWidth={isActive(item.path) ? 2.5 : 1.5} />
+                    {!isCollapsed && <span className="ml-3 text-sm font-sans">{item.label}</span>}
                   </Link>
                 </li>
               );
@@ -122,8 +124,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
 
         {/* Help & Documentation */}
         <div>
-          {!isCollapsed && <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Help</h3>}
-          <ul className="space-y-2">
+          {!isCollapsed && <h3 className="text-[10px] font-sans font-semibold text-[#6b6358] uppercase tracking-widest mb-2 px-3">Help</h3>}
+          <ul className="space-y-0.5">
             {helpItems.map((item) => {
               const Icon = item.icon;
               if (item.external) {
@@ -131,11 +133,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
                   <li key={item.path}>
                     <button
                       onClick={() => window.open(item.path, '_blank')}
-                      className="flex items-center px-3 py-2 rounded-lg transition-colors hover:bg-gray-700 text-gray-300 w-full text-left"
+                      className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:bg-surface-800 text-surface-400 hover:text-white w-full text-left"
                       title={isCollapsed ? item.label : ''}
                     >
-                      <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                      {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                      <Icon size={18} className={isCollapsed ? 'mx-auto' : ''} strokeWidth={1.5} />
+                      {!isCollapsed && <span className="ml-3 text-sm font-sans">{item.label}</span>}
                     </button>
                   </li>
                 );
@@ -144,15 +146,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-lg transition-all duration-200 ${
                       isActive(item.path)
-                        ? 'bg-blue-600 text-white'
-                        : 'hover:bg-gray-700 text-gray-300'
+                        ? 'bg-accent-300/15 text-primary-100 border-l-2 border-accent-300'
+                        : 'hover:bg-white/5 text-[#a09585] hover:text-primary-100'
                     }`}
                     title={isCollapsed ? item.label : ''}
                   >
-                    <Icon size={20} className={isCollapsed ? 'mx-auto' : ''} />
-                    {!isCollapsed && <span className="ml-3">{item.label}</span>}
+                    <Icon size={18} className={isCollapsed ? 'mx-auto' : ''} strokeWidth={isActive(item.path) ? 2.5 : 1.5} />
+                    {!isCollapsed && <span className="ml-3 text-sm font-sans">{item.label}</span>}
                   </Link>
                 </li>
               );
@@ -162,25 +164,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
       </nav>
 
       {/* Bottom section - version info */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-white/10">
         {!isCollapsed ? (
-          <div className="text-xs">
+          <div className="text-xs font-sans">
             <button
               onClick={onAboutClick}
-              className="text-gray-400 hover:text-white transition-colors flex items-center space-x-1"
+              className="text-[#a09585] hover:text-primary-100 transition-colors flex items-center space-x-1.5"
             >
-              <Info size={14} />
+              <Info size={13} />
               <span>DeepTalk v1.0.0</span>
             </button>
-            <p className="text-gray-500 mt-1">© 2024</p>
+            <p className="text-[#6b6358] mt-1">&copy; 2024</p>
           </div>
         ) : (
           <button
             onClick={onAboutClick}
             title="About DeepTalk"
-            className="p-2 hover:bg-gray-700 rounded transition-colors mx-auto block"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors mx-auto block"
           >
-            <Info size={16} className="text-gray-400 hover:text-white" />
+            <Info size={15} className="text-[#a09585] hover:text-primary-100" />
           </button>
         )}
       </div>

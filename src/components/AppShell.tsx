@@ -47,32 +47,32 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-surface-50 bg-noise">
       {/* Sidebar */}
-      <Sidebar 
-        isCollapsed={isSidebarCollapsed} 
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
         onToggleCollapse={setIsSidebarCollapsed}
         onAboutClick={() => setShowAboutDialog(true)}
       />
-      
+
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative z-10">
         {/* Title bar area for macOS */}
         {navigator.platform.includes('Mac') && (
-          <div className="h-7 bg-white border-b border-gray-200 titlebar-drag" />
+          <div className="h-7 bg-surface-50 border-b border-surface-200 titlebar-drag" />
         )}
-        
+
         {/* Main content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
-        
+
         {/* Status bar */}
         <StatusBar />
       </div>
 
       {/* About Dialog */}
-      <AboutDialog 
+      <AboutDialog
         isOpen={showAboutDialog}
         onClose={() => setShowAboutDialog(false)}
         onShowLicenses={() => {
@@ -82,7 +82,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       />
 
       {/* Licenses Modal */}
-      <LicensesModal 
+      <LicensesModal
         isOpen={showLicensesModal}
         onClose={() => setShowLicensesModal(false)}
       />

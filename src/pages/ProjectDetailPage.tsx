@@ -110,7 +110,7 @@ export const ProjectDetailPage: React.FC = () => {
   if (isLoading || !currentProject) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Loading project...</div>
+        <div className="text-surface-500">Loading project...</div>
       </div>
     );
   }
@@ -126,18 +126,18 @@ export const ProjectDetailPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/projects')}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-surface-500 hover:text-surface-700"
             >
               ← Back
             </button>
             <div className="flex items-center gap-3">
               <span className="text-2xl">{currentProject.icon || '📁'}</span>
-              <h1 className="text-2xl font-bold text-gray-900">{currentProject.name}</h1>
+              <h1 className="page-title">{currentProject.name}</h1>
             </div>
           </div>
           <button
             onClick={handleEdit}
-            className="p-2 text-gray-500 hover:text-gray-700"
+            className="p-2 text-surface-500 hover:text-surface-700"
             title="Edit project"
           >
             ⚙️
@@ -152,8 +152,8 @@ export const ProjectDetailPage: React.FC = () => {
               onClick={() => setActiveTab(tab)}
               className={`pb-2 border-b-2 transition-colors capitalize ${
                 activeTab === tab
-                  ? 'border-blue-600 text-blue-600 font-medium'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-primary-600 text-primary-800 font-medium'
+                  : 'border-transparent text-surface-600 hover:text-surface-900'
               }`}
             >
               {tab}
@@ -172,45 +172,45 @@ export const ProjectDetailPage: React.FC = () => {
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div>
-                  <div className="text-3xl font-bold text-blue-600">{currentProject.transcript_count || 0}</div>
-                  <div className="text-sm text-gray-500">Transcripts</div>
+                  <div className="text-3xl font-display text-primary-800">{currentProject.transcript_count || 0}</div>
+                  <div className="text-sm text-surface-500">Transcripts</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-green-600">
+                  <div className="text-3xl font-display text-green-600">
                     {currentProject.total_duration ? formatDuration(currentProject.total_duration) : '0m'}
                   </div>
-                  <div className="text-sm text-gray-500">Total Duration</div>
+                  <div className="text-sm text-surface-500">Total Duration</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-purple-600">{currentProject.themes?.length || 0}</div>
-                  <div className="text-sm text-gray-500">Key Themes</div>
+                  <div className="text-3xl font-display text-purple-600">{currentProject.themes?.length || 0}</div>
+                  <div className="text-sm text-surface-500">Key Themes</div>
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-gray-600">
+                  <div className="text-lg font-display text-surface-600">
                     {currentProject.date_range 
                       ? `${new Date(currentProject.date_range.start).toLocaleDateString()} - ${new Date(currentProject.date_range.end).toLocaleDateString()}`
                       : 'No data'
                     }
                   </div>
-                  <div className="text-sm text-gray-500">Date Range</div>
+                  <div className="text-sm text-surface-500">Date Range</div>
                 </div>
               </div>
 
               {currentProject.description && (
                 <div className="mb-6">
-                  <h3 className="font-medium text-gray-700 mb-2">Description</h3>
-                  <p className="text-gray-600">{currentProject.description}</p>
+                  <h3 className="font-medium text-surface-700 mb-2">Description</h3>
+                  <p className="text-surface-600">{currentProject.description}</p>
                 </div>
               )}
 
               {currentProject.themes && currentProject.themes.length > 0 && (
                 <div>
-                  <h3 className="font-medium text-gray-700 mb-2">Key Themes</h3>
+                  <h3 className="font-medium text-surface-700 mb-2">Key Themes</h3>
                   <div className="flex flex-wrap gap-2">
                     {currentProject.themes.map((theme, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                        className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
                       >
                         {theme}
                       </span>
@@ -227,8 +227,8 @@ export const ProjectDetailPage: React.FC = () => {
                 <ul className="space-y-2">
                   {currentProject.key_insights.map((insight, index) => (
                     <li key={index} className="flex items-start gap-2">
-                      <span className="text-blue-600 mt-1">•</span>
-                      <span className="text-gray-700">{insight}</span>
+                      <span className="text-primary-800 mt-1">•</span>
+                      <span className="text-surface-700">{insight}</span>
                     </li>
                   ))}
                 </ul>
@@ -239,7 +239,7 @@ export const ProjectDetailPage: React.FC = () => {
             {currentProject.summary && (
               <div className="bg-white rounded-lg border p-6">
                 <h2 className="text-lg font-semibold mb-4">📝 Summary</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{currentProject.summary}</p>
+                <p className="text-surface-700 whitespace-pre-wrap">{currentProject.summary}</p>
               </div>
             )}
           </div>
@@ -251,7 +251,7 @@ export const ProjectDetailPage: React.FC = () => {
               <h2 className="text-lg font-semibold">Transcripts ({projectTranscripts.length})</h2>
               <button
                 onClick={() => setShowAddTranscriptModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="btn-primary"
               >
                 + Add Existing
               </button>
@@ -259,13 +259,13 @@ export const ProjectDetailPage: React.FC = () => {
 
             {projectTranscripts.length === 0 ? (
               <div className="bg-white rounded-lg border p-12 text-center">
-                <div className="text-gray-400 mb-4">
+                <div className="text-surface-400 mb-4">
                   <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No transcripts yet</h3>
-                <p className="text-gray-500">Add existing transcripts to this project</p>
+                <h3 className="text-lg font-medium text-surface-900 mb-2">No transcripts yet</h3>
+                <p className="text-surface-500">Add existing transcripts to this project</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -273,19 +273,19 @@ export const ProjectDetailPage: React.FC = () => {
                   <div key={transcript.id} className="bg-white rounded-lg border p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{transcript.title}</h3>
-                        <div className="text-sm text-gray-500 mt-1">
+                        <h3 className="font-semibold text-surface-900">{transcript.title}</h3>
+                        <div className="text-sm text-surface-500 mt-1">
                           {new Date(transcript.created_at).toLocaleDateString()} • {formatDuration(transcript.duration)}
                           {transcript.starred && ' • ⭐'}
                         </div>
                         {transcript.summary && (
-                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">{transcript.summary}</p>
+                          <p className="text-sm text-surface-600 mt-2 line-clamp-2">{transcript.summary}</p>
                         )}
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
                           onClick={() => navigate(`/transcript/${transcript.id}`)}
-                          className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                          className="px-3 py-1 text-sm bg-surface-100 hover:bg-surface-200 rounded transition-colors"
                         >
                           View
                         </button>
@@ -322,31 +322,31 @@ export const ProjectDetailPage: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-semibold">💬 Project Chat</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-surface-600 mt-1">
                   Ask questions across all {projectTranscripts.length} transcript{projectTranscripts.length !== 1 ? 's' : ''} in this project
                 </p>
               </div>
               <button
                 onClick={() => setShowChatModal(true)}
                 disabled={projectTranscripts.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary"
               >
                 Start Chat
               </button>
             </div>
             
             {projectTranscripts.length === 0 ? (
-              <div className="bg-gray-50 rounded-lg p-8 text-center">
-                <div className="text-gray-400 mb-4">
+              <div className="bg-surface-50 rounded-lg p-8 text-center">
+                <div className="text-surface-400 mb-4">
                   <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No transcripts in project</h3>
-                <p className="text-gray-500 mb-4">Add some transcripts to start chatting about project insights</p>
+                <h3 className="text-lg font-medium text-surface-900 mb-2">No transcripts in project</h3>
+                <p className="text-surface-500 mb-4">Add some transcripts to start chatting about project insights</p>
                 <button
                   onClick={() => setShowAddTranscriptModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="btn-primary"
                 >
                   Add Transcripts
                 </button>
@@ -354,9 +354,9 @@ export const ProjectDetailPage: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-900 mb-2">Cross-Transcript Analysis</h4>
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-primary-100 rounded-lg p-4">
+                    <h4 className="font-medium text-primary-900 mb-2">Cross-Transcript Analysis</h4>
+                    <p className="text-sm text-primary-700">
                       Ask about patterns, themes, and insights that span across multiple transcripts
                     </p>
                   </div>
@@ -374,9 +374,9 @@ export const ProjectDetailPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Example Questions:</h4>
-                  <ul className="text-sm text-gray-700 space-y-1">
+                <div className="bg-surface-50 rounded-lg p-4">
+                  <h4 className="font-medium text-surface-900 mb-2">Example Questions:</h4>
+                  <ul className="text-sm text-surface-700 space-y-1">
                     <li>• "What are the common themes across all transcripts?"</li>
                     <li>• "How do the viewpoints differ between interviews?"</li>
                     <li>• "What consensus points can you identify?"</li>
@@ -399,30 +399,30 @@ export const ProjectDetailPage: React.FC = () => {
 
       {/* Edit Project Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Edit Project</h2>
+        <div className="modal-backdrop">
+          <div className="modal-content max-w-md">
+            <h2 className="text-xl font-display mb-4">Edit Project</h2>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-surface-700 mb-1">
                 Project Name
               </label>
               <input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input"
               />
             </div>
             
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-surface-700 mb-1">
                 Description
               </label>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input"
                 rows={3}
               />
             </div>
@@ -437,14 +437,14 @@ export const ProjectDetailPage: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="btn-secondary border-0"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
                   disabled={!editName.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary"
                 >
                   Save Changes
                 </button>

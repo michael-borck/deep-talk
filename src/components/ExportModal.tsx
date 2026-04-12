@@ -113,9 +113,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const getVersionIcon = (version: ExportVersion) => {
     switch (version) {
       case 'original':
-        return <FileText size={16} className="text-gray-500" />;
+        return <FileText size={16} className="text-surface-500" />;
       case 'corrected':
-        return <Edit3 size={16} className="text-blue-500" />;
+        return <Edit3 size={16} className="text-primary-500" />;
       case 'speaker-tagged':
         return <Users size={16} className="text-green-500" />;
     }
@@ -233,14 +233,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-elevated w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Export Transcript</h2>
+          <h2 className="text-xl font-semibold text-surface-900">Export Transcript</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-surface-400 hover:text-surface-600"
           >
             <X size={24} />
           </button>
@@ -249,7 +249,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="p-6 space-y-6">
           {/* Version Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-surface-700 mb-3">
               Transcript Version
             </label>
             <div className="space-y-2">
@@ -260,10 +260,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     key={version}
                     className={`border rounded-lg p-3 cursor-pointer transition-colors ${
                       selectedVersion === version
-                        ? 'border-blue-500 bg-blue-50'
+                        ? 'border-primary-400 bg-primary-100'
                         : available
-                        ? 'border-gray-200 hover:border-gray-300'
-                        : 'border-gray-100 bg-gray-50 cursor-not-allowed'
+                        ? 'border-surface-200 hover:border-surface-200'
+                        : 'border-surface-100 bg-surface-50 cursor-not-allowed'
                     }`}
                     onClick={() => available && setSelectedVersion(version)}
                   >
@@ -271,17 +271,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       {getVersionIcon(version)}
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
-                          <span className={`text-sm font-medium ${available ? 'text-gray-900' : 'text-gray-400'}`}>
+                          <span className={`text-sm font-medium ${available ? 'text-surface-900' : 'text-surface-400'}`}>
                             {version.charAt(0).toUpperCase() + version.slice(1).replace('-', ' ')}
                           </span>
                           {available && selectedVersion === version && (
-                            <CheckCircle size={16} className="text-blue-500" />
+                            <CheckCircle size={16} className="text-primary-500" />
                           )}
                           {!available && (
                             <span className="text-xs text-red-500">(Not available)</span>
                           )}
                         </div>
-                        <p className={`text-xs ${available ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <p className={`text-xs ${available ? 'text-surface-600' : 'text-surface-400'}`}>
                           {available ? getVersionDescription(version) : getVersionUnavailableReason(version)}
                         </p>
                       </div>
@@ -294,13 +294,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Format Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-surface-700 mb-2">
               Export Format
             </label>
             <select
               value={selectedFormat}
               onChange={(e) => setSelectedFormat(e.target.value as ExportFormat)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
             >
               <option value="markdown">Markdown (.md)</option>
               <option value="txt">Plain Text (.txt)</option>
@@ -310,19 +310,19 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Timestamp Options */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-surface-700 mb-2">
               Timestamp Handling
             </label>
             <select
               value={timestampFormat}
               onChange={(e) => setTimestampFormat(e.target.value as TimestampFormat)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
             >
               <option value="preserve">Preserve timestamps as-is</option>
               <option value="remove">Remove all timestamps</option>
               <option value="external-tools">Format for external audio tools</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-surface-500 mt-1">
               {timestampFormat === 'preserve' && 'Keep timestamps exactly as they appear in the transcript'}
               {timestampFormat === 'remove' && 'Clean transcript text without any timestamp markers'}
               {timestampFormat === 'external-tools' && 'Format timestamps for use with audio editing software'}
@@ -332,7 +332,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {/* Options */}
           {selectedFormat !== 'txt' && (
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-surface-700">
                 Include Additional Data
               </label>
               <div className="space-y-2">
@@ -341,18 +341,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     type="checkbox"
                     checked={includeMetadata}
                     onChange={(e) => setIncludeMetadata(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-800 focus:ring-primary-400 border-surface-200 rounded"
                   />
-                  <span className="ml-2 text-sm text-gray-700">File metadata and information</span>
+                  <span className="ml-2 text-sm text-surface-700">File metadata and information</span>
                 </label>
                 <label className="flex items-center">
                   <input
                     type="checkbox"
                     checked={includeAnalysis}
                     onChange={(e) => setIncludeAnalysis(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-800 focus:ring-primary-400 border-surface-200 rounded"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Analysis results (summary, topics, sentiment)</span>
+                  <span className="ml-2 text-sm text-surface-700">Analysis results (summary, topics, sentiment)</span>
                 </label>
               </div>
             </div>
@@ -360,17 +360,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t bg-surface-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-surface-600 hover:text-surface-800"
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={!isVersionAvailable(selectedVersion)}
-            className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 btn-primary px-6 py-2"
           >
             <Download size={16} />
             <span>Export</span>

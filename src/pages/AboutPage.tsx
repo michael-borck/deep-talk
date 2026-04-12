@@ -64,53 +64,53 @@ export const AboutPage: React.FC = () => {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="text-4xl mb-4">🎤</div>
-        <h1 className="text-3xl font-bold text-gray-900">DeepTalk</h1>
-        <p className="text-lg text-gray-600 mt-2">Version 1.0.0</p>
-        <p className="text-gray-500 mt-1">AI-Powered Transcription & Analysis</p>
+        <h1 className="text-3xl font-display text-surface-900">DeepTalk</h1>
+        <p className="text-lg text-surface-600 mt-2">Version 1.0.0</p>
+        <p className="text-surface-500 mt-1">AI-Powered Transcription & Analysis</p>
       </div>
 
       {/* System Information */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">System Information</h2>
+      <div className="bg-white rounded-lg shadow-card border border-surface-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-surface-900 mb-4">System Information</h2>
         
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">Platform:</span>
-            <span className="text-gray-900">{stats.platform}</span>
+            <span className="text-surface-600">Platform:</span>
+            <span className="text-surface-900">{stats.platform}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-gray-600">Database:</span>
-            <span className="text-gray-900">SQLite 3.42.0</span>
+            <span className="text-surface-600">Database:</span>
+            <span className="text-surface-900">SQLite 3.42.0</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-gray-600">Data Location:</span>
-            <span className="text-gray-900 text-sm truncate max-w-xs" title={stats.dataLocation}>
+            <span className="text-surface-600">Data Location:</span>
+            <span className="text-surface-900 text-sm truncate max-w-xs" title={stats.dataLocation}>
               {stats.dataLocation}
             </span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-gray-600">Total Transcripts:</span>
-            <span className="text-gray-900">{stats.totalTranscripts}</span>
+            <span className="text-surface-600">Total Transcripts:</span>
+            <span className="text-surface-900">{stats.totalTranscripts}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-gray-600">Database Size:</span>
-            <span className="text-gray-900">{stats.databaseSize}</span>
+            <span className="text-surface-600">Database Size:</span>
+            <span className="text-surface-900">{stats.databaseSize}</span>
           </div>
         </div>
       </div>
 
       {/* Support & Help */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Support & Help</h2>
+      <div className="bg-white rounded-lg shadow-card border border-surface-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-surface-900 mb-4">Support & Help</h2>
         
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={handleOpenUserGuide}
-            className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <span>📚</span>
             <span>User Guide</span>
@@ -118,7 +118,7 @@ export const AboutPage: React.FC = () => {
           
           <button
             onClick={handleReportBug}
-            className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <span>🐛</span>
             <span>Report Bug</span>
@@ -126,7 +126,7 @@ export const AboutPage: React.FC = () => {
           
           <button
             onClick={handleFeatureRequest}
-            className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <span>💡</span>
             <span>Feature Request</span>
@@ -134,7 +134,7 @@ export const AboutPage: React.FC = () => {
           
           <button
             onClick={handleContactSupport}
-            className="flex items-center justify-center space-x-2 px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <span>📧</span>
             <span>Contact Support</span>
@@ -143,36 +143,36 @@ export const AboutPage: React.FC = () => {
         
         <button
           onClick={handleCheckUpdates}
-          className="w-full mt-4 px-4 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          className="w-full mt-4 btn-primary px-4 py-3"
         >
           🔄 Check for Updates
         </button>
       </div>
 
       {/* Legal */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Legal</h2>
+      <div className="bg-white rounded-lg shadow-card border border-surface-200 p-6">
+        <h2 className="text-lg font-semibold text-surface-900 mb-4">Legal</h2>
         
         <div className="text-center space-y-2">
           <div className="flex justify-center space-x-4 text-sm">
-            <button className="text-primary-600 hover:text-primary-700">
+            <button className="text-primary-800 hover:text-primary-900">
               Privacy Policy
             </button>
-            <span className="text-gray-400">•</span>
-            <button className="text-primary-600 hover:text-primary-700">
+            <span className="text-surface-400">•</span>
+            <button className="text-primary-800 hover:text-primary-900">
               Terms of Service
             </button>
-            <span className="text-gray-400">•</span>
-            <button className="text-primary-600 hover:text-primary-700">
+            <span className="text-surface-400">•</span>
+            <button className="text-primary-800 hover:text-primary-900">
               Licenses
             </button>
           </div>
           
-          <p className="text-gray-600 mt-4">
+          <p className="text-surface-600 mt-4">
             © 2024 Your Institution
           </p>
           
-          <p className="text-gray-500 text-sm">
+          <p className="text-surface-500 text-sm">
             Built with ❤️ for Academic Research
           </p>
         </div>

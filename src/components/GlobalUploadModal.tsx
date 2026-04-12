@@ -203,14 +203,14 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-elevated w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">Upload & Process</h2>
+          <h2 className="text-xl font-semibold text-surface-900">Upload & Process</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-surface-400 hover:text-surface-600"
           >
             <X size={24} />
           </button>
@@ -220,19 +220,19 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
           <div className="p-6 space-y-6">
             {/* File Upload Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-surface-700 mb-2">
                 Select Audio/Video Files
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+              <div className="border-2 border-dashed border-surface-200 rounded-lg p-6 text-center hover:border-surface-300 transition-colors">
+                <Upload className="mx-auto h-12 w-12 text-surface-400" />
                 <div className="mt-4">
                   <button 
                     onClick={handleBrowseClick}
-                    className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                    className="mt-2 text-sm font-medium text-primary-800 hover:text-primary-900 cursor-pointer"
                   >
                     Click to browse files
                   </button>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-surface-500">
                     Supports MP3, WAV, MP4, MOV and other common formats
                   </p>
                 </div>
@@ -240,8 +240,8 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
               
               {selectedFiles.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
+                  <h4 className="text-sm font-medium text-surface-700 mb-2">Selected Files:</h4>
+                  <ul className="text-sm text-surface-600 space-y-1">
                     {selectedFiles.map((filePath, index) => {
                       const fileName = filePath.split('/').pop() || filePath;
                       return (
@@ -258,14 +258,14 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
 
             {/* Project Assignment */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-surface-700 mb-2">
                 Assign to Project (Optional)
               </label>
               <div className="space-y-3">
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="input"
                 >
                   <option value="">None (add to library only)</option>
                   {projects
@@ -279,7 +279,7 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
                 
                 <button
                   onClick={() => setShowNewProject(true)}
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  className="flex items-center space-x-2 text-primary-800 hover:text-primary-900 text-sm font-medium"
                 >
                   <FolderPlus size={16} />
                   <span>Create New Project</span>
@@ -289,29 +289,29 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
 
             {/* New Project Form */}
             {showNewProject && (
-              <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Create New Project</h3>
+              <div className="border border-surface-200 rounded-lg p-4 space-y-4">
+                <h3 className="text-lg font-medium text-surface-900">Create New Project</h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-surface-700 mb-1">
                     Project Name *
                   </label>
                   <input
                     type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="input"
                     placeholder="Enter project name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-surface-700 mb-1">
                     Description
                   </label>
                   <textarea
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="input"
                     placeholder="Optional project description"
                   />
                 </div>
@@ -319,13 +319,13 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
                   <button
                     onClick={handleCreateNewProject}
                     disabled={!newProjectName.trim() || isCreatingProject}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className="btn-primary"
                   >
                     {isCreatingProject ? 'Creating...' : 'Create Project'}
                   </button>
                   <button
                     onClick={() => setShowNewProject(false)}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    className="btn-secondary"
                   >
                     Cancel
                   </button>
@@ -335,24 +335,24 @@ export const GlobalUploadModal: React.FC<GlobalUploadModalProps> = ({
 
             {/* Processing Queue */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Processing Queue</h3>
+              <h3 className="text-lg font-medium text-surface-900 mb-3">Processing Queue</h3>
               <ProcessingQueue items={processingQueue} />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t bg-surface-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-surface-600 hover:text-surface-800"
           >
             Cancel
           </button>
           <button
             onClick={handleUpload}
             disabled={selectedFiles.length === 0}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary px-6 py-2"
           >
             Upload & Process
           </button>

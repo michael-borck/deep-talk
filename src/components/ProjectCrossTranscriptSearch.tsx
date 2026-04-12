@@ -310,13 +310,13 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search across all transcripts..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
             />
           </div>
           <select
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value as any)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
           >
             <option value="all">All Fields</option>
             <option value="text">Text Content</option>
@@ -326,7 +326,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
           </select>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-surface-600 hover:text-surface-800 border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             {showAdvanced ? 'Simple' : 'Advanced'}
           </button>
@@ -334,31 +334,31 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
 
         {/* Advanced Filters */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-surface-50 rounded-lg">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+              <label className="block text-sm font-medium text-surface-700 mb-1">Date From</label>
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+              <label className="block text-sm font-medium text-surface-700 mb-1">Date To</label>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Speaker</label>
+              <label className="block text-sm font-medium text-surface-700 mb-1">Speaker</label>
               <select
                 value={speakerFilter}
                 onChange={(e) => setSpeakerFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
               >
                 <option value="">All Speakers</option>
                 {allSpeakers.map(speaker => (
@@ -367,11 +367,11 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sentiment</label>
+              <label className="block text-sm font-medium text-surface-700 mb-1">Sentiment</label>
               <select
                 value={sentimentFilter}
                 onChange={(e) => setSentimentFilter(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-surface-200 rounded text-sm"
               >
                 <option value="all">All</option>
                 <option value="positive">Positive</option>
@@ -382,7 +382,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
             <div className="md:col-span-4 flex justify-end">
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-4 py-2 text-sm text-surface-600 hover:text-surface-800 border border-surface-200 rounded hover:bg-surface-50"
               >
                 Clear Filters
               </button>
@@ -395,7 +395,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
       <div className="space-y-4">
         {/* Results Header */}
         {searchQuery.trim() && (
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center justify-between text-sm text-surface-600">
             <div>
               {isSearching ? (
                 'Searching...'
@@ -418,12 +418,12 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
             <div className="flex items-center justify-between mb-3">
               <div className="flex-1">
                 <h3 
-                  className="font-semibold text-gray-900"
+                  className="font-semibold text-surface-900"
                   dangerouslySetInnerHTML={{ 
                     __html: highlightText(result.transcript.title, searchQuery) 
                   }}
                 />
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-surface-500">
                   {formatDate(result.transcript.created_at)} • 
                   {result.totalMatches} match{result.totalMatches !== 1 ? 'es' : ''} • 
                   Relevance: {result.relevanceScore}%
@@ -432,7 +432,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
               </div>
               <button
                 onClick={() => window.open(`/transcript/${result.transcript.id}`, '_blank')}
-                className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                className="px-3 py-1 text-sm bg-primary-100 text-primary-700 rounded hover:bg-primary-200 transition-colors"
               >
                 Open
               </button>
@@ -441,12 +441,12 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
             {/* Match Previews */}
             <div className="space-y-2">
               {result.matches.slice(0, 5).map((match, matchIndex) => (
-                <div key={matchIndex} className="border-l-4 border-blue-200 pl-3">
-                  <div className="text-xs text-gray-500 mb-1">
+                <div key={matchIndex} className="border-l-4 border-primary-200 pl-3">
+                  <div className="text-xs text-surface-500 mb-1">
                     {getFieldDisplayName(match.field)}
                   </div>
                   <div 
-                    className="text-sm text-gray-700"
+                    className="text-sm text-surface-700"
                     dangerouslySetInnerHTML={{ 
                       __html: highlightText(match.context, searchQuery) 
                     }}
@@ -455,7 +455,7 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
               ))}
               
               {result.matches.length > 5 && (
-                <div className="text-sm text-gray-500 italic">
+                <div className="text-sm text-surface-500 italic">
                   + {result.matches.length - 5} more matches
                 </div>
               )}
@@ -466,14 +466,14 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
         {/* No Results */}
         {searchQuery.trim() && !isSearching && results.length === 0 && (
           <div className="bg-white rounded-lg border p-8 text-center">
-            <div className="text-gray-400 mb-2">
+            <div className="text-surface-400 mb-2">
               <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <div className="text-gray-600">No transcripts found matching "{searchQuery}"</div>
+            <div className="text-surface-600">No transcripts found matching "{searchQuery}"</div>
             {(dateRange.start || dateRange.end || speakerFilter || sentimentFilter !== 'all') && (
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-surface-500 mt-2">
                 Try adjusting your filters or search in all fields
               </div>
             )}
@@ -483,13 +483,13 @@ export const ProjectCrossTranscriptSearch: React.FC<ProjectCrossTranscriptSearch
         {/* Empty State */}
         {!searchQuery.trim() && (
           <div className="bg-white rounded-lg border p-8 text-center">
-            <div className="text-gray-400 mb-2">
+            <div className="text-surface-400 mb-2">
               <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <div className="text-gray-600">Search across all transcripts in this project</div>
-            <div className="text-sm text-gray-500 mt-1">
+            <div className="text-surface-600">Search across all transcripts in this project</div>
+            <div className="text-sm text-surface-500 mt-1">
               Find themes, quotes, insights, and patterns across multiple conversations
             </div>
           </div>

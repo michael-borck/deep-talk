@@ -165,22 +165,22 @@ export const PromptsSettings: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">AI Prompts Configuration</h2>
-          <p className="text-gray-600 mt-1">
+          <h2 className="page-title">AI Prompts Configuration</h2>
+          <p className="text-surface-600 mt-1">
             Customize prompts for better results with your AI model
           </p>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleImportPrompts}
-            className="flex items-center space-x-1 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center space-x-1 px-3 py-2 text-sm border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <Upload size={16} />
             <span>Import</span>
           </button>
           <button
             onClick={handleExportPrompts}
-            className="flex items-center space-x-1 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+            className="flex items-center space-x-1 px-3 py-2 text-sm border border-surface-200 rounded-lg hover:bg-surface-50"
           >
             <Download size={16} />
             <span>Export</span>
@@ -202,8 +202,8 @@ export const PromptsSettings: React.FC = () => {
       </div>
 
       {/* Category Tabs */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="grid grid-cols-4 divide-x divide-gray-200">
+      <div className="bg-white rounded-lg border border-surface-200">
+        <div className="grid grid-cols-4 divide-x divide-surface-200">
           {categories.map(category => (
             <button
               key={category.id}
@@ -211,22 +211,22 @@ export const PromptsSettings: React.FC = () => {
               className={`
                 px-4 py-4 text-center transition-colors
                 ${activeCategory === category.id 
-                  ? category.id === 'chat' ? 'bg-blue-50 border-b-2 border-blue-500' :
+                  ? category.id === 'chat' ? 'bg-primary-100 border-b-2 border-primary-400' :
                     category.id === 'analysis' ? 'bg-purple-50 border-b-2 border-purple-500' :
                     category.id === 'speaker' ? 'bg-green-50 border-b-2 border-green-500' :
                     'bg-orange-50 border-b-2 border-orange-500'
-                  : 'hover:bg-gray-50'
+                  : 'hover:bg-surface-50'
                 }
               `}
             >
               <div className={`
                 flex flex-col items-center space-y-2
                 ${activeCategory === category.id 
-                  ? category.id === 'chat' ? 'text-blue-700' :
+                  ? category.id === 'chat' ? 'text-primary-700' :
                     category.id === 'analysis' ? 'text-purple-700' :
                     category.id === 'speaker' ? 'text-green-700' :
                     'text-orange-700'
-                  : 'text-gray-600'
+                  : 'text-surface-600'
                 }
               `}>
                 {category.icon}
@@ -239,19 +239,19 @@ export const PromptsSettings: React.FC = () => {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-surface-400" />
         <input
           type="text"
           placeholder="Search prompts..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="pl-9 pr-4 py-2 w-full border border-surface-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500"
         />
       </div>
 
       {/* Category Description */}
       <div className={
-        activeCategory === 'chat' ? 'bg-blue-50 border border-blue-200 rounded-lg p-4' :
+        activeCategory === 'chat' ? 'bg-primary-100 border border-primary-200 rounded-lg p-4' :
         activeCategory === 'analysis' ? 'bg-purple-50 border border-purple-200 rounded-lg p-4' :
         activeCategory === 'speaker' ? 'bg-green-50 border border-green-200 rounded-lg p-4' :
         'bg-orange-50 border border-orange-200 rounded-lg p-4'
@@ -259,7 +259,7 @@ export const PromptsSettings: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className={
-              activeCategory === 'chat' ? 'text-blue-600' :
+              activeCategory === 'chat' ? 'text-primary-800' :
               activeCategory === 'analysis' ? 'text-purple-600' :
               activeCategory === 'speaker' ? 'text-green-600' :
               'text-orange-600'
@@ -268,7 +268,7 @@ export const PromptsSettings: React.FC = () => {
             </div>
             <div>
               <h3 className={
-                activeCategory === 'chat' ? 'font-medium text-blue-900' :
+                activeCategory === 'chat' ? 'font-medium text-primary-900' :
                 activeCategory === 'analysis' ? 'font-medium text-purple-900' :
                 activeCategory === 'speaker' ? 'font-medium text-green-900' :
                 'font-medium text-orange-900'
@@ -276,7 +276,7 @@ export const PromptsSettings: React.FC = () => {
                 {activeConfig.name}
               </h3>
               <p className={
-                activeCategory === 'chat' ? 'text-sm text-blue-700 mt-1' :
+                activeCategory === 'chat' ? 'text-sm text-primary-700 mt-1' :
                 activeCategory === 'analysis' ? 'text-sm text-purple-700 mt-1' :
                 activeCategory === 'speaker' ? 'text-sm text-green-700 mt-1' :
                 'text-sm text-orange-700 mt-1'
@@ -285,7 +285,7 @@ export const PromptsSettings: React.FC = () => {
               </p>
             </div>
           </div>
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-surface-600">
             {filteredPrompts.filter(p => p.systemUsed).length} system-used, {filteredPrompts.filter(p => !p.systemUsed).length} reference
           </div>
         </div>
@@ -295,11 +295,11 @@ export const PromptsSettings: React.FC = () => {
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading prompts...</p>
+          <p className="mt-4 text-surface-600">Loading prompts...</p>
         </div>
       ) : filteredPrompts.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">
+        <div className="text-center py-12 bg-surface-50 rounded-lg">
+          <p className="text-surface-600">
             {searchQuery ? 'No prompts found matching your search.' : 'No prompts available in this category.'}
           </p>
         </div>
@@ -318,10 +318,10 @@ export const PromptsSettings: React.FC = () => {
       )}
 
       {/* Templates Section */}
-      <div className="mt-8 pt-8 border-t border-gray-200">
+      <div className="mt-8 pt-8 border-t border-surface-200">
         <button
           onClick={() => setShowTemplates(!showTemplates)}
-          className="flex items-center space-x-2 text-lg font-medium text-gray-900 hover:text-gray-700"
+          className="flex items-center space-x-2 text-lg font-medium text-surface-900 hover:text-surface-700"
         >
           <span>{showTemplates ? '−' : '+'}</span>
           <span>Prompt Templates (Coming Soon)</span>
@@ -330,14 +330,14 @@ export const PromptsSettings: React.FC = () => {
         {showTemplates && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             {['Academic Research', 'Business Analysis', 'Medical/Healthcare', 'Simple (7B Models)'].map(template => (
-              <div key={template} className="bg-gray-50 rounded-lg p-4 opacity-50">
-                <h4 className="font-medium text-gray-900">{template}</h4>
-                <p className="text-sm text-gray-600 mt-1">
+              <div key={template} className="bg-surface-50 rounded-lg p-4 opacity-50">
+                <h4 className="font-medium text-surface-900">{template}</h4>
+                <p className="text-sm text-surface-600 mt-1">
                   Pre-configured prompts optimized for {template.toLowerCase()}
                 </p>
                 <button 
                   disabled
-                  className="mt-2 text-sm text-primary-600 hover:text-primary-700 disabled:opacity-50"
+                  className="mt-2 text-sm text-primary-800 hover:text-primary-900 disabled:opacity-50"
                 >
                   Apply Template →
                 </button>
