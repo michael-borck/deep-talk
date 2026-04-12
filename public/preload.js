@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Service operations
   services: {
     testConnection: (url, service, apiKey) => ipcRenderer.invoke('test-service-connection', { url, service, apiKey }),
+    getSpeachesModels: (url, apiKey) => ipcRenderer.invoke('get-speaches-models', { url, apiKey }),
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
     getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
     chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),

@@ -248,6 +248,11 @@ declare global {
           status?: number;
           error?: string;
         }>;
+        getSpeachesModels: (url: string, apiKey?: string) => Promise<{
+          success: boolean;
+          models?: any[];
+          error?: string;
+        }>;
         getOllamaModels: (url: string) => Promise<{
           success: boolean;
           models?: any[];

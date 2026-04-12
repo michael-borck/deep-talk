@@ -173,27 +173,26 @@ export const SettingsPage: React.FC = () => {
   const fetchSttModels = async () => {
     setLoadingSttModels(true);
     try {
-      const headers: Record<string, string> = {};
-      if (speechToTextKey && speechToTextKey.trim()) {
-        headers['Authorization'] = `Bearer ${speechToTextKey.trim()}`;
-      }
-      const response = await fetch(`${speechToTextUrl}/v1/models`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.data && Array.isArray(data.data)) {
-          // Filter for whisper models only
-          const whisperModels = data.data
-            .map((model: any) => model.id || model.name)
-            .filter((modelName: string) => 
-              modelName.toLowerCase().includes('whisper') || 
+      // Route through main process to avoid browser CORS restrictions
+      const result = await window.electronAPI.services.getSpeachesModels(
+        speechToTextUrl,
+        speechToTextKey || undefined
+      );
+
+      if (result.success && Array.isArray(result.models)) {
+        // Filter for whisper-style models only
+        const whisperModels = result.models
+          .map((model: any) => model.id || model.name)
+          .filter((modelName: string) =>
+            modelName && (
+              modelName.toLowerCase().includes('whisper') ||
               modelName.toLowerCase().includes('systran')
-            );
-          setAvailableSttModels(whisperModels);
-        } else {
-          console.error('Unexpected response format:', data);
-        }
+            )
+          );
+        setAvailableSttModels(whisperModels);
       } else {
-        console.error('Failed to fetch STT models:', response.statusText);
+        console.error('Failed to fetch STT models:', result.error);
+        alert(`Failed to load models: ${result.error}`);
       }
     } catch (error) {
       console.error('Error fetching STT models:', error);

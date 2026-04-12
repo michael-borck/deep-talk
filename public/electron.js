@@ -813,6 +813,30 @@ ipcMain.handle('test-service-connection', async (event, { url, service, apiKey }
   }
 });
 
+ipcMain.handle('get-speaches-models', async (event, { url, apiKey }) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey && apiKey.trim()) {
+      headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+    }
+
+    const response = await fetch(`${url.replace(/\/$/, '')}/v1/models`, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { success: true, models: data.data || [] };
+    } else {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('get-ollama-models', async (event, { url }) => {
   try {
     const response = await fetch(`${url}/api/tags`, {
