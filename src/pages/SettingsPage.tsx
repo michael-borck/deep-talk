@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Mic, Cog, MessageCircle, Bot, Settings } from 'lucide-react';
+import { Mic, Cog, MessageCircle, Bot, Settings, Database } from 'lucide-react';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { formatFileSize } from '../utils/helpers';
 import { PromptsSettings } from '../components/PromptsSettings';
+import { Collapsible } from '../components/Collapsible';
 import { chatService } from '../services/chatService';
 
 type SettingsTab = 'transcription' | 'processing' | 'chat' | 'prompts' | 'general';
@@ -715,9 +716,10 @@ export const SettingsPage: React.FC = () => {
         return (
           <div className="space-y-6">
             {/* Conversation Modes */}
-            <div className="bg-primary-100 rounded-lg p-6 border border-primary-200">
-              <h3 className="section-title mb-4">
-                💬 Conversation Modes
+            <div className="bg-primary-50 rounded-xl p-6 border border-primary-100">
+              <h3 className="section-title mb-4 flex items-center gap-2">
+                <MessageCircle size={16} className="text-primary-700" />
+                Conversation Modes
               </h3>
               
               <div className="space-y-4">
@@ -744,7 +746,7 @@ export const SettingsPage: React.FC = () => {
                         className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-surface-900">🔍 Vector Search Only</div>
+                        <div className="font-medium text-surface-900">Quote Lookup</div>
                         <div className="text-sm text-surface-600 mt-1">
                           Returns relevant transcript excerpts directly without AI interpretation. 
                           <strong>Fastest</strong> and most factual - shows exact quotes with timestamps and relevance scores.
@@ -768,7 +770,7 @@ export const SettingsPage: React.FC = () => {
                         className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-surface-900">🤖 RAG Mode (Recommended)</div>
+                        <div className="font-medium text-surface-900">Smart Search (Recommended)</div>
                         <div className="text-sm text-surface-600 mt-1">
                           Retrieves relevant chunks and sends them to AI for interpretation and analysis. 
                           <strong>Balanced</strong> approach providing context-aware responses with good performance.
@@ -792,7 +794,7 @@ export const SettingsPage: React.FC = () => {
                         className="mt-0.5 text-primary-800 focus:ring-primary-500"
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-surface-900">📄 Direct LLM Mode</div>
+                        <div className="font-medium text-surface-900">Full Transcript</div>
                         <div className="text-sm text-surface-600 mt-1">
                           Sends the full transcript directly to AI for comprehensive analysis. 
                           <strong>Most thorough</strong> but slower and may hit context limits with long transcripts.
@@ -871,12 +873,11 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="panel">
-              <h3 className="section-title mb-4">
-                Advanced Chat Settings
-              </h3>
-              
-              <div className="space-y-4">
+            <Collapsible
+              title="Advanced Chat Settings"
+              description="Fine-tune chunking, memory, and overlap. Defaults work well for most users."
+            >
+              <div className="space-y-4 pt-4">
                 {/* Context Chunks */}
                 <div>
                   <label className="label">
@@ -1010,7 +1011,7 @@ export const SettingsPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-            </div>
+            </Collapsible>
           </div>
         );
 
@@ -1092,42 +1093,42 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
             
-            {/* Vector Database Management */}
-            <div className="panel">
-              <h3 className="section-title mb-4">
-                🤖 Chat Vector Database
-              </h3>
-              
-              <div className="space-y-4">
+            {/* Vector Database Management — advanced */}
+            <Collapsible
+              title="Chat Search Index"
+              description="Reset the search index if chat behaves oddly. Most users never need this."
+              icon={Database}
+            >
+              <div className="space-y-4 pt-4">
                 <p className="text-sm text-surface-600">
-                  The vector database stores embeddings for chat functionality. Reset if you experience chat issues or after system updates.
+                  This stores searchable embeddings of your transcripts so chat can quickly find relevant excerpts. Reset only if you experience chat issues or after a system update.
                 </p>
-                
+
                 <div className="flex space-x-2">
-                  <button 
+                  <button
                     onClick={handleResetVectorDB}
-                    className="px-4 py-2 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50"
+                    className="px-4 py-2 border border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 text-sm"
                   >
-                    Reset Vector Database
+                    Reset Search Index
                   </button>
-                  <button 
+                  <button
                     onClick={handleGetVectorStats}
                     className="btn-secondary"
                   >
                     View Statistics
                   </button>
                 </div>
-                
+
                 {vectorStats && (
-                  <div className="text-sm text-surface-600 bg-white p-3 rounded border">
-                    <p><strong>Total Chunks:</strong> {vectorStats.totalChunks}</p>
-                    <p><strong>Processed Transcripts:</strong> {vectorStats.transcripts.length}</p>
-                    <p><strong>Average Chunk Size:</strong> {vectorStats.avgChunkSize.toFixed(1)}s</p>
-                    <p><strong>Speakers Found:</strong> {vectorStats.speakers.length}</p>
+                  <div className="text-sm text-surface-600 bg-surface-50 p-3 rounded-lg border border-surface-200">
+                    <p><strong>Indexed chunks:</strong> {vectorStats.totalChunks}</p>
+                    <p><strong>Processed transcripts:</strong> {vectorStats.transcripts.length}</p>
+                    <p><strong>Average chunk size:</strong> {vectorStats.avgChunkSize.toFixed(1)}s</p>
+                    <p><strong>Speakers found:</strong> {vectorStats.speakers.length}</p>
                   </div>
                 )}
               </div>
-            </div>
+            </Collapsible>
 
             {/* Appearance */}
             <div className="panel">

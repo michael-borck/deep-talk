@@ -1,7 +1,7 @@
 # DeepTalk UX Improvement Plan
 
 **Created:** 2026-04-13
-**Status:** Tier 1 + Tier 2 complete. Build verified clean.
+**Status:** Tier 1 + Tier 2 + Tier 3 complete. Build verified clean.
 
 ## Background
 
@@ -107,19 +107,29 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 ## Tier 3 — Structural improvements
 
 ### 3.1 Audio playback synced to transcript
-- Click any line/segment → play audio from that timestamp
-- Highlight currently-playing segment
-- Reuse `start_time`/`end_time` already in `transcript_segments`
+- **Status:** Done (2026-04-14)
+- New `useAudioPlayer` hook (`src/hooks/useAudioPlayer.ts`) — loads local files via Electron IPC `fs.readFile`, wraps in Blob URL, exposes play/pause/seek/currentTime via an HTMLAudioElement ref
+- New `AudioPlayerBar` component (`src/components/AudioPlayerBar.tsx`) — renders the `<audio>` element, play/pause button, scrubber, time display, error states
+- `TimestampedTranscript` accepts `currentPlaybackTime` and `onSeek` props:
+  - Click any segment → seeks audio to that segment's `start_time`
+  - Currently playing segment is highlighted with primary border
+  - Auto-scrolls into view
+- Audio is unloaded when navigating away from a transcript
 
 ### 3.2 Export to DOCX and PDF
-- Currently supports TXT, Markdown, JSON only
-- Add DOCX (for reports) and PDF (for sharing)
-- Optional: include analysis summary in export
+- **Status:** Done (2026-04-14)
+- New `exportService.ts` with `buildDocx()` (using `docx@9.6.1`) and `buildPdf()` (using `jspdf@4.2.1`)
+- `ExportModal` extended with two new format options; binary path uses async builder, downloads a Blob
+- Both formats include metadata, analysis (sentiment, emotions, topics, action items), and the chosen transcript version
+- DOCX uses native heading levels and bullet lists; PDF uses helvetica with hand-rolled layout (auto page breaks)
 
 ### 3.3 Move advanced settings into a collapsed section
-- Hide chunking method, vector store reset, prompt editor under "Advanced"
-- Keep transcription/AI service config visible by default
-- Reduces overwhelm for non-technical users
+- **Status:** Done (2026-04-14)
+- New reusable `Collapsible` component (`src/components/Collapsible.tsx`) — closed by default
+- Wrapped the "Advanced Chat Settings" panel (chunking method, max chunk size, chunk overlap, context chunks, memory limit) in a Collapsible
+- Wrapped the Vector Database section in a Collapsible and renamed to "Chat Search Index" with friendlier copy
+- Conversation Mode radios renamed: "Quote Lookup" / "Smart Search (Recommended)" / "Full Transcript" — non-developer language
+- Removed remaining emoji from chat tab section headers
 
 ---
 
@@ -151,4 +161,5 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 
 - **2026-04-13** — Plan created. Tier 1 complete: SentimentCard + ValidationChangesCard + HighlightedText components added; in-transcript search wired up; inline speaker labels in TimestampedTranscript; emoji icons replaced with Lucide throughout TranscriptDetailPage. Build verified.
 - **2026-04-13** — Tier 2 complete: ported talk-buddy's algorithmic conversation analysis, reframed for DeepTalk's audience. New `conversationMetricsService.ts` (pure, no LLM). Three new cards: ConversationQualityCard, FillerWordsCard, TalkTimeCard. Surfaces appear on both Overview and Analysis tabs. Build verified.
-- **Next:** Tier 3 — audio playback synced to transcript, DOCX/PDF export, move advanced settings into a collapsed section.
+- **2026-04-14** — Tier 3 complete: audio playback synced to transcript (useAudioPlayer hook + AudioPlayerBar component, click segments to seek, auto-scroll playing segment), DOCX/PDF export (new exportService using docx + jspdf), advanced settings collapsed under reusable Collapsible component. Build verified.
+- **Next:** Tier 4 — simplification. Decide whether to build UI for the project-level analysis dead code or delete it; collapse the dual analysis architectures (`performAdvancedAnalysis` legacy path + `oneTaskAtATime` toggle) into one. Plus the un-tiered backlog: upload-then-assign-project flow, bulk operations, "analysis done" feedback, STT confidence display, speaker diarisation re-run with hints, original/corrected/speaker-tagged diff view.

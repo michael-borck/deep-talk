@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Download, FileText, CheckCircle, Edit3, Users } from 'lucide-react';
 import { Transcript } from '../types';
+import { buildDocx, buildPdf } from '../services/exportService';
 
 interface ExportModalProps {
   transcript: Transcript;
@@ -9,7 +10,7 @@ interface ExportModalProps {
 }
 
 type ExportVersion = 'original' | 'corrected' | 'speaker-tagged';
-type ExportFormat = 'markdown' | 'txt' | 'json';
+type ExportFormat = 'markdown' | 'txt' | 'json' | 'docx' | 'pdf';
 type TimestampFormat = 'preserve' | 'remove' | 'external-tools';
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -214,12 +215,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     return content;
   };
 
-  const handleExport = () => {
-    const content = buildExportContent();
-    const mimeType = selectedFormat === 'json' ? 'application/json' : 'text/plain';
-    const extension = selectedFormat === 'markdown' ? 'md' : selectedFormat;
-    
-    const blob = new Blob([content], { type: mimeType });
+  const downloadBlob = (blob: Blob, extension: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -228,8 +224,38 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    onClose();
+  };
+
+  const handleExport = async () => {
+    try {
+      // Binary formats use the export service
+      if (selectedFormat === 'docx' || selectedFormat === 'pdf') {
+        const payload = {
+          transcript,
+          transcriptContent: getTranscriptContent(),
+          versionLabel: selectedVersion.charAt(0).toUpperCase() + selectedVersion.slice(1).replace('-', ' '),
+          includeMetadata,
+          includeAnalysis,
+        };
+        const blob = selectedFormat === 'docx'
+          ? await buildDocx(payload)
+          : buildPdf(payload);
+        downloadBlob(blob, selectedFormat);
+        onClose();
+        return;
+      }
+
+      // Text formats stay inline
+      const content = buildExportContent();
+      const mimeType = selectedFormat === 'json' ? 'application/json' : 'text/plain';
+      const extension = selectedFormat === 'markdown' ? 'md' : selectedFormat;
+      const blob = new Blob([content], { type: mimeType });
+      downloadBlob(blob, extension);
+      onClose();
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert(`Export failed: ${(error as Error).message}`);
+    }
   };
 
   return (
@@ -302,6 +328,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               onChange={(e) => setSelectedFormat(e.target.value as ExportFormat)}
               className="input"
             >
+              <option value="docx">Word Document (.docx)</option>
+              <option value="pdf">PDF (.pdf)</option>
               <option value="markdown">Markdown (.md)</option>
               <option value="txt">Plain Text (.txt)</option>
               <option value="json">JSON (.json)</option>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Clock, Copy, ExternalLink, User } from 'lucide-react';
 import { sentenceSegmentsService } from '../services/sentenceSegmentsService';
 import { SentenceSegment } from '../types';
@@ -20,6 +20,8 @@ interface TimestampedTranscriptProps {
   onTextChange?: (newText: string) => void;
   className?: string;
   searchQuery?: string;
+  currentPlaybackTime?: number;
+  onSeek?: (seconds: number) => void;
 }
 
 // Stable colour palette for speaker labels
@@ -46,6 +48,8 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
   onTextChange,
   className = "",
   searchQuery = "",
+  currentPlaybackTime,
+  onSeek,
 }) => {
   const [highlightedSegment, setHighlightedSegment] = useState<number | null>(null);
   const [sentenceSegments, setSentenceSegments] = useState<SentenceSegment[]>([]);
@@ -238,6 +242,32 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
     ? segments.reduce((acc, s) => acc + countMatches(s.text, searchQuery), 0)
     : 0;
 
+  // Determine which segment is currently playing based on playback time
+  const playingSegmentIndex = (() => {
+    if (currentPlaybackTime == null || currentPlaybackTime < 0) return -1;
+    let last = -1;
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i];
+      if (s.startSeconds == null) continue;
+      if (s.startSeconds <= currentPlaybackTime) last = i;
+      else break;
+    }
+    return last;
+  })();
+
+  const isInteractive = !!onSeek;
+
+  // Auto-scroll the currently playing segment into view
+  const segmentRefs = useRef<Array<HTMLDivElement | null>>([]);
+  useEffect(() => {
+    if (playingSegmentIndex >= 0) {
+      const el = segmentRefs.current[playingSegmentIndex];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [playingSegmentIndex]);
+
   // Count segments with actual timestamps
   const segmentsWithTimestamps = segments.filter(s => s.timestamp && s.timestamp.length > 0);
   console.log('Segments analysis:', { 
@@ -281,18 +311,27 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
       <div className="space-y-2">
         {segments.map((segment, index) => {
           const hasMatch = searchQuery && countMatches(segment.text, searchQuery) > 0;
+          const isPlaying = index === playingSegmentIndex;
+          const canSeek = isInteractive && segment.startSeconds != null;
           return (
             <div
               key={index}
+              ref={el => { segmentRefs.current[index] = el; }}
               className={`border rounded-lg transition-colors ${
-                hasMatch
-                  ? 'border-accent-300 bg-accent-50/50'
-                  : highlightedSegment === index
-                    ? 'border-surface-300 bg-surface-50'
-                    : 'border-surface-200 bg-white hover:border-surface-300'
-              }`}
+                isPlaying
+                  ? 'border-primary-700 bg-primary-50 shadow-card'
+                  : hasMatch
+                    ? 'border-accent-300 bg-accent-50/50'
+                    : highlightedSegment === index
+                      ? 'border-surface-300 bg-surface-50'
+                      : 'border-surface-200 bg-white hover:border-surface-300'
+              } ${canSeek ? 'cursor-pointer' : ''}`}
               onMouseEnter={() => setHighlightedSegment(index)}
               onMouseLeave={() => setHighlightedSegment(null)}
+              onClick={() => {
+                if (canSeek && segment.startSeconds != null) onSeek!(segment.startSeconds);
+              }}
+              title={canSeek ? 'Click to play from here' : undefined}
             >
               {/* Segment header: timestamp + speaker */}
               <div className="flex items-center justify-between bg-surface-50 px-4 py-1.5 border-b border-surface-100 rounded-t-lg">

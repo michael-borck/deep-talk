@@ -16,6 +16,8 @@ import { ValidationChangesCard } from '../components/ValidationChangesCard';
 import { ConversationQualityCard } from '../components/ConversationQualityCard';
 import { FillerWordsCard } from '../components/FillerWordsCard';
 import { TalkTimeCard } from '../components/TalkTimeCard';
+import { AudioPlayerBar } from '../components/AudioPlayerBar';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { analyzeConversation } from '../services/conversationMetricsService';
 import { sentenceSegmentsService } from '../services/sentenceSegmentsService';
 
@@ -39,6 +41,9 @@ export const TranscriptDetailPage: React.FC = () => {
   const [pageSegments, setPageSegments] = useState<SentenceSegment[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Audio playback for the Transcript tab
+  const audioPlayer = useAudioPlayer();
   const [activeTranscriptSubTab, setActiveTranscriptSubTab] = useState<string>('full');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
@@ -86,6 +91,14 @@ export const TranscriptDetailPage: React.FC = () => {
     };
     loadSegments();
   }, [transcript?.id, transcript?.processed_text, transcript?.validated_text]);
+
+  // Unload audio when transcript changes
+  useEffect(() => {
+    return () => {
+      audioPlayer.unload();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transcript?.id]);
 
   // Compute conversation metrics from text + segments
   const conversationMetrics = useMemo(() => {
@@ -525,6 +538,15 @@ export const TranscriptDetailPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Audio playback */}
+        {transcript.file_path && (
+          <AudioPlayerBar
+            player={audioPlayer}
+            filePath={transcript.file_path}
+            fileName={transcript.filename}
+          />
+        )}
+
         {/* In-transcript search */}
         <div className="card-static p-3">
           <div className="relative">
@@ -642,6 +664,8 @@ export const TranscriptDetailPage: React.FC = () => {
                       showTimestamps={showTimestamps}
                       editable={false}
                       searchQuery={searchQuery}
+                      currentPlaybackTime={audioPlayer.loadState === 'ready' ? audioPlayer.currentTime : undefined}
+                      onSeek={audioPlayer.loadState === 'ready' ? audioPlayer.seek : undefined}
                     />
                   ) : (
                     <div className="text-center py-8 text-surface-500">
@@ -742,6 +766,8 @@ export const TranscriptDetailPage: React.FC = () => {
                 showTimestamps={showTimestamps}
                 editable={false}
                 searchQuery={searchQuery}
+                currentPlaybackTime={audioPlayer.loadState === 'ready' ? audioPlayer.currentTime : undefined}
+                onSeek={audioPlayer.loadState === 'ready' ? audioPlayer.seek : undefined}
               />
             ) : (
               <div className="text-center py-8 text-surface-500">
