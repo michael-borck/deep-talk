@@ -204,10 +204,37 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
       .filter(seg => seg.timestamp)
       .map(seg => `${seg.timestamp}: ${seg.text}`)
       .join('\n');
-    
+
     navigator.clipboard.writeText(formatted);
     alert('Timestamp format copied to clipboard for external tools!');
   };
+
+  // Determine which segment is currently playing based on playback time.
+  // Computed unconditionally so the hooks below are always called in the
+  // same order on every render (no early-return hook violations).
+  const playingSegmentIndex = (() => {
+    if (currentPlaybackTime == null || currentPlaybackTime < 0) return -1;
+    let last = -1;
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i];
+      if (s.startSeconds == null) continue;
+      if (s.startSeconds <= currentPlaybackTime) last = i;
+      else break;
+    }
+    return last;
+  })();
+
+  // Auto-scroll the currently playing segment into view.
+  // MUST stay above any early returns to keep the hook order stable.
+  const segmentRefs = useRef<Array<HTMLDivElement | null>>([]);
+  useEffect(() => {
+    if (playingSegmentIndex >= 0) {
+      const el = segmentRefs.current[playingSegmentIndex];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [playingSegmentIndex]);
 
   // Show loading state while creating segments
   if (loadingSegments) {
@@ -242,31 +269,7 @@ export const TimestampedTranscript: React.FC<TimestampedTranscriptProps> = ({
     ? segments.reduce((acc, s) => acc + countMatches(s.text, searchQuery), 0)
     : 0;
 
-  // Determine which segment is currently playing based on playback time
-  const playingSegmentIndex = (() => {
-    if (currentPlaybackTime == null || currentPlaybackTime < 0) return -1;
-    let last = -1;
-    for (let i = 0; i < segments.length; i++) {
-      const s = segments[i];
-      if (s.startSeconds == null) continue;
-      if (s.startSeconds <= currentPlaybackTime) last = i;
-      else break;
-    }
-    return last;
-  })();
-
   const isInteractive = !!onSeek;
-
-  // Auto-scroll the currently playing segment into view
-  const segmentRefs = useRef<Array<HTMLDivElement | null>>([]);
-  useEffect(() => {
-    if (playingSegmentIndex >= 0) {
-      const el = segmentRefs.current[playingSegmentIndex];
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }
-  }, [playingSegmentIndex]);
 
   // Count segments with actual timestamps
   const segmentsWithTimestamps = segments.filter(s => s.timestamp && s.timestamp.length > 0);
