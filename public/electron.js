@@ -784,13 +784,22 @@ ipcMain.on('show-item-in-folder', (event, fullPath) => {
   shell.showItemInFolder(fullPath);
 });
 
-ipcMain.handle('test-service-connection', async (event, { url, service }) => {
+ipcMain.handle('test-service-connection', async (event, { url, service, apiKey }) => {
   try {
-    const response = await fetch(url, {
-      method: service === 'speaches' ? 'GET' : 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+    // Speaches/OpenAI-compatible servers expose /v1/models for a low-cost auth check.
+    // Probe that first when we have an API key to avoid false 401s on the root path.
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey && apiKey.trim()) {
+      headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+    }
+
+    const probeUrl = service === 'speaches' && apiKey
+      ? `${url.replace(/\/$/, '')}/v1/models`
+      : url;
+
+    const response = await fetch(probeUrl, {
+      method: 'GET',
+      headers,
       signal: AbortSignal.timeout(5000)
     });
 
@@ -1069,7 +1078,7 @@ ipcMain.handle('fs-delete-file', async (event, filePath) => {
   }
 });
 
-ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }) => {
+ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel, sttApiKey }) => {
   try {
     // Import fetch for Node.js
     const { default: fetch } = await import('node-fetch');
@@ -1141,7 +1150,7 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
     if (totalDuration <= chunkSizeSeconds) {
       console.log('>>> DECISION: Audio is shorter than chunk size, processing as SINGLE FILE');
       console.log('=== END AUDIO CHUNKING DEBUG ===\n');
-      return transcribeSingleFile(audioPath, sttUrl, sttModel);
+      return transcribeSingleFile(audioPath, sttUrl, sttModel, sttApiKey);
     }
     
     // Otherwise, split into chunks and process
@@ -1215,7 +1224,7 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
         // Transcribe chunk
         console.log(`>>> SENDING CHUNK ${i + 1} TO STT SERVICE...`);
         const transcribeStart = Date.now();
-        const chunkResult = await transcribeSingleFile(chunkPath, sttUrl, sttModel);
+        const chunkResult = await transcribeSingleFile(chunkPath, sttUrl, sttModel, sttApiKey);
         const transcribeTime = Date.now() - transcribeStart;
         
         if (chunkResult.success && chunkResult.text) {
@@ -1374,18 +1383,18 @@ ipcMain.handle('transcribe-audio', async (event, { audioPath, sttUrl, sttModel }
 });
 
 // Helper function to transcribe a single audio file
-async function transcribeSingleFile(audioPath, sttUrl, sttModel) {
+async function transcribeSingleFile(audioPath, sttUrl, sttModel, sttApiKey) {
   try {
     const { default: fetch } = await import('node-fetch');
     const FormData = require('form-data');
-    
+
     console.log('\n>>> SINGLE FILE TRANSCRIPTION');
     console.log('File path:', audioPath);
-    
+
     // Read audio file
     const audioBuffer = fs.readFileSync(audioPath);
     console.log('Audio blob size:', (audioBuffer.length / 1024 / 1024).toFixed(2), 'MB', `(${audioBuffer.length} bytes)`);
-    
+
     // Create form data (OpenAI-compatible format)
     const formData = new FormData();
     formData.append('file', audioBuffer, {
@@ -1400,18 +1409,25 @@ async function transcribeSingleFile(audioPath, sttUrl, sttModel) {
     formData.append('log_prob_threshold', '-1.0');
     formData.append('no_speech_threshold', '0.6');
     formData.append('condition_on_previous_text', 'false');
-    
+
     console.log('STT Service URL:', `${sttUrl}/v1/audio/transcriptions`);
     console.log('Model:', sttModel);
+    console.log('Auth:', sttApiKey ? 'Bearer key provided' : 'none');
     console.log('>>> SENDING BLOB TO STT SERVICE...');
-    
+
     const sendStart = Date.now();
-    
+
+    // Build headers — start with form-data's headers, add auth if present
+    const requestHeaders = formData.getHeaders();
+    if (sttApiKey && sttApiKey.trim()) {
+      requestHeaders['Authorization'] = `Bearer ${sttApiKey.trim()}`;
+    }
+
     // Make request to STT service (OpenAI-compatible API)
     const response = await fetch(`${sttUrl}/v1/audio/transcriptions`, {
       method: 'POST',
       body: formData,
-      headers: formData.getHeaders()
+      headers: requestHeaders
     });
     
     const sendTime = Date.now() - sendStart;

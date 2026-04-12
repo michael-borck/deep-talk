@@ -215,19 +215,25 @@ export class FileProcessor {
         'SELECT value FROM settings WHERE key = ?',
         ['speechToTextUrl']
       );
-      
+
       const sttModelSetting = await window.electronAPI.database.get(
         'SELECT value FROM settings WHERE key = ?',
         ['speechToTextModel']
       );
-      
+
+      const sttKeySetting = await window.electronAPI.database.get(
+        'SELECT value FROM settings WHERE key = ?',
+        ['speechToTextKey']
+      );
+
       const sttUrl = sttUrlSetting?.value || 'https://speaches.serveur.au';
       const sttModel = sttModelSetting?.value || 'Systran/faster-distil-whisper-small.en';
-      
+      const sttKey = sttKeySetting?.value || undefined;
+
       onProgress?.('transcribing', 25);
-      
+
       // Use IPC to transcribe in main process (bypasses CSP)
-      const result = await window.electronAPI.audio.transcribeAudio(audioPath, sttUrl, sttModel);
+      const result = await window.electronAPI.audio.transcribeAudio(audioPath, sttUrl, sttModel, sttKey);
       
       onProgress?.('transcribing', 75);
       

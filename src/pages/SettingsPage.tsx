@@ -141,14 +141,15 @@ export const SettingsPage: React.FC = () => {
 
   const handleTestConnection = async (service: 'speaches' | 'ollama') => {
     const url = service === 'speaches' ? speechToTextUrl : aiAnalysisUrl;
-    const result = await window.electronAPI.services.testConnection(url, service);
-    
+    const apiKey = service === 'speaches' ? speechToTextKey : undefined;
+    const result = await window.electronAPI.services.testConnection(url, service, apiKey);
+
     if (result.success) {
-      alert(`✅ Successfully connected to ${service}`);
+      alert(`Successfully connected to ${service === 'speaches' ? 'transcription service' : 'AI analysis service'}`);
     } else {
-      alert(`❌ Failed to connect: ${result.error}`);
+      alert(`Failed to connect: ${result.error}`);
     }
-    
+
     await testConnections();
   };
 
@@ -172,7 +173,11 @@ export const SettingsPage: React.FC = () => {
   const fetchSttModels = async () => {
     setLoadingSttModels(true);
     try {
-      const response = await fetch(`${speechToTextUrl}/v1/models`);
+      const headers: Record<string, string> = {};
+      if (speechToTextKey && speechToTextKey.trim()) {
+        headers['Authorization'] = `Bearer ${speechToTextKey.trim()}`;
+      }
+      const response = await fetch(`${speechToTextUrl}/v1/models`, { headers });
       if (response.ok) {
         const data = await response.json();
         if (data.data && Array.isArray(data.data)) {

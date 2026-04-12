@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Service operations
   services: {
-    testConnection: (url, service) => ipcRenderer.invoke('test-service-connection', { url, service }),
+    testConnection: (url, service, apiKey) => ipcRenderer.invoke('test-service-connection', { url, service, apiKey }),
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
     getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
     chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),
@@ -78,8 +78,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('extract-audio', { inputPath, outputPath }),
     getMediaInfo: (filePath) => 
       ipcRenderer.invoke('get-media-info', { filePath }),
-    transcribeAudio: (audioPath, sttUrl, sttModel) =>
-      ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel })
+    transcribeAudio: (audioPath, sttUrl, sttModel, sttApiKey) =>
+      ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel, sttApiKey })
   },
 
   // Sentence segments operations

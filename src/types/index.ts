@@ -243,7 +243,7 @@ declare global {
         deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       };
       services: {
-        testConnection: (url: string, service: string) => Promise<{
+        testConnection: (url: string, service: string, apiKey?: string) => Promise<{
           success: boolean;
           status?: number;
           error?: string;
@@ -286,7 +286,7 @@ declare global {
           hasAudio?: boolean;
           error?: string;
         }>;
-        transcribeAudio: (audioPath: string, sttUrl: string, sttModel: string) => Promise<{
+        transcribeAudio: (audioPath: string, sttUrl: string, sttModel: string, sttApiKey?: string) => Promise<{
           success: boolean;
           text?: string;
           error?: string;
