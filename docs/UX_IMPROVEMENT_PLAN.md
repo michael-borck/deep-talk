@@ -1,7 +1,7 @@
 # DeepTalk UX Improvement Plan
 
 **Created:** 2026-04-13
-**Status:** Tier 1 complete. Build verified clean.
+**Status:** Tier 1 + Tier 2 complete. Build verified clean.
 
 ## Background
 
@@ -72,24 +72,35 @@ These features exist in the backend/database but aren't shown to users. Pure UI 
 Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael/Projects/talk-buddy/src/renderer/services/analysis.ts`.
 
 ### 2.1 Filler word detection
-- Detect 20+ fillers (um, uh, like, you know, kind of, sort of, basically, literally, etc.)
-- Multi-word matching
-- Display: percentage of total words + top 5 most common with counts
-- Per-speaker breakdown if speakers tagged
+- **Status:** Done (2026-04-13)
+- `detectFillerWords()` in `src/services/conversationMetricsService.ts`
+- 18 single-word fillers + 8 multi-word phrases
+- New `FillerWordsCard` shows percentage + top 5 with counts, banded rating
+  (Excellent ≤2%, Good ≤5%, Noticeable ≤10%, High >10%)
 
 ### 2.2 Talk-time distribution per speaker
-- Calculate words/seconds per speaker from existing speaker tagging
-- Display as donut or horizontal bar: "Speaker A: 62% / Speaker B: 38%"
-- Most-requested feature for class recordings, meetings, interviews
+- **Status:** Done (2026-04-13)
+- `analyzeTalkTime()` reads speaker info from sentence segments
+- New `TalkTimeCard` shows stacked horizontal bar + per-speaker breakdown
+  with words, duration (when available), and percentage
+- Detects imbalance (>70% single speaker) and offers context note
 
 ### 2.3 Conversation Quality rubric (0-100 score)
-- Four factors, 0-25 each:
-  - Response time / pacing
-  - Average turn length
-  - Filler word rate
-  - Conversation flow
-- Display as colour-coded card (green ≥80, yellow 60-79, red <60)
-- Generate strengths + improvements based on thresholds
+- **Status:** Done (2026-04-13)
+- Reframed from talk-buddy's personal "Fluency" to neutral observational
+  "Quality" — appropriate for analysing other people's conversations
+- Four factors, 0-25 each: **Clarity** (filler rate), **Depth** (turn length),
+  **Balance** (talk-time evenness), **Pace** (words/min vs 130-170 ideal)
+- New `ConversationQualityCard` shows score + factor bars + auto-generated
+  strengths and observations
+- Compact version on Overview tab, full version on Analysis tab
+
+### Foundation
+- New service `src/services/conversationMetricsService.ts` — pure functions,
+  no LLM calls, no network. Exports `analyzeConversation()`, `detectFillerWords()`,
+  `analyzeTalkTime()`, `countQuestions()`, `calculateQuality()`, `generateInsights()`.
+- TranscriptDetailPage loads sentence segments for the current transcript and
+  computes metrics with `useMemo`
 
 ---
 
@@ -139,4 +150,5 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 ## Progress log
 
 - **2026-04-13** — Plan created. Tier 1 complete: SentimentCard + ValidationChangesCard + HighlightedText components added; in-transcript search wired up; inline speaker labels in TimestampedTranscript; emoji icons replaced with Lucide throughout TranscriptDetailPage. Build verified.
-- **Next:** Tier 2 — port talk-buddy filler word detection, talk-time distribution per speaker, and conversation quality rubric.
+- **2026-04-13** — Tier 2 complete: ported talk-buddy's algorithmic conversation analysis, reframed for DeepTalk's audience. New `conversationMetricsService.ts` (pure, no LLM). Three new cards: ConversationQualityCard, FillerWordsCard, TalkTimeCard. Surfaces appear on both Overview and Analysis tabs. Build verified.
+- **Next:** Tier 3 — audio playback synced to transcript, DOCX/PDF export, move advanced settings into a collapsed section.

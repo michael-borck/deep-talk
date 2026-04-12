@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
-import { Transcript, Project } from '../types';
+import { Transcript, Project, SentenceSegment } from '../types';
 import { formatDate, formatDuration, formatFileSize } from '../utils/helpers';
 import { ArrowLeft, Star, Download, Copy, Edit, Users, MessageCircle, Search, Clock, FileText, HardDrive, Calendar, FileAudio, Tag, ListChecks, FolderOpen, Quote, Lightbulb, X } from 'lucide-react';
 import { SpeakerTaggingModal } from '../components/SpeakerTaggingModal';
@@ -13,6 +13,11 @@ import { TranscriptEditor } from '../components/TranscriptEditor';
 import { TimestampedTranscript } from '../components/TimestampedTranscript';
 import { SentimentCard } from '../components/SentimentCard';
 import { ValidationChangesCard } from '../components/ValidationChangesCard';
+import { ConversationQualityCard } from '../components/ConversationQualityCard';
+import { FillerWordsCard } from '../components/FillerWordsCard';
+import { TalkTimeCard } from '../components/TalkTimeCard';
+import { analyzeConversation } from '../services/conversationMetricsService';
+import { sentenceSegmentsService } from '../services/sentenceSegmentsService';
 
 type TabType = 'overview' | 'transcript' | 'analysis' | 'conversations' | 'notes';
 
@@ -31,6 +36,7 @@ export const TranscriptDetailPage: React.FC = () => {
   const [showTranscriptEditor, setShowTranscriptEditor] = useState(false);
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [transcriptProjects, setTranscriptProjects] = useState<Project[]>([]);
+  const [pageSegments, setPageSegments] = useState<SentenceSegment[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTranscriptSubTab, setActiveTranscriptSubTab] = useState<string>('full');
@@ -63,6 +69,31 @@ export const TranscriptDetailPage: React.FC = () => {
 
     loadTranscriptProjects();
   }, [transcript?.id, projects]);
+
+  // Load sentence segments for analysis (for conversation metrics)
+  useEffect(() => {
+    const loadSegments = async () => {
+      if (!transcript?.id) return;
+      // Prefer the most enriched version available
+      const version = transcript.processed_text
+        ? 'speaker_tagged'
+        : transcript.validated_text ? 'corrected' : 'original';
+      let segs = await sentenceSegmentsService.getSegments(transcript.id, version);
+      if (segs.length === 0 && version !== 'original') {
+        segs = await sentenceSegmentsService.getSegments(transcript.id, 'original');
+      }
+      setPageSegments(segs);
+    };
+    loadSegments();
+  }, [transcript?.id, transcript?.processed_text, transcript?.validated_text]);
+
+  // Compute conversation metrics from text + segments
+  const conversationMetrics = useMemo(() => {
+    if (!transcript) return null;
+    const text = transcript.processed_text || transcript.validated_text || transcript.full_text || '';
+    if (!text.trim()) return null;
+    return analyzeConversation(text, pageSegments.length > 0 ? pageSegments : undefined, transcript.duration);
+  }, [transcript?.id, transcript?.processed_text, transcript?.validated_text, transcript?.full_text, transcript?.duration, pageSegments]);
 
   const loadTranscript = async () => {
     if (!id) return;
@@ -330,15 +361,26 @@ export const TranscriptDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Sentiment + Emotions (compact) */}
-      {(transcript.sentiment_overall || (transcript.emotions && Object.keys(transcript.emotions).length > 0)) && (
-        <SentimentCard
-          sentiment={transcript.sentiment_overall}
-          score={transcript.sentiment_score}
-          emotions={transcript.emotions}
-          variant="compact"
-        />
-      )}
+      {/* Sentiment + Conversation Quality side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {(transcript.sentiment_overall || (transcript.emotions && Object.keys(transcript.emotions).length > 0)) && (
+          <SentimentCard
+            sentiment={transcript.sentiment_overall}
+            score={transcript.sentiment_score}
+            emotions={transcript.emotions}
+            variant="compact"
+          />
+        )}
+        {conversationMetrics && (
+          <ConversationQualityCard
+            quality={conversationMetrics.quality}
+            insights={{
+              strengths: conversationMetrics.insights.strengths.slice(0, 2),
+              observations: conversationMetrics.insights.observations.slice(0, 2),
+            }}
+          />
+        )}
+      </div>
 
       {/* AI Corrections (collapsed by default with summary) */}
       {transcript.validation_changes && transcript.validation_changes.length > 0 && (
@@ -720,6 +762,27 @@ export const TranscriptDetailPage: React.FC = () => {
 
   const renderAnalysisTab = () => (
     <div className="space-y-6">
+      {/* Conversation Quality (rubric) */}
+      {conversationMetrics && (
+        <ConversationQualityCard
+          quality={conversationMetrics.quality}
+          insights={conversationMetrics.insights}
+        />
+      )}
+
+      {/* Talk-time + Filler words side by side */}
+      {conversationMetrics && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {conversationMetrics.talkTime && conversationMetrics.talkTime.speakers.length > 1 && (
+            <TalkTimeCard talkTime={conversationMetrics.talkTime} />
+          )}
+          <FillerWordsCard
+            fillerWords={conversationMetrics.fillerWords}
+            totalWords={conversationMetrics.wordCount}
+          />
+        </div>
+      )}
+
       {/* Sentiment & Emotions (full) */}
       <SentimentCard
         sentiment={transcript.sentiment_overall}
