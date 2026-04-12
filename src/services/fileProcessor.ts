@@ -210,30 +210,17 @@ export class FileProcessor {
     }>;
   }> {
     try {
-      // Get STT service settings
-      const sttUrlSetting = await window.electronAPI.database.get(
+      // Read the chosen local Whisper model from settings (defaults to tiny.en)
+      const modelSetting = await window.electronAPI.database.get(
         'SELECT value FROM settings WHERE key = ?',
-        ['speechToTextUrl']
+        ['localTranscriptionModel']
       );
-
-      const sttModelSetting = await window.electronAPI.database.get(
-        'SELECT value FROM settings WHERE key = ?',
-        ['speechToTextModel']
-      );
-
-      const sttKeySetting = await window.electronAPI.database.get(
-        'SELECT value FROM settings WHERE key = ?',
-        ['speechToTextKey']
-      );
-
-      const sttUrl = sttUrlSetting?.value || 'https://speaches.serveur.au';
-      const sttModel = sttModelSetting?.value || 'Systran/faster-distil-whisper-small.en';
-      const sttKey = sttKeySetting?.value || undefined;
+      const modelName = modelSetting?.value || 'Xenova/whisper-tiny.en';
 
       onProgress?.('transcribing', 25);
 
-      // Use IPC to transcribe in main process (bypasses CSP)
-      const result = await window.electronAPI.audio.transcribeAudio(audioPath, sttUrl, sttModel, sttKey);
+      // Run Whisper in the main process — no external server needed
+      const result = await window.electronAPI.audio.transcribe(audioPath, modelName);
       
       onProgress?.('transcribing', 75);
       

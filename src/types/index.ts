@@ -243,14 +243,9 @@ declare global {
         deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
       };
       services: {
-        testConnection: (url: string, service: string, apiKey?: string) => Promise<{
+        testConnection: (url: string) => Promise<{
           success: boolean;
           status?: number;
-          error?: string;
-        }>;
-        getSpeachesModels: (url: string, apiKey?: string) => Promise<{
-          success: boolean;
-          models?: any[];
           error?: string;
         }>;
         getOllamaModels: (url: string) => Promise<{
@@ -291,12 +286,19 @@ declare global {
           hasAudio?: boolean;
           error?: string;
         }>;
-        transcribeAudio: (audioPath: string, sttUrl: string, sttModel: string, sttApiKey?: string) => Promise<{
+        transcribe: (audioPath: string, modelName?: string) => Promise<{
           success: boolean;
           text?: string;
           error?: string;
           chunkTimings?: ChunkTimingInfo[];
         }>;
+        loadTranscriptionModel: (modelName?: string) => Promise<{
+          success: boolean;
+          modelName?: string;
+          error?: string;
+        }>;
+        onTranscriptionProgress: (callback: (data: { status: string; file?: string; progress?: number; model?: string }) => void) => void;
+        offTranscriptionProgress: () => void;
       };
       getDatabaseInfo: () => Promise<any>;
       changeDatabaseLocation: (newPath: string) => Promise<{ success: boolean; error?: string }>;

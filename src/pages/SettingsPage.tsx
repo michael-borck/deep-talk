@@ -14,9 +14,9 @@ export const SettingsPage: React.FC = () => {
   const { testConnections, serviceStatus } = useContext(ServiceContext);
   
   // Settings state
-  const [speechToTextUrl, setSpeechToTextUrl] = useState('http://localhost:8000');
-  const [speechToTextKey, setSpeechToTextKey] = useState('');
-  const [speechToTextModel, setSpeechToTextModel] = useState('Systran/faster-distil-whisper-small.en');
+  const [localTranscriptionModel, setLocalTranscriptionModel] = useState('Xenova/whisper-tiny.en');
+  const [transcriptionModelStatus, setTranscriptionModelStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [transcriptionModelMessage, setTranscriptionModelMessage] = useState<string>('');
   const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434');
   const [aiModel, setAiModel] = useState('llama2');
   const [autoBackup, setAutoBackup] = useState(true);
@@ -25,8 +25,6 @@ export const SettingsPage: React.FC = () => {
   const [databaseInfo, setDatabaseInfo] = useState<any>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [availableSttModels, setAvailableSttModels] = useState<string[]>([]);
-  const [loadingSttModels, setLoadingSttModels] = useState(false);
   const [vectorStats, setVectorStats] = useState<any>(null);
   
   // Transcript processing settings
@@ -41,7 +39,6 @@ export const SettingsPage: React.FC = () => {
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
   const [enableSpeakerTagging, setEnableSpeakerTagging] = useState(false);
   const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
-  const [audioChunkSize, setAudioChunkSize] = useState(60); // in seconds
   
   // Chat settings
   const [chatContextChunks, setChatContextChunks] = useState(4);
@@ -69,9 +66,7 @@ export const SettingsPage: React.FC = () => {
         return acc;
       }, {});
 
-      setSpeechToTextUrl(settingsMap.speechToTextUrl || 'http://localhost:8000');
-      setSpeechToTextKey(settingsMap.speechToTextKey || '');
-      setSpeechToTextModel(settingsMap.speechToTextModel || 'Systran/faster-distil-whisper-medium.en');
+      setLocalTranscriptionModel(settingsMap.localTranscriptionModel || 'Xenova/whisper-tiny.en');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
       setAiModel(settingsMap.aiModel || 'llama2');
       setAutoBackup(settingsMap.autoBackup === 'true');
@@ -91,7 +86,6 @@ export const SettingsPage: React.FC = () => {
       setEnableSpeakerTagging(settingsMap.enableSpeakerTagging === 'true');
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
       setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
-      setAudioChunkSize(parseInt(settingsMap.audioChunkSize) || 60);
       
       // Load chat settings
       setChatContextChunks(parseInt(settingsMap.chatContextChunks) || 4);
@@ -139,17 +133,13 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleTestConnection = async (service: 'speaches' | 'ollama') => {
-    const url = service === 'speaches' ? speechToTextUrl : aiAnalysisUrl;
-    const apiKey = service === 'speaches' ? speechToTextKey : undefined;
-    const result = await window.electronAPI.services.testConnection(url, service, apiKey);
-
+  const handleTestOllamaConnection = async () => {
+    const result = await window.electronAPI.services.testConnection(aiAnalysisUrl);
     if (result.success) {
-      alert(`Successfully connected to ${service === 'speaches' ? 'transcription service' : 'AI analysis service'}`);
+      alert('Successfully connected to AI analysis service');
     } else {
       alert(`Failed to connect: ${result.error}`);
     }
-
     await testConnections();
   };
 
@@ -170,34 +160,40 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const fetchSttModels = async () => {
-    setLoadingSttModels(true);
-    try {
-      // Route through main process to avoid browser CORS restrictions
-      const result = await window.electronAPI.services.getSpeachesModels(
-        speechToTextUrl,
-        speechToTextKey || undefined
-      );
+  // Pre-load the local Whisper model so the first transcription doesn't pay
+  // the download cost. Streams progress messages from the main process.
+  const handleDownloadWhisperModel = async () => {
+    setTranscriptionModelStatus('loading');
+    setTranscriptionModelMessage('Initialising...');
 
-      if (result.success && Array.isArray(result.models)) {
-        // Filter for whisper-style models only
-        const whisperModels = result.models
-          .map((model: any) => model.id || model.name)
-          .filter((modelName: string) =>
-            modelName && (
-              modelName.toLowerCase().includes('whisper') ||
-              modelName.toLowerCase().includes('systran')
-            )
-          );
-        setAvailableSttModels(whisperModels);
+    const onProgress = (data: { status: string; file?: string; progress?: number }) => {
+      if (data.status === 'progress' && data.progress != null) {
+        setTranscriptionModelMessage(`Downloading ${data.file || 'model'}: ${data.progress.toFixed(0)}%`);
+      } else if (data.status === 'done') {
+        setTranscriptionModelMessage(`Downloaded ${data.file || 'file'}`);
+      } else if (data.status === 'ready') {
+        setTranscriptionModelMessage('Model ready');
+      } else if (data.status === 'initiate') {
+        setTranscriptionModelMessage(`Starting ${data.file || 'download'}...`);
+      }
+    };
+
+    window.electronAPI.audio.onTranscriptionProgress(onProgress);
+
+    try {
+      const result = await window.electronAPI.audio.loadTranscriptionModel(localTranscriptionModel);
+      if (result.success) {
+        setTranscriptionModelStatus('ready');
+        setTranscriptionModelMessage('Model ready');
       } else {
-        console.error('Failed to fetch STT models:', result.error);
-        alert(`Failed to load models: ${result.error}`);
+        setTranscriptionModelStatus('error');
+        setTranscriptionModelMessage(result.error || 'Failed to load model');
       }
     } catch (error) {
-      console.error('Error fetching STT models:', error);
+      setTranscriptionModelStatus('error');
+      setTranscriptionModelMessage((error as Error).message);
     } finally {
-      setLoadingSttModels(false);
+      window.electronAPI.audio.offTranscriptionProgress();
     }
   };
 
@@ -287,14 +283,11 @@ export const SettingsPage: React.FC = () => {
     const matches: { tab: SettingsTab; setting: string }[] = [];
 
     // Transcription tab settings
-    if ('speech-to-text url service speaches'.includes(lowerQuery)) {
-      matches.push({ tab: 'transcription', setting: 'Speech-to-Text Service URL' });
+    if ('whisper model transcription speech-to-text local'.includes(lowerQuery)) {
+      matches.push({ tab: 'transcription', setting: 'Local Whisper Model' });
     }
-    if ('model whisper stt speech'.includes(lowerQuery)) {
-      matches.push({ tab: 'transcription', setting: 'Speech-to-Text Model' });
-    }
-    if ('chunk audio size'.includes(lowerQuery)) {
-      matches.push({ tab: 'transcription', setting: 'Audio Chunk Size' });
+    if ('download model offline'.includes(lowerQuery)) {
+      matches.push({ tab: 'transcription', setting: 'Download Whisper Model' });
     }
 
     // Processing tab settings
@@ -351,150 +344,104 @@ export const SettingsPage: React.FC = () => {
       case 'transcription':
         return (
           <div className="space-y-6">
-            {/* Speech-to-Text Service */}
+            {/* Local Whisper Model */}
             <div className="panel">
-              <h3 className="section-title mb-4">
-                Transcription Service
+              <h3 className="section-title mb-2">
+                Transcription Model
               </h3>
+              <p className="text-sm text-surface-600 mb-5">
+                Whisper runs entirely on your computer — no server, no internet connection during transcription. Choose a model based on the trade-off you want between speed and accuracy. Models are downloaded once and reused.
+              </p>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="label">
-                    Server Address
-                  </label>
-                  <div className="flex space-x-2">
+              <div className="space-y-3">
+                {[
+                  {
+                    id: 'Xenova/whisper-tiny.en',
+                    name: 'Tiny (English)',
+                    size: '~75 MB',
+                    desc: 'Fastest. Good for quick drafts and short audio. Lower accuracy in noisy or accented speech.',
+                    recommended: true,
+                  },
+                  {
+                    id: 'Xenova/whisper-base.en',
+                    name: 'Base (English)',
+                    size: '~140 MB',
+                    desc: 'Balanced. Noticeably more accurate than Tiny, still fast on most laptops.',
+                  },
+                  {
+                    id: 'Xenova/whisper-small.en',
+                    name: 'Small (English)',
+                    size: '~470 MB',
+                    desc: 'Best accuracy in this set. Slower; recommended only if you have a fast machine and want the cleanest transcripts.',
+                  },
+                ].map((opt) => (
+                  <label
+                    key={opt.id}
+                    className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                      localTranscriptionModel === opt.id
+                        ? 'border-primary-400 bg-primary-50'
+                        : 'border-surface-200 hover:bg-surface-50'
+                    }`}
+                  >
                     <input
-                      type="text"
-                      value={speechToTextUrl}
+                      type="radio"
+                      name="whisperModel"
+                      value={opt.id}
+                      checked={localTranscriptionModel === opt.id}
                       onChange={(e) => {
-                        setSpeechToTextUrl(e.target.value);
-                        saveSetting('speechToTextUrl', e.target.value);
+                        setLocalTranscriptionModel(e.target.value);
+                        saveSetting('localTranscriptionModel', e.target.value);
+                        setTranscriptionModelStatus('idle');
+                        setTranscriptionModelMessage('');
                       }}
-                      className="input flex-1"
-                      placeholder="e.g., http://localhost:8000"
+                      className="mt-1 text-primary-800 focus:ring-primary-500"
                     />
-                    <button
-                      onClick={() => handleTestConnection('speaches')}
-                      className="btn-primary"
-                    >
-                      Test
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">
-                    Authentication Key (optional)
-                  </label>
-                  <input
-                    type="password"
-                    value={speechToTextKey}
-                    onChange={(e) => {
-                      setSpeechToTextKey(e.target.value);
-                      saveSetting('speechToTextKey', e.target.value);
-                    }}
-                    className="input"
-                    placeholder="Leave blank if your server doesn't require a key"
-                  />
-                  <p className="text-xs text-surface-500 mt-1">
-                    If your transcription server requires a bearer token or API key, enter it here
-                  </p>
-                </div>
-
-                <div>
-                  <label className="label">
-                    Transcription Model
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={speechToTextModel}
-                      onChange={(e) => setSpeechToTextModel(e.target.value)}
-                      onBlur={(e) => saveSetting('speechToTextModel', e.target.value)}
-                      placeholder="Enter model name (e.g., Systran/faster-distil-whisper-medium.en)"
-                      className="input flex-1"
-                    />
-                    <button 
-                      onClick={fetchSttModels}
-                      disabled={loadingSttModels}
-                      className="btn-secondary"
-                    >
-                      {loadingSttModels ? 'Loading...' : 'Refresh'}
-                    </button>
-                  </div>
-                  {availableSttModels.length > 0 && (
-                    <div className="mt-2">
-                      <label className="label">
-                        Available models:
-                      </label>
-                      <div className="flex flex-wrap gap-1">
-                        {availableSttModels.map(model => (
-                          <button
-                            key={model}
-                            onClick={() => {
-                              setSpeechToTextModel(model);
-                              saveSetting('speechToTextModel', model);
-                            }}
-                            className="text-xs px-2 py-1 bg-surface-100 hover:bg-surface-200 rounded text-surface-700"
-                          >
-                            {model.split('/').pop() || model}
-                          </button>
-                        ))}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-surface-900">{opt.name}</span>
+                        <span className="text-xs text-surface-500">{opt.size}</span>
+                        {opt.recommended && (
+                          <span className="badge badge-info text-[10px]">Recommended</span>
+                        )}
                       </div>
+                      <p className="text-xs text-surface-600 mt-1">{opt.desc}</p>
                     </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-surface-600">Status:</span>
-                  <div className={`w-2 h-2 rounded-full ${
-                    serviceStatus.speechToText === 'connected' ? 'bg-green-500' :
-                    serviceStatus.speechToText === 'error' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`} />
-                  <span className="text-sm text-surface-700 capitalize">
-                    {serviceStatus.speechToText}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Audio Processing */}
-            <div className="panel">
-              <h3 className="section-title mb-4">
-                Audio Processing
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="label">
-                    Split Length for Long Recordings
                   </label>
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="range"
-                      min="30"
-                      max="300"
-                      step="30"
-                      value={audioChunkSize}
-                      onChange={(e) => {
-                        const value = parseInt(e.target.value);
-                        setAudioChunkSize(value);
-                        saveSetting('audioChunkSize', value.toString());
-                      }}
-                      className="flex-1"
-                    />
-                    <span className="text-sm text-surface-600 w-20 text-right">
-                      {audioChunkSize}s ({Math.floor(audioChunkSize / 60)}:{(audioChunkSize % 60).toString().padStart(2, '0')})
-                    </span>
+                ))}
+              </div>
+
+              <div className="mt-5 pt-5 border-t border-surface-200">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-surface-700">Download model now (optional)</p>
+                    <p className="text-xs text-surface-500 mt-0.5">
+                      The model will download automatically the first time you transcribe a file. Click here to fetch it now if you want to be ready to work offline.
+                    </p>
                   </div>
-                  <p className="text-xs text-surface-500 mt-1">
-                    Long recordings are split into shorter segments for better accuracy (30 seconds to 5 minutes)
-                  </p>
+                  <button
+                    onClick={handleDownloadWhisperModel}
+                    disabled={transcriptionModelStatus === 'loading'}
+                    className="btn-primary flex-shrink-0"
+                  >
+                    {transcriptionModelStatus === 'loading' ? 'Downloading...' : 'Download'}
+                  </button>
                 </div>
+                {transcriptionModelMessage && (
+                  <div className={`mt-3 text-xs p-2 rounded-lg ${
+                    transcriptionModelStatus === 'error'
+                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      : transcriptionModelStatus === 'ready'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-surface-100 text-surface-700 border border-surface-200'
+                  }`}>
+                    {transcriptionModelMessage}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         );
+
 
       case 'processing':
         return (
@@ -521,7 +468,7 @@ export const SettingsPage: React.FC = () => {
                       className="input flex-1"
                     />
                     <button
-                      onClick={() => handleTestConnection('ollama')}
+                      onClick={handleTestOllamaConnection}
                       className="btn-primary"
                     >
                       Test

@@ -1,7 +1,7 @@
 # DeepTalk UX Improvement Plan
 
 **Created:** 2026-04-13
-**Status:** Tier 1 + Tier 2 + Tier 3 complete. Build verified clean.
+**Status:** Tier 1 + Tier 2 + Tier 3 complete. Tier 4 in progress — local transcription has replaced the Speaches dependency. Diarisation still on the LLM-based fallback (next phase). Build verified clean.
 
 ## Background
 
@@ -135,6 +135,31 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 
 ## Tier 4 — Simplify
 
+### 4.0 Drop Speaches, run Whisper locally
+- **Status:** Phase 1 done (2026-04-14). Phase 2 (diarisation) still pending.
+- **Why:** DeepTalk pitched itself as "privacy-first local desktop" but required users to run a separate Speaches server. Bundling makes the marketing literally true and removes a whole category of bugs (CORS, auth, network).
+- **Phase 1 — Local Whisper transcription (done):**
+  - New spike script `scripts/spike-whisper.js` validated `@xenova/transformers` Whisper running entirely in-process: ~75 MB tiny.en model, 1.5x realtime, correct output, no network after first download.
+  - `public/electron.js` — added `getWhisperPipeline()` (lazy singleton, cache in `app.getPath('userData')/models`), `decodeAudioToFloat32()` via bundled ffmpeg, two new IPC handlers: `local-transcription-load-model` and `local-transcription-transcribe`.
+  - Deleted ~400 lines of legacy Speaches code: the entire `transcribe-audio` IPC handler, `transcribeSingleFile` helper, ffmpeg chunking pipeline, `get-speaches-models` handler.
+  - Simplified `test-service-connection` to ollama-only (no more service branching, no apiKey).
+  - `public/preload.js` — `audio.transcribe(audioPath, modelName)`, `audio.loadTranscriptionModel()`, `onTranscriptionProgress`/`offTranscriptionProgress` for download progress streaming. Removed `services.getSpeachesModels` and the old `audio.transcribeAudio` signature.
+  - `src/types/index.ts` — updated `audio` and `services` interfaces.
+  - `src/services/fileProcessor.ts` — reads `localTranscriptionModel` from settings (defaults to `Xenova/whisper-tiny.en`), calls `audio.transcribe()`. Dropped Speaches URL/key/model lookups.
+  - `src/contexts/ServiceContext.tsx` — speech-to-text status is always `connected` (no server to test). Only Ollama is tested now.
+  - `src/pages/SettingsPage.tsx` — Transcription tab fully rewritten:
+    - Three-option radio picker: tiny.en (default, 75 MB, "Recommended"), base.en (140 MB, "Balanced"), small.en (470 MB, "Best accuracy")
+    - "Download model now" button with live progress messages
+    - Removed: Speaches server URL field, bearer key field, free-text model name input, Test button, Refresh models button, status indicator, audio chunk size slider
+    - Removed state: `speechToTextUrl`, `speechToTextKey`, `speechToTextModel`, `availableSttModels`, `loadingSttModels`, `audioChunkSize`
+    - Removed functions: `fetchSttModels`, the speaches branch of `handleTestConnection`
+- **Phase 2 — Local diarisation (next):**
+  - Add pyannote-segmentation + wespeaker-voxceleb embedding via transformers.js
+  - Cluster embeddings → speaker labels per audio segment
+  - Align with whisper segments by timestamp
+  - Delete the entire LLM-based speaker tagging pipeline (`fileProcessor.ts` ~600-770)
+  - Speaker tagging modal stays for renaming/merging only
+
 ### 4.1 Decide on project-level analysis
 - `projectAnalysisService.ts` computes theme evolution, speaker interactions, sentiment trends, cross-transcript patterns
 - Most never render — either build the UI or delete the dead code
@@ -162,4 +187,5 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 - **2026-04-13** — Plan created. Tier 1 complete: SentimentCard + ValidationChangesCard + HighlightedText components added; in-transcript search wired up; inline speaker labels in TimestampedTranscript; emoji icons replaced with Lucide throughout TranscriptDetailPage. Build verified.
 - **2026-04-13** — Tier 2 complete: ported talk-buddy's algorithmic conversation analysis, reframed for DeepTalk's audience. New `conversationMetricsService.ts` (pure, no LLM). Three new cards: ConversationQualityCard, FillerWordsCard, TalkTimeCard. Surfaces appear on both Overview and Analysis tabs. Build verified.
 - **2026-04-14** — Tier 3 complete: audio playback synced to transcript (useAudioPlayer hook + AudioPlayerBar component, click segments to seek, auto-scroll playing segment), DOCX/PDF export (new exportService using docx + jspdf), advanced settings collapsed under reusable Collapsible component. Build verified.
-- **Next:** Tier 4 — simplification. Decide whether to build UI for the project-level analysis dead code or delete it; collapse the dual analysis architectures (`performAdvancedAnalysis` legacy path + `oneTaskAtATime` toggle) into one. Plus the un-tiered backlog: upload-then-assign-project flow, bulk operations, "analysis done" feedback, STT confidence display, speaker diarisation re-run with hints, original/corrected/speaker-tagged diff view.
+- **2026-04-14** — Tier 4 Phase 1 complete: dropped the Speaches dependency entirely. Whisper now runs in-process via @xenova/transformers (already installed). Validated end-to-end with the spike script — `hello.mp3` transcribed correctly in ~700 ms at 1.5x realtime with the tiny.en model. Settings page rewritten with a simple model picker (tiny.en/base.en/small.en) and a "Download now" button. ~400 lines of legacy Speaches code deleted from electron.js. Build verified clean. Spike script kept in `scripts/spike-whisper.js` as a reproducible validation tool.
+- **Next:** Tier 4 Phase 2 — replace LLM-based speaker tagging with real audio diarisation using pyannote-segmentation + wespeaker via transformers.js. Then 4.1/4.2 — delete dead project-level analysis code, collapse dual analysis paths.

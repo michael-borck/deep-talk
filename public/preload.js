@@ -29,8 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Service operations
   services: {
-    testConnection: (url, service, apiKey) => ipcRenderer.invoke('test-service-connection', { url, service, apiKey }),
-    getSpeachesModels: (url, apiKey) => ipcRenderer.invoke('get-speaches-models', { url, apiKey }),
+    testConnection: (url) => ipcRenderer.invoke('test-service-connection', { url }),
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
     getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
     chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),
@@ -73,14 +72,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners(channel);
   },
 
-  // Audio extraction
+  // Audio + local Whisper transcription
   audio: {
-    extractAudio: (inputPath, outputPath) => 
+    extractAudio: (inputPath, outputPath) =>
       ipcRenderer.invoke('extract-audio', { inputPath, outputPath }),
-    getMediaInfo: (filePath) => 
+    getMediaInfo: (filePath) =>
       ipcRenderer.invoke('get-media-info', { filePath }),
-    transcribeAudio: (audioPath, sttUrl, sttModel, sttApiKey) =>
-      ipcRenderer.invoke('transcribe-audio', { audioPath, sttUrl, sttModel, sttApiKey })
+    transcribe: (audioPath, modelName) =>
+      ipcRenderer.invoke('local-transcription-transcribe', { audioPath, modelName }),
+    loadTranscriptionModel: (modelName) =>
+      ipcRenderer.invoke('local-transcription-load-model', { modelName }),
+    onTranscriptionProgress: (callback) => {
+      ipcRenderer.on('local-transcription-progress', (_event, data) => callback(data));
+    },
+    offTranscriptionProgress: () => {
+      ipcRenderer.removeAllListeners('local-transcription-progress');
+    }
   },
 
   // Sentence segments operations

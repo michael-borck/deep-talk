@@ -35,38 +35,27 @@ export const ServiceProvider: React.FC<ServiceProviderProps> = ({ children }) =>
 
   const testConnections = async () => {
     try {
-      // Get service URLs from settings
-      const sttUrl = await window.electronAPI.database.get(
-        'SELECT value FROM settings WHERE key = ?',
-        ['speechToTextUrl']
-      );
-      
+      // Speech-to-text now runs locally via @xenova/transformers — no
+      // server to test. Treat it as always available; the model will be
+      // downloaded lazily on first transcription.
       const aiUrl = await window.electronAPI.database.get(
         'SELECT value FROM settings WHERE key = ?',
         ['aiAnalysisUrl']
       );
 
-      // Test Speech-to-Text connection
-      const sttResult = await window.electronAPI.services.testConnection(
-        sttUrl?.value || 'http://localhost:8000',
-        'speaches'
-      );
-
-      // Test AI Analysis connection
       const aiResult = await window.electronAPI.services.testConnection(
-        aiUrl?.value || 'http://localhost:11434',
-        'ollama'
+        aiUrl?.value || 'http://localhost:11434'
       );
 
       setServiceStatus({
-        speechToText: sttResult.success ? 'connected' : 'error',
+        speechToText: 'connected',
         aiAnalysis: aiResult.success ? 'connected' : 'error',
         lastChecked: new Date()
       });
     } catch (error) {
       console.error('Error testing connections:', error);
       setServiceStatus({
-        speechToText: 'error',
+        speechToText: 'connected',
         aiAnalysis: 'error',
         lastChecked: new Date()
       });
