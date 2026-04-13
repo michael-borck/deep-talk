@@ -8,5 +8,4 @@
 module.exports = {
   REPO: 'https://github.com/michael-borck/deep-talk',
   ISSUES: 'https://github.com/michael-borck/deep-talk/issues',
-  DOCS_SITE: 'https://michael-borck.github.io/deep-talk',
 };

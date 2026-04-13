@@ -14,7 +14,4 @@ export const URLS = {
   REPO: 'https://github.com/michael-borck/deep-talk',
   /** Issue tracker */
   ISSUES: 'https://github.com/michael-borck/deep-talk/issues',
-  /** Public Jekyll docs site (kept as a mirror; the in-app docs are the
-   *  primary source of truth now). */
-  DOCS_SITE: 'https://michael-borck.github.io/deep-talk',
 } as const;

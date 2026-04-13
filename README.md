@@ -5,7 +5,7 @@
 <!-- BADGES:END -->
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=flat&logo=github)](https://github.com/michael-borck/deep-talk)
-[![Docs](https://img.shields.io/badge/Docs-Documentation-blue?style=flat&logo=readthedocs)](https://michael-borck.github.io/deep-talk/)
+[![Docs](https://img.shields.io/badge/Docs-In--app-blue?style=flat&logo=readthedocs)](https://github.com/michael-borck/deep-talk/tree/main/docs)
 [![Ingest](https://img.shields.io/badge/GitIngest-View-orange?style=flat)](https://gitingest.com/michael-borck/deep-talk)
 [![Deep Wiki](https://img.shields.io/badge/Deep%20Wiki-Explore-green?style=flat)](https://deepwiki.com/michael-borck/deep-talk)
 
@@ -14,11 +14,12 @@ AI-powered conversation analysis and insight discovery platform with local proce
 
 ## Features
 
-- 🎬 **Audio/Video Support**: Process MP3, WAV, MP4, AVI, MOV, and more
-- 🔒 **Privacy-First**: All data stored locally on your machine
-- 🎯 **AI-Powered**: Transcription via Speaches, analysis via Ollama
-- 📦 **No Dependencies**: FFmpeg bundled - works out of the box
-- 🖥️ **Cross-Platform**: Windows, macOS, and Linux support
+- **Audio/Video Support**: MP3, WAV, MP4, AVI, MOV, M4A, WebM, OGG, and more
+- **Privacy-First**: Transcription and speaker diarisation run entirely on your machine. AI analysis uses your choice of local Ollama or any of OpenAI / Anthropic / Groq / Gemini / OpenRouter / custom — your call.
+- **Local Whisper**: Built-in English transcription via `@huggingface/transformers`. No external server required.
+- **Local Speaker Diarisation**: pyannote-segmentation-3.0 + wespeaker for real audio-level "who said what". No LLM guessing from text.
+- **In-app Documentation**: Rendered with the app's theme, ships with the binary, no internet required.
+- **Cross-Platform**: macOS, Windows, Linux. FFmpeg bundled.
 
 ## Installation
 
