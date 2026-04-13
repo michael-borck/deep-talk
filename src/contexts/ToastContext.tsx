@@ -10,9 +10,16 @@ export interface Toast {
   duration: number; // ms; 0 = sticky until dismissed
 }
 
+export interface ShowToastInput {
+  kind: ToastKind;
+  title: string;
+  body?: string;
+  duration?: number;
+}
+
 interface ToastContextValue {
   toasts: Toast[];
-  showToast: (toast: Omit<Toast, 'id'> & { duration?: number }) => number;
+  showToast: (toast: ShowToastInput) => number;
   dismissToast: (id: number) => void;
 }
 
@@ -28,7 +35,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const showToast = useCallback(
-    (toast: Omit<Toast, 'id'> & { duration?: number }) => {
+    (toast: ShowToastInput) => {
       const id = nextId++;
       const duration = toast.duration ?? 5000;
       const newToast: Toast = {

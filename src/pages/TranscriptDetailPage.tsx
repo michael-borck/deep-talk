@@ -27,7 +27,7 @@ export const TranscriptDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getTranscriptById, updateTranscript } = useContext(TranscriptContext);
-  const { projects } = useProjects();
+  const { projects, addTranscriptToProject, removeTranscriptFromProject } = useProjects();
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,28 +52,51 @@ export const TranscriptDetailPage: React.FC = () => {
     loadTranscript();
   }, [id]);
 
-  useEffect(() => {
-    const loadTranscriptProjects = async () => {
-      if (!transcript?.id || projects.length === 0) return;
-      
-      try {
-        const projectRelations = await window.electronAPI.database.all(
-          `SELECT project_id FROM project_transcripts WHERE transcript_id = ?`,
-          [transcript.id]
-        );
-        
-        const relatedProjects = projects.filter(project => 
-          projectRelations.some(relation => relation.project_id === project.id)
-        );
-        
-        setTranscriptProjects(relatedProjects);
-      } catch (error) {
-        console.error('Error loading transcript projects:', error);
-      }
-    };
+  const reloadTranscriptProjects = async () => {
+    if (!transcript?.id || projects.length === 0) {
+      setTranscriptProjects([]);
+      return;
+    }
+    try {
+      const projectRelations = await window.electronAPI.database.all(
+        `SELECT project_id FROM project_transcripts WHERE transcript_id = ?`,
+        [transcript.id]
+      );
+      const relatedProjects = projects.filter((project) =>
+        projectRelations.some((relation) => relation.project_id === project.id)
+      );
+      setTranscriptProjects(relatedProjects);
+    } catch (error) {
+      console.error('Error loading transcript projects:', error);
+    }
+  };
 
-    loadTranscriptProjects();
+  useEffect(() => {
+    reloadTranscriptProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcript?.id, projects]);
+
+  const handleAssignToProject = async (projectId: string) => {
+    if (!transcript?.id || !projectId) return;
+    try {
+      await addTranscriptToProject(projectId, transcript.id);
+      await reloadTranscriptProjects();
+    } catch (error) {
+      console.error('Failed to assign transcript to project:', error);
+      alert('Failed to assign transcript to project. Please try again.');
+    }
+  };
+
+  const handleRemoveFromProject = async (projectId: string) => {
+    if (!transcript?.id || !projectId) return;
+    try {
+      await removeTranscriptFromProject(projectId, transcript.id);
+      await reloadTranscriptProjects();
+    } catch (error) {
+      console.error('Failed to remove transcript from project:', error);
+      alert('Failed to remove transcript from project. Please try again.');
+    }
+  };
 
   // Load sentence segments for analysis (for conversation metrics)
   useEffect(() => {
@@ -443,34 +466,80 @@ export const TranscriptDetailPage: React.FC = () => {
         )}
       </div>
 
-      {/* Projects */}
-      {transcriptProjects.length > 0 && (
-        <div className="card-static p-6">
-          <h3 className="section-title flex items-center gap-2 mb-3">
-            <FolderOpen size={16} className="text-primary-500" />
-            Projects
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {transcriptProjects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => navigate(`/project/${project.id}`)}
-                className="flex items-center gap-3 p-3 border border-surface-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors text-left"
-              >
-                <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-                  <FolderOpen size={16} className="text-primary-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-surface-900 truncate text-sm">{project.name}</h4>
-                  {project.description && (
-                    <p className="text-xs text-surface-500 truncate">{project.description}</p>
-                  )}
-                </div>
-              </button>
-            ))}
+      {/* Projects — always rendered so users can assign after the fact */}
+      {(() => {
+        const linkedIds = new Set(transcriptProjects.map((p) => p.id));
+        const availableProjects = projects.filter((p) => !linkedIds.has(p.id));
+        return (
+          <div className="card-static p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="section-title flex items-center gap-2">
+                <FolderOpen size={16} className="text-primary-500" />
+                Projects
+              </h3>
+              {availableProjects.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleAssignToProject(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 border border-surface-200 rounded-lg bg-white hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                >
+                  <option value="">+ Assign to project...</option>
+                  {availableProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {transcriptProjects.length === 0 ? (
+              <div className="text-center py-6 text-surface-400 text-sm">
+                <FolderOpen size={28} className="mx-auto mb-2 text-surface-300" strokeWidth={1.5} />
+                {projects.length === 0
+                  ? 'No projects yet. Create one from the Projects page.'
+                  : 'Not assigned to any project yet.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {transcriptProjects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="group flex items-center gap-3 p-3 border border-surface-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+                  >
+                    <button
+                      onClick={() => navigate(`/project/${project.id}`)}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                        <FolderOpen size={16} className="text-primary-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-surface-900 truncate text-sm">{project.name}</h4>
+                        {project.description && (
+                          <p className="text-xs text-surface-500 truncate">{project.description}</p>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleRemoveFromProject(project.id)}
+                      className="text-surface-300 hover:text-red-500 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                      title="Remove from this project"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 

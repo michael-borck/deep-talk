@@ -1,16 +1,21 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Filter } from 'lucide-react';
+import { Filter, CheckSquare, Square, Archive, Trash2 } from 'lucide-react';
 import { TranscriptContext } from '../contexts/TranscriptContext';
+import { useProjects } from '../contexts/ProjectContext';
+import { useToast } from '../contexts/ToastContext';
 import { TranscriptCard } from '../components/TranscriptCard';
 import { SearchBar } from '../components/SearchBar';
 import { Transcript } from '../types';
 
 export const LibraryPage: React.FC = () => {
   const { transcripts, searchTranscripts, loadTranscripts } = useContext(TranscriptContext);
+  const { projects, addTranscriptToProject } = useProjects();
+  const { showToast } = useToast();
   const [filteredTranscripts, setFilteredTranscripts] = useState<Transcript[]>(transcripts);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<string>('all');
   const [sortBy] = useState<'date' | 'title' | 'duration'>('date');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadTranscripts();
@@ -65,6 +70,107 @@ export const LibraryPage: React.FC = () => {
     setFilteredTranscripts(filtered);
   };
 
+  // ---------- Selection helpers ----------
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelectedIds(new Set(filteredTranscripts.map((t) => t.id)));
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const allSelected =
+    filteredTranscripts.length > 0 &&
+    filteredTranscripts.every((t) => selectedIds.has(t.id));
+
+  // ---------- Bulk operations ----------
+
+  const handleBulkAssignToProject = async (projectId: string) => {
+    if (!projectId || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    let added = 0;
+    for (const id of ids) {
+      try {
+        await addTranscriptToProject(projectId, id);
+        added++;
+      } catch (err) {
+        console.error('Bulk assign failed for', id, err);
+      }
+    }
+    const project = projects.find((p) => p.id === projectId);
+    showToast({
+      kind: added === ids.length ? 'success' : 'error',
+      title: `Assigned ${added} of ${ids.length} transcripts`,
+      body: project ? `to "${project.name}"` : undefined,
+    });
+    clearSelection();
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (!window.confirm(`Archive ${ids.length} transcript${ids.length !== 1 ? 's' : ''}?`)) return;
+
+    const now = new Date().toISOString();
+    let archived = 0;
+    for (const id of ids) {
+      try {
+        await window.electronAPI.database.run(
+          'UPDATE transcripts SET is_archived = 1, archived_at = ? WHERE id = ?',
+          [now, id]
+        );
+        archived++;
+      } catch (err) {
+        console.error('Bulk archive failed for', id, err);
+      }
+    }
+    showToast({
+      kind: archived === ids.length ? 'success' : 'error',
+      title: `Archived ${archived} of ${ids.length} transcripts`,
+    });
+    clearSelection();
+    await loadTranscripts();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (
+      !window.confirm(
+        `Move ${ids.length} transcript${ids.length !== 1 ? 's' : ''} to trash? You can restore them within 30 days.`
+      )
+    )
+      return;
+
+    const now = new Date().toISOString();
+    let trashed = 0;
+    for (const id of ids) {
+      try {
+        await window.electronAPI.database.run(
+          'UPDATE transcripts SET is_deleted = 1, deleted_at = ? WHERE id = ?',
+          [now, id]
+        );
+        trashed++;
+      } catch (err) {
+        console.error('Bulk delete failed for', id, err);
+      }
+    }
+    showToast({
+      kind: trashed === ids.length ? 'success' : 'error',
+      title: `Moved ${trashed} of ${ids.length} transcripts to trash`,
+    });
+    clearSelection();
+    await loadTranscripts();
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-8">
       {/* Header with search */}
@@ -75,10 +181,74 @@ export const LibraryPage: React.FC = () => {
           placeholder="Search transcripts..."
         />
 
-        <button className="text-surface-400 hover:text-surface-700 p-2 rounded-lg hover:bg-surface-100 transition-colors">
-          <Filter size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={allSelected ? clearSelection : selectAllVisible}
+            disabled={filteredTranscripts.length === 0}
+            className="flex items-center gap-1.5 text-xs text-surface-500 hover:text-surface-800 px-3 py-2 rounded-lg hover:bg-surface-100 transition-colors disabled:opacity-50"
+          >
+            {allSelected ? <CheckSquare size={14} /> : <Square size={14} />}
+            {allSelected ? 'Deselect all' : 'Select all'}
+          </button>
+          <button className="text-surface-400 hover:text-surface-700 p-2 rounded-lg hover:bg-surface-100 transition-colors">
+            <Filter size={18} />
+          </button>
+        </div>
       </div>
+
+      {/* Bulk action bar — sticky-ish, slides in when items are selected */}
+      {selectedIds.size > 0 && (
+        <div className="bulk-action-bar mb-5 sticky top-2 z-30">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-primary-800">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={clearSelection}
+                className="text-xs text-primary-600 hover:text-primary-800 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {projects.length > 0 && (
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkAssignToProject(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 border border-primary-200 rounded-lg bg-white hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-400"
+                >
+                  <option value="">+ Add to project...</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={handleBulkArchive}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-100 border border-accent-200 rounded-lg transition-colors"
+              >
+                <Archive size={12} />
+                Archive
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors"
+              >
+                <Trash2 size={12} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1 mb-6 border-b border-surface-200">
@@ -117,7 +287,12 @@ export const LibraryPage: React.FC = () => {
         <div className="space-y-3">
           {filteredTranscripts.map((transcript, i) => (
             <div key={transcript.id} className="animate-slide-up" style={{ animationDelay: `${i * 0.03}s`, opacity: 0 }}>
-              <TranscriptCard transcript={transcript} />
+              <TranscriptCard
+                transcript={transcript}
+                selectable
+                selected={selectedIds.has(transcript.id)}
+                onToggleSelect={toggleSelected}
+              />
             </div>
           ))}
         </div>

@@ -11,9 +11,17 @@ import { ExportModal } from './ExportModal';
 
 interface TranscriptCardProps {
   transcript: Transcript;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) => {
+export const TranscriptCard: React.FC<TranscriptCardProps> = ({
+  transcript,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}) => {
   const navigate = useNavigate();
   const { updateTranscript, deleteTranscript } = useContext(TranscriptContext);
   const { projects, removeTranscriptFromProject } = useProjects();
@@ -136,7 +144,20 @@ export const TranscriptCard: React.FC<TranscriptCardProps> = ({ transcript }) =>
   };
 
   return (
-    <div className="card-interactive p-5">
+    <div className={`card-interactive p-5 ${selected ? 'ring-2 ring-accent-400 border-accent-300' : ''}`}>
+      {selectable && (
+        <div className="flex items-center mb-3 -mt-1">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-surface-500 hover:text-surface-700">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect?.(transcript.id)}
+              className="input-checkbox"
+            />
+            <span>{selected ? 'Selected' : 'Select'}</span>
+          </label>
+        </div>
+      )}
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
