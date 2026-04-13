@@ -52,7 +52,6 @@ export const SettingsPage: React.FC = () => {
   const [enableDuplicateRemoval, setEnableDuplicateRemoval] = useState(true);
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
   const [enableSpeakerDiarisation, setEnableSpeakerDiarisation] = useState(true);
-  const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
   
   // Chat settings
   const [chatContextChunks, setChatContextChunks] = useState(4);
@@ -111,7 +110,6 @@ export const SettingsPage: React.FC = () => {
       setAnalyzeValidatedTranscript(settingsMap.analyzeValidatedTranscript !== 'false');
       setEnableSpeakerDiarisation(settingsMap.enableSpeakerDiarisation !== 'false');
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
-      setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
       
       // Load chat settings
       setChatContextChunks(parseInt(settingsMap.chatContextChunks) || 4);
@@ -772,24 +770,6 @@ export const SettingsPage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Analysis Mode */}
-                <div>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={oneTaskAtATime}
-                      onChange={(e) => {
-                        setOneTaskAtATime(e.target.checked);
-                        saveSetting('oneTaskAtATime', e.target.checked.toString());
-                      }}
-                      className="rounded text-primary-800 focus:ring-primary-500"
-                    />
-                    <span className="text-sm font-medium text-surface-700">One-task-at-a-time analysis (recommended)</span>
-                  </label>
-                  <p className="text-xs text-surface-500 ml-6">
-                    Run individual analysis tasks separately for better accuracy and reliability. Fixes speaker detection issues.
-                  </p>
-                </div>
               </div>
             </div>
           </div>

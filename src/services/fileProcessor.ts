@@ -466,6 +466,19 @@ export class FileProcessor {
 
   // Enhanced hybrid speaker detection with rule-based preprocessing
 
+  /**
+   * Run sentiment + emotion analysis as separate focused LLM calls.
+   * Speaker info is populated upstream by the audio-level diarisation
+   * pipeline (pyannote + wespeaker) and overridden in processFile, so
+   * we return placeholder values here.
+   *
+   * Previously this method had two paths gated by the `oneTaskAtATime`
+   * setting: the one-task path (separate calls per analysis) and a
+   * legacy monolithic path that tried to do everything in one giant
+   * prompt. The monolithic path was unreliable on smaller models and
+   * its speaker output was being discarded anyway. Both paths have been
+   * collapsed into the one-task approach.
+   */
   async performAdvancedAnalysis(transcriptText: string, onProgress?: (stage: string, percent: number) => void): Promise<{
     sentiment: string;
     sentimentScore: number;
@@ -480,174 +493,24 @@ export class FileProcessor {
         return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [], processedText: transcriptText };
       }
 
-      // Check if we should use one-task-at-a-time approach
-      const oneTaskSetting = await window.electronAPI.database.get(
-        'SELECT value FROM settings WHERE key = ?',
-        ['oneTaskAtATime']
-      );
-      const useOneTaskAtATime = oneTaskSetting?.value === 'true';
+      onProgress?.('analyzing', 60);
+      const sentimentResult = await this.performSentimentAnalysis(transcriptText);
+      onProgress?.('analyzing', 70);
+      const emotionResult = await this.performEmotionAnalysis(transcriptText);
+      onProgress?.('analyzing', 85);
 
-      if (useOneTaskAtATime) {
-        console.log('Using one-task-at-a-time analysis approach');
-        onProgress?.('analyzing', 60);
-        
-        // Step 1: Sentiment Analysis
-        const sentimentResult = await this.performSentimentAnalysis(transcriptText);
-        onProgress?.('analyzing', 65);
-        
-        // Step 2: Emotion Analysis
-        const emotionResult = await this.performEmotionAnalysis(transcriptText);
-        onProgress?.('analyzing', 70);
-        
-        // Speaker info is populated by the audio-level diarisation pipeline
-        // (pyannote + wespeaker) and overridden in processFile from the
-        // transcribeAudio result. We no longer ask the LLM to guess speakers
-        // from text — that path was inaccurate and is now dead.
-        onProgress?.('analyzing', 85);
-
-        return {
-          sentiment: sentimentResult.sentiment,
-          sentimentScore: sentimentResult.sentimentScore,
-          emotions: emotionResult,
-          speakerCount: 1,
-          speakers: [],
-          processedText: transcriptText
-        };
-      } else {
-        // Legacy monolithic approach
-        console.log('Using legacy monolithic analysis approach');
-        return this.performLegacyAdvancedAnalysis(transcriptText, onProgress);
-      }
-      
+      return {
+        sentiment: sentimentResult.sentiment,
+        sentimentScore: sentimentResult.sentimentScore,
+        emotions: emotionResult,
+        speakerCount: 1,
+        speakers: [],
+        processedText: transcriptText,
+      };
     } catch (error) {
       console.error('Advanced analysis error:', error);
-      // Return defaults rather than failing the entire process
       return { sentiment: 'neutral', sentimentScore: 0, emotions: {}, speakerCount: 1, speakers: [], processedText: transcriptText };
     }
-  }
-
-  async performLegacyAdvancedAnalysis(transcriptText: string, onProgress?: (stage: string, percent: number) => void): Promise<{
-    sentiment: string;
-    sentimentScore: number;
-    emotions: Record<string, number>;
-    speakerCount: number;
-    speakers: Array<{ id: string; name: string; segments: number }>;
-    processedText: string;
-  }> {
-    // Get AI service settings
-    const aiUrl = await this.getAiUrl();
-    const aiModel = await this.getAiModel();
-    
-    onProgress?.('analyzing', 60);
-    
-    // Create advanced analysis prompt
-    const advancedPrompt = `Please perform advanced analysis on the following transcript:
-
-1. Sentiment Analysis: Determine the overall emotional tone (positive, negative, or neutral) and provide a sentiment score from -1.0 (very negative) to 1.0 (very positive).
-
-2. Speaker Identification: Identify distinct speakers in the conversation. Look for speaker changes, different speaking styles, or dialogue patterns. Assign each speaker an ID like "Speaker 1", "Speaker 2", etc.
-
-3. Emotion Detection: Analyze the emotional content and detect levels of:
-   - Frustration (0.0 to 1.0)
-   - Excitement (0.0 to 1.0) 
-   - Confusion (0.0 to 1.0)
-   - Confidence (0.0 to 1.0)
-   - Anxiety (0.0 to 1.0)
-   - Satisfaction (0.0 to 1.0)
-
-Transcript:
-${transcriptText}
-
-Please format your response as JSON:
-{
-  "sentiment": "positive|negative|neutral",
-  "sentimentScore": 0.0,
-  "emotions": {
-    "frustration": 0.0,
-    "excitement": 0.0,
-    "confusion": 0.0,
-    "confidence": 0.0,
-    "anxiety": 0.0,
-    "satisfaction": 0.0
-  },
-  "speakerCount": 1,
-  "speakers": [
-    {
-      "id": "Speaker 1",
-      "name": "Speaker 1",
-      "segments": 5
-    }
-  ]
-}`;
-
-    onProgress?.('analyzing', 75);
-    
-    const aiResponse = await this.callAI(aiUrl, aiModel, advancedPrompt);
-    
-    onProgress?.('analyzing', 85);
-    
-    // Use parsed response if available, otherwise fall back to text parsing
-    const result = aiResponse.parsed || this.parseAdvancedAnalysisText(aiResponse.raw || '');
-    
-    return {
-      sentiment: result.sentiment || 'neutral',
-      sentimentScore: typeof result.sentimentScore === 'number' ? result.sentimentScore : 0,
-      emotions: result.emotions || {},
-      speakerCount: typeof result.speakerCount === 'number' ? result.speakerCount : 1,
-      speakers: Array.isArray(result.speakers) ? result.speakers : [],
-      processedText: transcriptText
-    };
-  }
-
-  private parseAdvancedAnalysisText(text: string): any {
-    // Fallback parser for advanced analysis when JSON parsing fails
-    return {
-      sentiment: this.extractSentiment(text),
-      sentimentScore: this.extractSentimentScore(text),
-      emotions: this.extractEmotions(text),
-      speakerCount: this.extractSpeakerCount(text),
-      speakers: this.extractSpeakers(text)
-    };
-  }
-
-  private extractSentiment(text: string): string {
-    const sentimentMatch = text.match(/sentiment["\s:]*([a-z]+)/i);
-    const sentiment = sentimentMatch ? sentimentMatch[1].toLowerCase() : 'neutral';
-    return ['positive', 'negative', 'neutral'].includes(sentiment) ? sentiment : 'neutral';
-  }
-
-  private extractSentimentScore(text: string): number {
-    const scoreMatch = text.match(/sentiment[_\s]*score["\s:]*(-?\d*\.?\d+)/i);
-    const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-    return Math.max(-1, Math.min(1, score)); // Clamp between -1 and 1
-  }
-
-  private extractEmotions(text: string): Record<string, number> {
-    const emotions = ['frustration', 'excitement', 'confusion', 'confidence', 'anxiety', 'satisfaction'];
-    const result: Record<string, number> = {};
-    
-    emotions.forEach(emotion => {
-      const regex = new RegExp(`${emotion}["\s:]*(\d*\.?\d+)`, 'i');
-      const match = text.match(regex);
-      result[emotion] = match ? Math.max(0, Math.min(1, parseFloat(match[1]))) : 0;
-    });
-    
-    return result;
-  }
-
-  private extractSpeakerCount(text: string): number {
-    const countMatch = text.match(/speaker[_\s]*count["\s:]*(\d+)/i);
-    return countMatch ? parseInt(countMatch[1]) : 1;
-  }
-
-  private extractSpeakers(text: string): Array<{ id: string; name: string; segments: number }> {
-    // Basic extraction - in practice, this would be more sophisticated
-    const speakerMatches = text.match(/speaker\s+\d+/gi) || [];
-    return speakerMatches.map((_, index) => ({
-      id: `Speaker ${index + 1}`,
-      name: `Speaker ${index + 1}`,
-      segments: 1
-    }));
   }
 
   async validateTranscript(transcriptText: string): Promise<{
