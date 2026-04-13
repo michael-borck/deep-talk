@@ -1,10 +1,35 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, protocol, net } = require('electron');
+const { pathToFileURL } = require('url');
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+
+// ============================================
+// Custom protocol for streaming local audio/video files
+// ============================================
+//
+// The renderer can't use file:// URLs in an <audio>/<video> element due
+// to CSP, and reading the whole file via IPC → Blob is too slow for big
+// media files. We register a custom 'safe-file://' scheme that Electron
+// streams directly from disk with native HTTP semantics (range requests,
+// content-type), so <audio src="safe-file:///abs/path.mp4"> just works
+// and the browser can seek without pre-loading.
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'safe-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+      bypassCSP: true,
+    },
+  },
+]);
 
 // ============================================
 // Local Whisper transcription (transformers.js)
@@ -111,6 +136,14 @@ const EMBEDDING_MODEL = 'onnx-community/wespeaker-voxceleb-resnet34-LM';
 const PA_WINDOW_SECONDS = 5;
 const SAMPLE_RATE = 16000;
 
+// Diarisation tunables — empirically validated on a 30s clean conversation,
+// a 5-min noisy 5-speaker file, and a 14-min structured interview.
+const DIA_MEDIAN_FILTER_FRAMES = 11;       // median filter window (smooths frame-level jitter)
+const DIA_MIN_DURATION_ON = 0.50;          // turns shorter than this are reassigned to nearest neighbour
+const DIA_MIN_DURATION_OFF = 0.20;         // gaps shorter than this within a channel get merged
+const DIA_CLUSTER_THRESHOLD = 0.50;        // cosine similarity merge threshold
+const DIA_NOISE_MIN_TOTAL_SECONDS = 3.0;   // clusters totalling less than this are reassigned to nearest substantial cluster
+
 // pyannote-segmentation-3.0 powerset → active speaker indices
 const POWERSET = [
   [],         // 0: silence
@@ -187,28 +220,56 @@ async function segmentWindow(audio) {
   const [, F, C] = logits.dims;
   const data = logits.data;
 
-  const frames = [];
+  // Step 1: per-frame argmax → class indices
+  // Step 2: convert each class to per-speaker activation booleans
+  const channels = [new Array(F), new Array(F), new Array(F)];
   for (let f = 0; f < F; f++) {
     const start = f * C;
-    const slice = data.subarray(start, start + C);
-    frames.push(POWERSET[argmax(slice)]);
+    const cls = argmax(data.subarray(start, start + C));
+    const active = POWERSET[cls];
+    for (let s = 0; s < 3; s++) {
+      channels[s][f] = active.includes(s) ? 1 : 0;
+    }
   }
-  return frames;
+
+  // Step 3: median filter each channel to kill single-frame jitter.
+  // Without this, pyannote's frame-level flicker creates dozens of
+  // micro-fragments per real turn, which destroys downstream clustering.
+  const half = Math.floor(DIA_MEDIAN_FILTER_FRAMES / 2);
+  for (let s = 0; s < 3; s++) {
+    const smoothed = new Array(F);
+    for (let f = 0; f < F; f++) {
+      let sum = 0;
+      let count = 0;
+      for (let k = -half; k <= half; k++) {
+        const idx = f + k;
+        if (idx >= 0 && idx < F) {
+          sum += channels[s][idx];
+          count++;
+        }
+      }
+      smoothed[f] = sum / count >= 0.5 ? 1 : 0;
+    }
+    channels[s] = smoothed;
+  }
+
+  return channels;
 }
 
-function framesToTurns(frames, windowSeconds, windowStart) {
+function channelsToTurns(channels, windowSeconds, windowStart) {
   const turns = [];
-  const framesPerSecond = frames.length / windowSeconds;
+  const F = channels[0].length;
+  const framesPerSecond = F / windowSeconds;
 
   for (let speaker = 0; speaker < 3; speaker++) {
+    const ch = channels[speaker];
     let inTurn = false;
     let startFrame = 0;
-    for (let f = 0; f < frames.length; f++) {
-      const active = frames[f].includes(speaker);
-      if (active && !inTurn) {
+    for (let f = 0; f < F; f++) {
+      if (ch[f] && !inTurn) {
         inTurn = true;
         startFrame = f;
-      } else if (!active && inTurn) {
+      } else if (!ch[f] && inTurn) {
         inTurn = false;
         turns.push({
           start: windowStart + startFrame / framesPerSecond,
@@ -220,12 +281,34 @@ function framesToTurns(frames, windowSeconds, windowStart) {
     if (inTurn) {
       turns.push({
         start: windowStart + startFrame / framesPerSecond,
-        end: windowStart + frames.length / framesPerSecond,
+        end: windowStart + F / framesPerSecond,
         localSpeaker: speaker,
       });
     }
   }
   return turns;
+}
+
+// Merge same-channel turns separated by gaps shorter than minDurationOff.
+// Channel here is a stable per-window+local-speaker tag so we don't merge
+// across different local speakers.
+function mergeAdjacentTurns(turns, minDurationOff) {
+  if (turns.length === 0) return turns;
+  const sorted = turns.slice().sort((a, b) => a.start - b.start);
+  const merged = [];
+  for (const turn of sorted) {
+    const last = merged[merged.length - 1];
+    if (
+      last &&
+      last.channel === turn.channel &&
+      turn.start - last.end <= minDurationOff
+    ) {
+      last.end = Math.max(last.end, turn.end);
+    } else {
+      merged.push({ ...turn });
+    }
+  }
+  return merged;
 }
 
 async function embedTurn(audioSlice) {
@@ -288,15 +371,26 @@ function clusterTurns(turns, embeddings, threshold = 0.5) {
 /**
  * Run the full diarisation pipeline on already-decoded audio.
  * Returns an array of { start, end, speaker } turns where `speaker` is
- * a string label like "Speaker 0", "Speaker 1", ...
+ * a string label like "Speaker 1", "Speaker 2", ...
+ *
+ * Pipeline:
+ *   1. Segment audio in 5s windows with median filtering
+ *   2. Merge brief gaps within the same channel
+ *   3. Drop turns shorter than min_duration_on (reassigned later by neighbour)
+ *   4. Embed each long-enough turn with wespeaker
+ *   5. Agglomerative cosine clustering
+ *   6. Reassign noise clusters (< 3s total) to nearest substantial cluster
+ *   7. Reassign dropped short turns to nearest substantial cluster
  */
 async function diariseAudio(audio, progressCallback) {
   await getDiarisationModels(progressCallback);
 
   const audioSeconds = audio.length / SAMPLE_RATE;
-  const allTurns = [];
+  let allTurns = [];
   const windowSamples = PA_WINDOW_SECONDS * SAMPLE_RATE;
+  let windowIdx = 0;
 
+  // ----- Stage 1: window-by-window segmentation -----
   for (let start = 0; start < audio.length; start += windowSamples) {
     const slice = audio.subarray(start, Math.min(start + windowSamples, audio.length));
     let windowAudio = slice;
@@ -304,33 +398,121 @@ async function diariseAudio(audio, progressCallback) {
       windowAudio = new Float32Array(windowSamples);
       windowAudio.set(slice);
     }
-    const frames = await segmentWindow(windowAudio);
-    const windowTurns = framesToTurns(frames, PA_WINDOW_SECONDS, start / SAMPLE_RATE);
+    const channels = await segmentWindow(windowAudio);
+    const windowTurns = channelsToTurns(channels, PA_WINDOW_SECONDS, start / SAMPLE_RATE);
     for (const t of windowTurns) {
       if (t.start < audioSeconds) {
         t.end = Math.min(t.end, audioSeconds);
-        if (t.end > t.start + 0.05) allTurns.push(t); // skip ultra-short turns
+        t.channel = `w${windowIdx}_s${t.localSpeaker}`;
+        allTurns.push(t);
       }
     }
+    windowIdx++;
   }
+  console.log(`[diarise] raw turns from segmentation: ${allTurns.length}`);
 
-  if (allTurns.length === 0) {
+  if (allTurns.length === 0) return [];
+
+  // ----- Stage 2: merge brief gaps within each channel -----
+  allTurns = mergeAdjacentTurns(allTurns, DIA_MIN_DURATION_OFF);
+
+  // ----- Stage 3: split into long-enough turns and short turns -----
+  const longEnough = allTurns.filter((t) => t.end - t.start >= DIA_MIN_DURATION_ON);
+  const tooShort = allTurns.filter((t) => t.end - t.start < DIA_MIN_DURATION_ON);
+  console.log(`[diarise] long-enough turns: ${longEnough.length}, dropped short: ${tooShort.length}`);
+
+  if (longEnough.length === 0) {
     return [];
   }
 
-  console.log(`[diarise] computing ${allTurns.length} embeddings...`);
+  // ----- Stage 4: embed each long-enough turn -----
+  console.log(`[diarise] computing ${longEnough.length} embeddings...`);
   const embeddings = [];
-  for (const turn of allTurns) {
+  for (const turn of longEnough) {
     const startSample = Math.floor(turn.start * SAMPLE_RATE);
     const endSample = Math.floor(turn.end * SAMPLE_RATE);
     embeddings.push(await embedTurn(audio.subarray(startSample, endSample)));
   }
 
-  const labels = clusterTurns(allTurns, embeddings, 0.5);
-  return allTurns.map((t, i) => ({
+  // ----- Stage 5: agglomerative cosine clustering -----
+  let labels = clusterTurns(longEnough, embeddings, DIA_CLUSTER_THRESHOLD);
+  console.log(`[diarise] initial cluster count: ${new Set(labels).size}`);
+
+  // ----- Stage 6: reassign noise clusters to nearest substantial cluster -----
+  // Tiny clusters (< 3s of total audio across their turns) are unreliable
+  // outliers. Move their turns to the temporally-nearest substantial cluster.
+  const clusterDuration = new Map();
+  for (let i = 0; i < longEnough.length; i++) {
+    const dur = longEnough[i].end - longEnough[i].start;
+    clusterDuration.set(labels[i], (clusterDuration.get(labels[i]) || 0) + dur);
+  }
+  const substantialClusters = new Set(
+    Array.from(clusterDuration.entries())
+      .filter(([_, total]) => total >= DIA_NOISE_MIN_TOTAL_SECONDS)
+      .map(([cluster, _]) => cluster)
+  );
+  console.log(`[diarise] substantial clusters: ${substantialClusters.size}`);
+
+  if (substantialClusters.size > 0) {
+    for (let i = 0; i < longEnough.length; i++) {
+      if (!substantialClusters.has(labels[i])) {
+        const turnMid = (longEnough[i].start + longEnough[i].end) / 2;
+        let bestDist = Infinity;
+        let bestCluster = labels[i];
+        for (let j = 0; j < longEnough.length; j++) {
+          if (i === j || !substantialClusters.has(labels[j])) continue;
+          const otherMid = (longEnough[j].start + longEnough[j].end) / 2;
+          const dist = Math.abs(turnMid - otherMid);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestCluster = labels[j];
+          }
+        }
+        labels[i] = bestCluster;
+      }
+    }
+  }
+
+  // Renumber clusters from 0 contiguously
+  const oldToNew = new Map();
+  let nextId = 0;
+  labels = labels.map((l) => {
+    if (!oldToNew.has(l)) oldToNew.set(l, nextId++);
+    return oldToNew.get(l);
+  });
+  console.log(`[diarise] final speaker count: ${new Set(labels).size}`);
+
+  // ----- Stage 7: build final turn list, including reassigned short turns -----
+  const finalTurns = longEnough.map((t, i) => ({
     start: t.start,
     end: t.end,
-    speaker: `Speaker ${labels[i] + 1}`,
+    speakerId: labels[i],
+  }));
+
+  for (const shortTurn of tooShort) {
+    const mid = (shortTurn.start + shortTurn.end) / 2;
+    let bestDist = Infinity;
+    let bestSpeaker = 0;
+    for (const t of finalTurns) {
+      const tMid = (t.start + t.end) / 2;
+      const dist = Math.abs(mid - tMid);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestSpeaker = t.speakerId;
+      }
+    }
+    finalTurns.push({
+      start: shortTurn.start,
+      end: shortTurn.end,
+      speakerId: bestSpeaker,
+    });
+  }
+  finalTurns.sort((a, b) => a.start - b.start);
+
+  return finalTurns.map((t) => ({
+    start: t.start,
+    end: t.end,
+    speaker: `Speaker ${t.speakerId + 1}`,
   }));
 }
 
@@ -1531,6 +1713,27 @@ ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, mode
 
 // App event handlers
 app.whenReady().then(() => {
+  // Register the safe-file:// protocol handler — streams local files to
+  // the renderer for the audio/video player without full-file buffering.
+  // URL format: safe-file:///absolute/path/to/file.mp4
+  protocol.handle('safe-file', (request) => {
+    try {
+      const url = new URL(request.url);
+      // pathname starts with a single slash; on Windows we need to strip it
+      let filePath = decodeURIComponent(url.pathname);
+      if (process.platform === 'win32' && filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+      }
+      if (!fs.existsSync(filePath)) {
+        return new Response('Not Found', { status: 404 });
+      }
+      return net.fetch(pathToFileURL(filePath).toString());
+    } catch (err) {
+      console.error('[safe-file protocol] error:', err);
+      return new Response('Bad Request', { status: 400 });
+    }
+  });
+
   initDatabase();
   createWindow();
   createMenu();

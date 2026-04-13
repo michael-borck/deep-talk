@@ -100,33 +100,16 @@ export function useAudioPlayer(): AudioPlayerState {
     setErrorMessage(null);
 
     try {
-      const data = await window.electronAPI.fs.readFile(filePath);
-      // Electron IPC sends a Buffer; convert to Uint8Array for the Blob
-      const bytes = data instanceof Uint8Array ? data : new Uint8Array(data as any);
+      // Use the safe-file:// custom protocol registered in the main process.
+      // This lets the browser stream the file directly from disk with range
+      // requests — no full-file buffering, instant playback on large videos.
+      const url = `safe-file:///${encodeURI(filePath.replace(/^\/+/, ''))}`;
 
-      // Try to detect mime type from extension; the audio element doesn't
-      // strictly need it but it helps the browser decide whether to attempt
-      // playback. Default to a generic audio type.
-      const ext = filePath.split('.').pop()?.toLowerCase() || '';
-      const mimeMap: Record<string, string> = {
-        mp3: 'audio/mpeg',
-        wav: 'audio/wav',
-        m4a: 'audio/mp4',
-        ogg: 'audio/ogg',
-        webm: 'audio/webm',
-        mp4: 'video/mp4',
-        mov: 'video/quicktime',
-      };
-      const mime = mimeMap[ext] || 'audio/mpeg';
-
-      const blob = new Blob([bytes], { type: mime });
-      const url = URL.createObjectURL(blob);
-
-      // Revoke any previous URL before swapping
+      // Revoke any previous blob URL left over (shouldn't happen, but safe)
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
-      objectUrlRef.current = url;
 
       const audio = audioRef.current;
       if (audio) {
