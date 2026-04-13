@@ -50,40 +50,53 @@ export const ProcessingQueue: React.FC<ProcessingQueueProps> = ({ items }) => {
       </h2>
 
       <div className="space-y-3">
-        {items.map(item => (
-          <div key={item.id} className="flex items-center space-x-3">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-surface-700 truncate">
-                  {item.file_path.split('/').pop() || item.file_path}
-                </span>
-                <span className="text-xs text-surface-500 ml-2 whitespace-nowrap">
-                  {item.progress}% {getStatusText(item.status)}
-                </span>
+        {items.map(item => {
+          const fileName = item.file_path.split('/').pop() || item.file_path;
+          return (
+            <div key={item.id} className="flex items-center gap-3 min-w-0">
+              {/* min-w-0 lets the flex child shrink below its content's
+                  intrinsic width so `truncate` actually works inside flex */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <span
+                    className="text-sm font-medium text-surface-700 truncate min-w-0"
+                    title={fileName}
+                  >
+                    {fileName}
+                  </span>
+                  <span className="text-xs text-surface-500 whitespace-nowrap flex-shrink-0">
+                    {item.progress}% {getStatusText(item.status)}
+                  </span>
+                </div>
+
+                <div className="w-full bg-surface-100 rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all duration-500 ease-out ${getProgressBarColor(item.status)}`}
+                    style={{ width: `${item.progress}%` }}
+                  />
+                </div>
+
+                {item.error_message && (
+                  <p
+                    className="text-xs text-error mt-1 truncate"
+                    title={item.error_message}
+                  >
+                    {item.error_message}
+                  </p>
+                )}
               </div>
 
-              <div className="w-full bg-surface-100 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ease-out ${getProgressBarColor(item.status)}`}
-                  style={{ width: `${item.progress}%` }}
-                />
-              </div>
-
-              {item.error_message && (
-                <p className="text-xs text-error mt-1">{item.error_message}</p>
+              {(item.status === 'completed' || item.status === 'error') && (
+                <button
+                  onClick={() => removeFromProcessingQueue(item.id)}
+                  className="text-surface-400 hover:text-surface-600 transition-colors flex-shrink-0"
+                >
+                  <X size={14} />
+                </button>
               )}
             </div>
-
-            {(item.status === 'completed' || item.status === 'error') && (
-              <button
-                onClick={() => removeFromProcessingQueue(item.id)}
-                className="text-surface-400 hover:text-surface-600 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
