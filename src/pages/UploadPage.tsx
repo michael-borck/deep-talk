@@ -53,9 +53,19 @@ export const UploadPage: React.FC = () => {
     e.stopPropagation();
     setIsDragging(false);
 
+    // Electron 32+ removed the non-standard File.path property. Use the
+    // webUtils.getPathForFile bridge exposed via preload to recover the
+    // absolute path of each dropped file.
     const files = Array.from(e.dataTransfer.files);
     const paths = files
-      .map((f) => (f as unknown as { path?: string }).path)
+      .map((f) => {
+        try {
+          return window.electronAPI.fs.getPathForFile(f);
+        } catch (err) {
+          console.error('Failed to resolve dropped file path:', err);
+          return '';
+        }
+      })
       .filter((p): p is string => !!p && p.length > 0);
 
     if (paths.length === 0) {

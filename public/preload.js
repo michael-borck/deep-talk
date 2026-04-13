@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -24,7 +24,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getAppPath: (type) => ipcRenderer.invoke('get-app-path', type),
     getFileStats: (filePath) => ipcRenderer.invoke('fs-get-file-stats', filePath),
     joinPath: (...pathSegments) => ipcRenderer.invoke('fs-join-path', ...pathSegments),
-    deleteFile: (filePath) => ipcRenderer.invoke('fs-delete-file', filePath)
+    deleteFile: (filePath) => ipcRenderer.invoke('fs-delete-file', filePath),
+    // Get the absolute path for a File object obtained from a drag-drop event.
+    // Replaces the non-standard File.path that was removed in Electron 32+.
+    getPathForFile: (file) => {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch (err) {
+        console.error('webUtils.getPathForFile failed:', err);
+        return '';
+      }
+    }
   },
 
   // Service operations

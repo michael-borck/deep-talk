@@ -241,6 +241,7 @@ declare global {
         getFileStats: (filePath: string) => Promise<{ size: number; mtime?: Date; error?: string }>;
         joinPath: (...pathSegments: string[]) => Promise<string>;
         deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+        getPathForFile: (file: File) => string;
       };
       services: {
         testConnection: (url: string) => Promise<{
