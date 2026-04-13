@@ -1,157 +1,91 @@
-# First Use Guide
+# First Use
 
-Congratulations on installing DeepTalk! This guide will walk you through your first launch and initial setup.
+Welcome to DeepTalk. This page walks you through what you'll see the first time you launch the app and the small amount of configuration that's worth doing up front.
 
-## First Launch
+## Your first launch
 
-When you launch DeepTalk for the first time, here's what to expect:
+When DeepTalk opens, you'll land on the **Dashboard**. Everything is local to your machine — no account, no sign-in, no cloud sync.
 
-### 1. Welcome Screen
-- DeepTalk will open to the **Home** page
-- You'll see a clean interface with navigation tabs at the top
-- The interface includes: Home, Projects, Library, Settings, and About
+The sidebar on the left gives you everything you need:
 
-### 2. Initial Interface Overview
+- **Dashboard** — recent transcripts, recent projects, activity stats
+- **Upload & Process** — drag a file in or click to browse
+- **Projects** — group recordings for cross-recording analysis
+- **Library** — every transcript you've made
+- **Settings** — model picker, AI provider, processing options
+- **Search & Filter** — find anything across transcripts
+- **Chat History** — past AI conversations
+- **Trash** / **Archive** — soft-deleted and archived items
+- **Documentation** — the docs you're reading right now
+- **Keyboard Shortcuts** — quick reference
+- **Help & Support** — troubleshooting
 
-**Navigation Tabs:**
-- 🏠 **Home**: Your dashboard and recent activity
-- 📁 **Projects**: Organize transcripts into projects  
-- 📋 **Library**: Manage individual transcripts
-- ⚙️ **Settings**: Configure DeepTalk preferences
-- ℹ️ **About**: Application information
+At the bottom of the window you'll see a status bar reporting whether the AI analysis service is reachable. Speech-to-text runs locally so it's always "connected".
 
-### 3. Service Status Check
-On the Home page, you'll see a **Service Status** indicator:
-- 🟡 **Yellow**: Services connecting (normal on first launch)
-- 🔴 **Red**: Service connection errors (expected without external services)
-- 🟢 **Green**: All services connected
+## Privacy story (read this once, never worry again)
 
-**Don't worry**: DeepTalk works great even without external services!
+DeepTalk's pitch is "privacy-first local desktop". Here's exactly what that means:
 
-## Basic Configuration (Optional)
+- **Transcription runs on your computer.** DeepTalk uses Whisper through `@huggingface/transformers`. The model downloads once on first use (~75 MB for the default `tiny.en` model) and is cached locally. After that, transcribing a file makes **zero network calls**.
+- **Speaker identification runs on your computer.** Pyannote segmentation and wespeaker embedding are also local models, downloaded on first use and cached.
+- **AI analysis is configurable.** By default, DeepTalk talks to a local Ollama instance — also on your machine. You can switch to a cloud provider (OpenAI, Anthropic, Groq, Gemini, OpenRouter, or any custom endpoint) in Settings if you want access to more powerful models. When you do, transcripts are sent to that provider for analysis. The app warns you with a "☁ Cloud" badge so you always know which mode you're in.
+- **Storage is a local SQLite database.** Everything you produce — transcripts, analysis, projects, chat history — lives on disk in your user data folder. Never uploaded anywhere by DeepTalk.
 
-### Quick Settings Check
+## A 5-minute first-time setup
 
-Let's do a quick settings review to ensure everything is configured correctly:
+You can skip this entirely and just start uploading files — the defaults are sensible. But if you want to tune things, here are the three settings worth checking.
 
-1. **Click** the ⚙️ **Settings** tab
-2. **Review** the main sections:
+### 1. Pick a transcription model (Settings → Transcription)
 
-#### Transcription Settings
-- **Service URL**: Default is `http://localhost:8000` (for future Speaches setup)
-- **Model**: Default speech-to-text model (fine for basic use)
-- **Audio Chunk Size**: Default 60 seconds (good for most files)
+Three options:
 
-#### Processing Settings  
-- **AI Analysis URL**: Default is `http://localhost:11434` (for future Ollama setup)
-- **Transcript Correction**: Enabled by default (improves accuracy)
-- **Speaker Tagging**: Disabled by default (can enable later)
+| Model | Size | Speed | When to pick |
+|---|---|---|---|
+| **Tiny (English)** | ~75 MB | Fastest | Default. Quick drafts, short clips. Lower accuracy on noisy or accented speech. |
+| **Base (English)** | ~140 MB | Balanced | Most users. Noticeably more accurate than Tiny, still fast on most laptops. |
+| **Small (English)** | ~470 MB | Slower | Best accuracy in this set. Pick if you have a fast machine and want the cleanest transcripts. |
 
-#### General Settings
-- **Auto-backup**: Enabled by default (recommended)
-- **Theme**: System default (matches your OS theme)
+Click **Download** to fetch the model immediately. Otherwise it'll download automatically the first time you transcribe a file.
 
-**Recommendation**: Keep the default settings for now. You can always adjust them later as you learn more about DeepTalk.
+### 2. Decide on speaker detection (Settings → Processing)
 
-## Understanding DeepTalk's Approach
+The **Detect speakers from audio** toggle controls whether DeepTalk runs the diarisation pipeline (pyannote + wespeaker). It's on by default. Adds about 1× the audio length to processing time — turn it off for single-speaker recordings to save time.
 
-### Privacy-First Design
-- **All data stays on your computer** - nothing is sent to external servers unless you configure specific services
-- **Local storage** - your transcripts and analysis are stored in a local database
-- **Optional services** - external transcription and AI services are entirely optional
+### 3. Connect an AI analysis service (Settings → Processing → AI Analysis Service)
 
-### How It Works
-1. **Upload** audio or video files
-2. **Transcribe** using built-in capabilities or external services
-3. **Analyze** content for insights (basic analysis works offline)
-4. **Organize** transcripts into projects for better management
-5. **Chat** with your transcripts using AI (requires Ollama setup)
+This is the one piece that's not local by default. DeepTalk needs an LLM to produce summaries, sentiment, themes, and to power AI Chat. Pick a provider:
 
-## Your First Transcript (Basic Mode)
+- **Ollama (local)** — install [Ollama](https://ollama.com/) separately and run something like `ollama pull llama3.2:3b`. Stays on your machine. Recommended if privacy matters.
+- **OpenAI / Anthropic / Groq / Gemini / OpenRouter** — paste an API key. Faster, smarter, but transcripts get sent to the provider's servers.
+- **Custom** — any OpenAI-compatible HTTP endpoint.
 
-Let's create your first transcript to get familiar with the interface:
+Click **Test Connection** to verify it works, then **Refresh Models** to populate the model dropdown.
 
-### Method 1: From Home Page
-1. **Stay** on the Home page
-2. **Look** for upload options or quick actions
-3. **Click** upload or "Add New" button
+## Your first transcript
 
-### Method 2: From Library
-1. **Click** the 📋 **Library** tab
-2. **Look** for an "Upload" or "Add Transcript" button
-3. **Click** to start the upload process
+Once the basics are set:
 
-### What to Expect
-1. **File Selection**: Choose an audio or video file from your computer
-2. **Processing**: DeepTalk will process the file (may take a few minutes)
-3. **Basic Transcription**: Even without external services, you'll get basic processing
-4. **Results**: View your transcript in the Library
+1. Click **Upload & Process** in the sidebar.
+2. Drag an audio or video file into the dropzone, or click to browse.
+3. Optionally pick a project to assign it to (you can also assign later).
+4. Click **Upload & Process**.
 
-## Understanding Service Status
+DeepTalk will:
 
-### With No External Services (Default)
-- ✅ **File Processing**: Works perfectly
-- ✅ **Basic Transcription**: Limited but functional
-- ✅ **Organization**: Full project and library features
-- ✅ **Export**: Complete export capabilities
-- ❌ **Advanced AI Features**: Requires Ollama setup
-- ❌ **High-Quality Transcription**: Requires Speaches setup
+1. Decode the audio (any common format works — MP3, WAV, MP4, MOV, M4A, WebM, OGG, and more)
+2. Run Whisper for transcription
+3. Run pyannote + wespeaker for diarisation (if enabled)
+4. Run AI analysis for summary, themes, sentiment, etc.
+5. Save everything to the library and show a success toast
 
-### Next Steps for Full Features
-If you want the complete DeepTalk experience:
-1. **Complete** this first-use setup
-2. **Try** the basic workflow with a test file
-3. **Follow** the [Quick Start Tutorial](quick-start.md) for service setup
+Click the new transcript in the Library to see the results.
 
-## Data Location
+## What's next?
 
-Your DeepTalk data is stored locally:
-- **Windows**: `%APPDATA%/deeptalk/`
-- **macOS**: `~/Library/Application Support/deeptalk/`
-- **Linux**: `~/.config/deeptalk/`
+- [Interface Overview](../user-guide/interface-overview.md) — full tour of the window
+- [Uploading Files](../user-guide/uploading-files.md) — upload, drag-drop, and bulk operations
+- [Settings](../user-guide/settings.md) — every setting explained
+- [Transcription & Diarisation](../features/transcription.md) — how the audio pipeline works
+- [Quick Start](quick-start.md) — the speed-run version of this page
 
-This includes:
-- **Database**: All your transcripts and analysis
-- **Settings**: Your preferences and configurations
-- **Cache**: Temporary processing files
-
-## What's Next?
-
-Now that you're familiar with the interface:
-
-### Immediate Next Steps
-1. **Try uploading a short audio file** (2-3 minutes recommended for first test)
-2. **Explore the interface** while it processes
-3. **Review the results** in your Library
-
-### For the Complete Experience
-Follow the [Quick Start Tutorial](quick-start.md) which covers:
-- Setting up Speaches for high-quality transcription
-- Installing Ollama for AI analysis and chat features
-- Complete workflow walkthrough
-- Best practices and tips
-
-## Need Help?
-
-### Quick Help
-- **Interface questions**: Continue to [Quick Start Tutorial](quick-start.md)
-- **Technical issues**: Check [Common Issues](../troubleshooting/common-issues.md)
-- **Feature questions**: Browse [User Guide](../user-guide/README.md)
-
-### Common First-Use Questions
-
-**Q: Do I need to set up external services right away?**
-A: No! DeepTalk works great for basic transcription and organization without any external services.
-
-**Q: Where are my files stored?**
-A: Everything stays on your computer in the local application data folder.
-
-**Q: Can I use DeepTalk offline?**
-A: Yes! Core features work completely offline. Only enhanced AI features require internet services.
-
-**Q: What file formats are supported?**
-A: MP3, WAV, MP4, AVI, MOV, M4A, WebM, OGG, and more. See [File Formats](../reference/file-formats.md) for the complete list.
-
----
-
-**Ready for more?** Continue to [Quick Start Tutorial →](quick-start.md)
+If something doesn't work, check [Common Issues](../troubleshooting/common-issues.md).

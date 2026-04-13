@@ -32,12 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
   const helpItems = [
     { path: '/docs', icon: BookOpen, label: 'Documentation' },
     { path: '/shortcuts', icon: Keyboard, label: 'Keyboard Shortcuts' },
-    {
-      path: 'https://michael-borck.github.io/deep-talk/troubleshooting',
-      icon: HelpCircle,
-      label: 'Help & Support',
-      external: true
-    },
+    { path: '/docs/troubleshooting/common-issues', icon: HelpCircle, label: 'Help & Support' },
   ];
 
   const isActive = (path: string) => {
@@ -131,20 +126,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
           <ul className="space-y-0.5">
             {helpItems.map((item) => {
               const Icon = item.icon;
-              if (item.external) {
-                return (
-                  <li key={item.path}>
-                    <button
-                      onClick={() => window.open(item.path, '_blank')}
-                      className="flex items-center px-3 py-2 rounded-lg transition-all duration-200 hover:bg-surface-800 text-surface-400 hover:text-white w-full text-left"
-                      title={isCollapsed ? item.label : ''}
-                    >
-                      <Icon size={18} className={isCollapsed ? 'mx-auto' : ''} strokeWidth={1.5} />
-                      {!isCollapsed && <span className="ml-3 text-sm font-sans">{item.label}</span>}
-                    </button>
-                  </li>
-                );
-              }
               return (
                 <li key={item.path}>
                   <Link

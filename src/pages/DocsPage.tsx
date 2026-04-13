@@ -1,218 +1,210 @@
-import React from 'react';
-import { ExternalLink, BookOpen, Play, Settings, Search, HelpCircle, Keyboard } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Search, ChevronRight, X, FileText, Github } from 'lucide-react';
+import { DOCS, getCategory, getPage, getDefaultPage, searchDocs } from '../docs/structure';
+import { URLS } from '../constants/urls';
 
 const DocsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const params = useParams<{ category?: string; page?: string }>();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Resolve which doc page to show. Default to Quick Start when no params.
+  const { categorySlug, pageSlug } = useMemo(() => {
+    if (params.category && params.page) {
+      return { categorySlug: params.category, pageSlug: params.page };
+    }
+    return getDefaultPage();
+  }, [params.category, params.page]);
+
+  const category = getCategory(categorySlug);
+  const page = getPage(categorySlug, pageSlug);
+
+  const searchResults = useMemo(() => searchDocs(searchQuery), [searchQuery]);
+
+  const goToPage = (cat: string, pg: string) => {
+    navigate(`/docs/${cat}/${pg}`);
+    setSearchQuery('');
+  };
+
   return (
-    <div className="min-h-screen bg-surface-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display text-surface-900 mb-2">Documentation</h1>
-          <p className="text-surface-600">
-            Learn how to use DeepTalk effectively with our comprehensive guides and references.
-          </p>
-        </div>
-
-        {/* Quick Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Getting Started */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <Play className="w-8 h-8 text-primary-800 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">Getting Started</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              New to DeepTalk? Start here with installation, setup, and your first transcript.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/getting-started"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-primary-800 hover:text-primary-900 font-medium"
-            >
-              Open Guide
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-
-          {/* User Guide */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <BookOpen className="w-8 h-8 text-green-600 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">User Guide</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              Complete guide to using DeepTalk's interface, features, and workflows.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/user-guide"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-            >
-              Open Guide
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-
-          {/* Features */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <Settings className="w-8 h-8 text-purple-600 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">Features</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              In-depth coverage of transcription, AI analysis, search, and export features.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/features"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-purple-600 hover:text-purple-800 font-medium"
-            >
-              Explore Features
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-
-          {/* Tutorials */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <Play className="w-8 h-8 text-orange-600 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">Tutorials</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              Step-by-step tutorials from basic workflows to advanced features and automation.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/tutorials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-orange-600 hover:text-orange-800 font-medium"
-            >
-              Start Learning
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-
-          {/* Troubleshooting */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <HelpCircle className="w-8 h-8 text-red-600 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">Troubleshooting</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              Find solutions to common issues, FAQ, and detailed troubleshooting guides.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/troubleshooting"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-red-600 hover:text-red-800 font-medium"
-            >
-              Get Help
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-
-          {/* Reference */}
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center mb-4">
-              <Search className="w-8 h-8 text-surface-600 mr-3" />
-              <h3 className="text-xl font-semibold text-surface-900">Reference</h3>
-            </div>
-            <p className="text-surface-600 mb-4">
-              Technical specifications, file formats, system requirements, and quick references.
-            </p>
-            <a
-              href="https://michael-borck.github.io/deep-talk/reference"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center text-surface-600 hover:text-surface-800 font-medium"
-            >
-              Browse Reference
-              <ExternalLink className="w-4 h-4 ml-1" />
-            </a>
-          </div>
-        </div>
-
-        {/* Quick Access Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold text-surface-900 mb-4">Quick Access</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Keyboard Shortcuts */}
-            <div className="border border-surface-200 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <Keyboard className="w-6 h-6 text-primary-800 mr-2" />
-                <h3 className="text-lg font-semibold text-surface-900">Keyboard Shortcuts</h3>
-              </div>
-              <p className="text-surface-600 mb-3">
-                Speed up your workflow with keyboard shortcuts. Press <kbd className="px-2 py-1 text-sm bg-surface-100 rounded">Ctrl+?</kbd> anywhere in the app.
-              </p>
+    <div className="flex h-full min-h-0">
+      {/* ================ Sidebar ================ */}
+      <aside className="w-72 flex-shrink-0 border-r border-surface-200 bg-surface-50 overflow-y-auto">
+        <div className="p-4">
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search docs..."
+              className="input pl-9 pr-9 text-sm"
+            />
+            {searchQuery && (
               <button
-                onClick={() => {
-                  // This will be handled by the global keyboard shortcut
-                  const event = new KeyboardEvent('keydown', { ctrlKey: true, key: '?' });
-                  document.dispatchEvent(event);
-                }}
-                className="inline-flex items-center text-primary-800 hover:text-primary-900 font-medium"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-700"
               >
-                View Shortcuts
-                <Keyboard className="w-4 h-4 ml-1" />
+                <X size={14} />
               </button>
-            </div>
+            )}
+          </div>
 
-            {/* Quick Start */}
-            <div className="border border-surface-200 rounded-lg p-4">
-              <div className="flex items-center mb-3">
-                <Play className="w-6 h-6 text-green-600 mr-2" />
-                <h3 className="text-lg font-semibold text-surface-900">Quick Start</h3>
-              </div>
-              <p className="text-surface-600 mb-3">
-                Get up and running in minutes with our quick start guide covering the essential workflow.
-              </p>
-              <a
-                href="https://michael-borck.github.io/deep-talk/getting-started/quick-start"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-green-600 hover:text-green-800 font-medium"
-              >
-                Quick Start Guide
-                <ExternalLink className="w-4 h-4 ml-1" />
-              </a>
+          {/* Search results override the category nav when query is present */}
+          {searchQuery ? (
+            <div>
+              <h3 className="label mb-2">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</h3>
+              {searchResults.length === 0 ? (
+                <p className="text-xs text-surface-500 px-2">Nothing matched "{searchQuery}".</p>
+              ) : (
+                <ul className="space-y-1">
+                  {searchResults.map(({ category: c, page: p, snippet }) => (
+                    <li key={`${c.slug}/${p.slug}`}>
+                      <button
+                        onClick={() => goToPage(c.slug, p.slug)}
+                        className="w-full text-left p-2 rounded-lg hover:bg-surface-100 transition-colors"
+                      >
+                        <div className="text-xs text-surface-500 mb-0.5">{c.title}</div>
+                        <div className="text-sm font-medium text-surface-800 truncate">{p.title}</div>
+                        {snippet && (
+                          <div className="text-[11px] text-surface-500 mt-0.5 line-clamp-2">{snippet}</div>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+          ) : (
+            <nav className="space-y-5">
+              {DOCS.map((cat) => {
+                const Icon = cat.icon;
+                const isActiveCategory = cat.slug === categorySlug;
+                return (
+                  <div key={cat.slug}>
+                    <h3 className="flex items-center gap-2 text-[11px] font-semibold text-surface-500 uppercase tracking-wider mb-2 px-2">
+                      <Icon size={12} />
+                      {cat.title}
+                    </h3>
+                    <ul className="space-y-0.5">
+                      {cat.pages.map((p) => {
+                        const isActive = isActiveCategory && p.slug === pageSlug;
+                        return (
+                          <li key={p.slug}>
+                            <button
+                              onClick={() => goToPage(cat.slug, p.slug)}
+                              className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                                isActive
+                                  ? 'bg-primary-100 text-primary-900 font-medium'
+                                  : 'text-surface-700 hover:bg-surface-100'
+                              }`}
+                            >
+                              {p.title}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </nav>
+          )}
+
+          {/* External links */}
+          <div className="mt-8 pt-5 border-t border-surface-200 space-y-2">
+            <a
+              href={URLS.REPO}
+              onClick={(e) => {
+                e.preventDefault();
+                window.open(URLS.REPO, '_blank');
+              }}
+              className="flex items-center gap-2 text-xs text-surface-500 hover:text-surface-800 px-2 py-1 rounded transition-colors"
+            >
+              <Github size={12} />
+              View source on GitHub
+            </a>
           </div>
         </div>
+      </aside>
 
-        {/* Complete Documentation Link */}
-        <div className="bg-primary-100 border border-primary-200 rounded-lg p-6 text-center">
-          <BookOpen className="w-12 h-12 text-primary-800 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-surface-900 mb-2">Complete Documentation</h2>
-          <p className="text-surface-600 mb-4">
-            Access the full documentation website with searchable content, detailed guides, and community contributions.
-          </p>
-          <a
-            href="https://michael-borck.github.io/deep-talk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary inline-flex items-center px-6 py-3"
-          >
-            Open Documentation Website
-            <ExternalLink className="w-5 h-5 ml-2" />
-          </a>
-        </div>
+      {/* ================ Content ================ */}
+      <main className="flex-1 min-w-0 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-8">
+          {!category || !page ? (
+            <div className="text-center py-16">
+              <FileText size={32} className="mx-auto text-surface-300 mb-3" />
+              <h2 className="text-lg font-display text-surface-700">Page not found</h2>
+              <p className="text-sm text-surface-500 mt-2">
+                The page you requested doesn't exist. Pick something from the sidebar.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Breadcrumbs */}
+              <nav className="flex items-center gap-1.5 text-xs text-surface-500 mb-4">
+                <span>Documentation</span>
+                <ChevronRight size={12} />
+                <span>{category.title}</span>
+                <ChevronRight size={12} />
+                <span className="text-surface-700">{page.title}</span>
+              </nav>
 
-        {/* Tips */}
-        <div className="mt-8 bg-surface-100 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-surface-900 mb-3">💡 Tips</h3>
-          <ul className="space-y-2 text-surface-600">
-            <li>• Use <kbd className="px-2 py-1 text-sm bg-white rounded">Ctrl+?</kbd> to quickly access keyboard shortcuts</li>
-            <li>• Bookmark the documentation website for easy access</li>
-            <li>• Check the troubleshooting section if you encounter issues</li>
-            <li>• The tutorials section provides hands-on learning for all skill levels</li>
-          </ul>
+              {/* Markdown content */}
+              <article className="docs-prose">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown>
+              </article>
+
+              {/* Footer nav: prev / next within this category */}
+              <PageFooterNav category={category} pageSlug={page.slug} onNavigate={goToPage} />
+            </>
+          )}
         </div>
-      </div>
+      </main>
+    </div>
+  );
+};
+
+const PageFooterNav: React.FC<{
+  category: ReturnType<typeof getCategory>;
+  pageSlug: string;
+  onNavigate: (cat: string, page: string) => void;
+}> = ({ category, pageSlug, onNavigate }) => {
+  if (!category) return null;
+  const idx = category.pages.findIndex((p) => p.slug === pageSlug);
+  const prev = idx > 0 ? category.pages[idx - 1] : null;
+  const next = idx >= 0 && idx < category.pages.length - 1 ? category.pages[idx + 1] : null;
+
+  if (!prev && !next) return null;
+
+  return (
+    <div className="mt-12 pt-6 border-t border-surface-200 flex items-center justify-between gap-4">
+      {prev ? (
+        <button
+          onClick={() => onNavigate(category.slug, prev.slug)}
+          className="flex-1 text-left p-3 rounded-lg border border-surface-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+        >
+          <div className="text-[11px] text-surface-500 mb-0.5">← Previous</div>
+          <div className="text-sm font-medium text-surface-800">{prev.title}</div>
+        </button>
+      ) : (
+        <div className="flex-1" />
+      )}
+      {next ? (
+        <button
+          onClick={() => onNavigate(category.slug, next.slug)}
+          className="flex-1 text-right p-3 rounded-lg border border-surface-200 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+        >
+          <div className="text-[11px] text-surface-500 mb-0.5">Next →</div>
+          <div className="text-sm font-medium text-surface-800">{next.title}</div>
+        </button>
+      ) : (
+        <div className="flex-1" />
+      )}
     </div>
   );
 };

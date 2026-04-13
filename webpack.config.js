@@ -23,6 +23,12 @@ module.exports = {
         test: /\.css$/,
         use: ['style-loader', 'css-loader', 'postcss-loader'],
       },
+      {
+        // Import .md files as raw strings so we can render them in-app.
+        // Used by src/pages/DocsPage to serve the documentation folder.
+        test: /\.md$/,
+        type: 'asset/source',
+      },
     ],
   },
   resolve: {
@@ -42,8 +48,7 @@ module.exports = {
     }
   },
   externals: {
-    '@lancedb/lancedb': 'null',
-    '@xenova/transformers': 'null'
+    '@lancedb/lancedb': 'null'
   },
   plugins: [
     new HtmlWebpackPlugin({

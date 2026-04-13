@@ -1,325 +1,138 @@
-# Settings & Configuration
+# Settings
 
-This comprehensive guide covers all of DeepTalk's configuration options, helping you customize the application for optimal performance and user experience.
+The Settings page (sidebar → **Settings**) is organised into five tabs. This page covers everything in each one.
 
-## Settings Overview
+## Transcription
 
-### Accessing Settings
-**Location**: Click the ⚙️ Settings tab in the main navigation
+Where you choose which Whisper model runs locally to turn audio into text.
 
-**Settings Organization:**
-- **Transcription**: Speech-to-text service configuration
-- **Processing**: AI analysis and enhancement settings  
-- **Chat**: Conversation and interaction settings
-- **Prompts**: AI prompt customization and management
-- **General**: Application preferences and data management
+### Transcription Model
 
-### Settings Philosophy
-DeepTalk is designed to work well with default settings while offering extensive customization for power users. You can:
-- **Start simple**: Use defaults and adjust as needed
-- **Customize gradually**: Modify settings as you learn the application
-- **Reset anytime**: Return to defaults if changes don't work out
-- **Export/import**: Share configurations across installations
+Three model options. All English-only. All run entirely on your machine — no network calls during transcription.
 
-## Transcription Settings
+| Model | Size | Speed | Best for |
+|---|---|---|---|
+| **Tiny (English)** | ~75 MB | Fastest (~2-3× realtime on M-series) | Quick drafts, short clips, slow hardware |
+| **Base (English)** | ~140 MB | Balanced | Most users, most recordings |
+| **Small (English)** | ~470 MB | Slower | Highest accuracy in this set |
 
-### Service Configuration
+The first time you transcribe with a model, DeepTalk downloads it to your user data folder (`~/Library/Application Support/deep-talk/models/` on macOS, equivalents on Windows/Linux) and caches it forever. Subsequent transcriptions just use the cached model — no download, no network.
 
-**Speech-to-Text Service URL:**
-- **Default**: `http://localhost:8000` (for local Speaches installation)
-- **Purpose**: Connect to external transcription service for enhanced quality
-- **Options**: Local service, cloud service, or disabled (basic transcription only)
+### Download model now
 
-**Model Selection:**
-- **Default model**: `Systran/faster-distil-whisper-small.en`
-- **Performance**: Smaller models = faster processing, larger = better accuracy
-- **Language support**: Choose models optimized for your primary language
-- **Custom models**: Configure custom or specialized transcription models
+Optional button. Pre-fetches the chosen model so the first transcription doesn't pay the download cost. Useful if you want to be ready to work offline.
 
-**Service Testing:**
-- **Test connection**: Verify service availability and response
-- **Model availability**: Check which models are available on your service
-- **Performance testing**: Measure speed and accuracy with sample content
+## Processing
 
-### Audio Processing
-
-**Chunk Size Configuration:**
-- **Default**: 60 seconds (1 minute)
-- **Range**: 30 seconds to 5 minutes
-- **Purpose**: Split long audio files for better processing
-- **Optimization**: Shorter chunks = faster processing, longer = better context
-
-**Audio Quality Settings:**
-- **Sample rate**: Automatic detection and optimization
-- **Bitrate handling**: Automatic conversion for optimal processing
-- **Format conversion**: Automatic conversion between supported formats
-- **Noise reduction**: Basic noise filtering (if available)
-
-### Transcription Enhancement
-
-**Quality Optimization:**
-- **Enable enhanced processing**: Use advanced algorithms for better accuracy
-- **Speaker diarization**: Attempt to identify different speakers automatically
-- **Punctuation restoration**: Add punctuation to improve readability
-- **Capitalization correction**: Proper capitalization for names and sentences
-
-**Language and Locale:**
-- **Primary language**: Main language for transcription optimization
-- **Regional settings**: Locale-specific formatting and conventions
-- **Multi-language support**: Handle multiple languages in single recordings
-- **Custom vocabulary**: Add domain-specific terms for better accuracy
-
-## Processing Settings
+Settings for everything that happens after transcription: speaker detection, AI analysis, transcript correction.
 
 ### AI Analysis Service
 
-**Service Configuration:**
-- **AI Analysis URL**: Default `http://localhost:11434` (for local Ollama)
-- **Model selection**: Choose AI model for analysis (llama2, mistral, etc.)
-- **Connection testing**: Verify AI service availability and performance
-- **Fallback options**: Configure behavior when AI service is unavailable
+The one piece that's not local by default. DeepTalk needs an LLM for summaries, sentiment analysis, themes, action items, and AI Chat.
 
-**Analysis Preferences:**
-- **Analysis depth**: Quick overview vs. comprehensive analysis
-- **Focus areas**: Emphasize summaries, action items, sentiment, etc.
-- **Custom prompts**: Configure specialized analysis for your use cases
-- **Batch processing**: Settings for analyzing multiple transcripts
+**Provider** dropdown — pick from:
 
-### Transcript Enhancement
+| Provider | Privacy | Notes |
+|---|---|---|
+| **Ollama (local)** | 🔒 Private | Runs on your computer. Install [Ollama](https://ollama.com) separately. |
+| **OpenAI** | ☁ Cloud | GPT-4, GPT-4o, o1. Requires API key. |
+| **Anthropic (Claude)** | ☁ Cloud | Claude Sonnet, Opus, Haiku. Requires API key. |
+| **Google Gemini** | ☁ Cloud | Gemini 1.5 Pro, Flash. Requires API key. |
+| **Groq** | ☁ Cloud | Fast inference for Llama, Mixtral, Gemma. Requires API key. |
+| **OpenRouter** | ☁ Cloud | Gateway to hundreds of models. Requires API key. |
+| **Custom** | depends | Any OpenAI-compatible HTTP endpoint. |
 
-**Validation and Correction:**
-- **Enable transcript validation**: Use AI to correct spelling and grammar
-- **Correction types**: Spelling, grammar, punctuation, capitalization
-- **Validation strength**: Conservative vs. aggressive correction
-- **Manual review**: Require human approval for AI corrections
+A coloured banner under the dropdown reminds you which mode you're in (green for Private, amber for Cloud) so you never accidentally send transcripts to a server you didn't intend.
 
-**Speaker Enhancement:**
-- **Automatic speaker tagging**: Add speaker labels automatically
-- **Speaker identification**: Attempt to identify speakers by voice
-- **Speaker naming**: Convert "Speaker 1" to meaningful names
-- **Consistency enforcement**: Maintain speaker names across sessions
+**Server URL** auto-fills with the provider's default but stays editable for custom Ollama ports, WSL setups, enterprise proxies, etc.
 
-**Content Processing:**
-- **Duplicate removal**: Eliminate repeated sentences or phrases
-- **Analyze validated transcript**: Use corrected text for AI analysis
-- **One-task-at-a-time**: Process analysis tasks separately for better accuracy
-- **Quality thresholds**: Minimum confidence levels for processing
+**API Key** field appears only for cloud providers. Stored locally in the SQLite settings table, never logged.
 
-### Performance and Resource Management
+**Test Connection** runs a cheap probe (lists models) to verify the URL and key work.
 
-**Processing Priority:**
-- **Concurrent processing**: Number of simultaneous processing tasks
-- **Resource allocation**: CPU and memory usage limits
-- **Queue management**: Priority handling for different types of content
-- **Background processing**: Continue processing when application is minimized
+**Refresh Models** populates a real model dropdown from the provider. Pick whichever one you want to use.
 
-**Storage and Caching:**
-- **Cache management**: Temporary file storage and cleanup
-- **Storage optimization**: Compress older transcripts and analysis
-- **Backup frequency**: Automatic backup scheduling
-- **Cleanup rules**: Automatic removal of temporary and outdated files
+### Detect speakers from audio
 
-## Chat Settings
+Toggle for the diarisation pipeline. On by default.
 
-### Conversation Modes
+When on, after Whisper finishes, DeepTalk runs:
 
-**Mode Selection:**
-- **Vector Search Only**: Return relevant excerpts without AI interpretation
-- **RAG Mode**: Retrieve relevant content and send to AI for analysis (recommended)
-- **Direct LLM Mode**: Send full transcript directly to AI for comprehensive analysis
+1. **Pyannote segmentation** to find speech regions and local speaker activity in 5-second windows
+2. **Wespeaker** to compute a 256-dimensional voice fingerprint for each turn
+3. **Agglomerative clustering** to assign global speaker labels across the whole recording
 
-**Mode-Specific Settings:**
+Adds about 1× the audio length to processing time. Turn it off for single-speaker recordings to save time.
 
-**Vector Search Configuration:**
-- **Number of excerpts**: How many relevant sections to return (1-10)
-- **Relevance threshold**: Minimum similarity score for results
-- **Excerpt length**: Size of returned text segments
-- **Context overlap**: Overlap between adjacent excerpts
+### Transcript correction
 
-**RAG Mode Settings:**
-- **Context chunks**: Number of relevant sections to include (1-10)
-- **Chunk size**: Maximum size of each context chunk
-- **Response optimization**: Balance between speed and comprehensiveness
-- **Memory integration**: Use conversation history in responses
+Optional AI cleanup of spelling, grammar, punctuation, and capitalisation. Enabled by default. The original transcript is preserved alongside the corrected version — you can switch between them on the transcript detail page.
 
-**Direct LLM Settings:**
-- **Context limit**: Maximum characters to send to AI (2k-16k)
-- **Truncation strategy**: How to handle oversized transcripts
-- **Processing timeout**: Maximum time to wait for AI response
-- **Fallback behavior**: What to do if processing fails
+The "Correction Options" sub-checkboxes let you turn off specific categories (e.g. correct spelling but leave punctuation alone).
 
-### Advanced Chat Configuration
+### Remove duplicate sentences
 
-**Chunking Strategy:**
-- **Method**: Speaker-based, time-based, or hybrid chunking
-- **Maximum chunk size**: 30 seconds to 3 minutes
-- **Chunk overlap**: 0-30 seconds for continuity
-- **Boundary detection**: Smart splitting at natural conversation breaks
+When transcription windows overlap, you can sometimes get the same sentence twice. This option detects and removes duplicates. On by default.
 
-**Memory and Context:**
-- **Conversation memory limit**: Number of messages to remember (5-50)
-- **Memory compaction**: Automatic summarization of old conversations
-- **Context preservation**: Maintain important information across sessions
-- **Session management**: Handle multiple concurrent conversations
+## Chat
 
-**Response Optimization:**
-- **Response style**: Formal, conversational, or technical tone
-- **Detail level**: Brief summaries vs. comprehensive analysis
-- **Citation format**: How to reference transcript sources
-- **Accuracy emphasis**: Prioritize factual accuracy vs. natural language
+Settings for the in-app AI Chat feature.
 
-## General Settings
+### Conversation Mode
 
-### Application Preferences
+Three options:
 
-**Interface and Appearance:**
-- **Theme selection**: Light, dark, or system theme
-- **Interface density**: Comfortable, compact, or custom spacing
-- **Default page**: Which page opens when starting DeepTalk
-- **Panel preferences**: Default visibility and layout of interface panels
+- **Quote Lookup** — returns relevant excerpts from your transcripts directly, with no AI rewriting. Fastest, most factual. Best for finding specific information.
+- **Smart Search (Recommended)** — retrieves the most relevant chunks and sends them to the AI for interpretation. Best balance of speed and quality. Default.
+- **Full Transcript** — sends the entire transcript to the AI for comprehensive analysis. Slowest, most thorough. Best for deep questions where you need full context.
 
-**Language and Localization:**
-- **Interface language**: Application menu and interface language
-- **Date format**: Regional date and time formatting preferences
-- **Number format**: Decimal and thousands separator preferences
-- **Timezone handling**: How to display and interpret timestamps
+### Advanced Chat Settings (collapsed)
 
-### Data Management
+Click to expand. Most users never need to touch these:
 
-**Storage Configuration:**
-- **Database location**: Where DeepTalk stores your data
-- **Storage limits**: Maximum storage usage before cleanup
-- **Backup settings**: Automatic backup frequency and location
-- **Import/export**: Data portability and migration options
+- **Context Chunks** — how many transcript chunks to include in chat context (default 4)
+- **Chunking Method** — speaker-based / time-based / hybrid (default speaker)
+- **Max Chunk Size** — duration cap per chunk in seconds (default 60)
+- **Chunk Overlap** — seconds of overlap between chunks (default 10)
+- **Conversation Memory Limit** — how many messages to remember before compacting history (default 20)
 
-**Backup and Recovery:**
-- **Automatic backup**: Enable/disable scheduled backups
-- **Backup frequency**: Daily, weekly, or monthly backups
-- **Backup location**: Local, network, or cloud storage
-- **Recovery options**: Restore from backup procedures
+## AI Prompts
 
-**Privacy and Security:**
-- **Data retention**: How long to keep different types of data
-- **Local processing**: Ensure all processing stays on your machine
-- **External services**: Configure which external services to use
-- **Audit logging**: Track access and changes to your data
+Customise the prompts DeepTalk sends to the AI for each analysis task (summaries, sentiment, themes, etc.). Each prompt has a default that's restored if you delete your customisation.
 
-### Performance Optimization
+You can edit a prompt's text directly. Variables like `{transcript}` get filled in at runtime. Useful if you want the AI to focus on specific aspects of your recordings (e.g. "always look for action items related to project deadlines").
 
-**System Resource Management:**
-- **Memory usage**: Limits on RAM usage for processing
-- **CPU allocation**: How much processing power DeepTalk can use
-- **Disk space**: Monitoring and cleanup of storage usage
-- **Network usage**: Bandwidth limits for external service calls
+## General
 
-**Application Behavior:**
-- **Startup options**: What to do when launching DeepTalk
-- **Auto-updates**: Automatic vs. manual application updates
-- **Error reporting**: Anonymous error reporting to help improve DeepTalk
-- **Telemetry**: Usage analytics for application improvement
+### Storage & Backup
 
-## Prompts and AI Customization
+- **Database location** — where DeepTalk stores its SQLite database. You can change it (move to an external drive, sync folder, etc.) and the app will move the file for you.
+- **Open Folder** — opens the database directory in Finder/Explorer.
+- **Backup Now** — creates an immediate backup.
+- **Auto-backup** — periodic backups on a schedule (daily/weekly/monthly).
 
-### Prompt Management
+### Chat Search Index (collapsed)
 
-**Default Prompts:**
-- **System prompts**: Core instructions for AI interactions
-- **Analysis prompts**: Templates for different types of analysis
-- **Chat prompts**: Instructions for conversation interactions
-- **Validation prompts**: Guidelines for transcript correction
+The vector embeddings DeepTalk uses to power chat search. Reset only if you experience chat issues. Most users never need this.
 
-**Custom Prompt Creation:**
-- **Prompt templates**: Create reusable prompt structures
-- **Variable substitution**: Dynamic content insertion in prompts
-- **Prompt testing**: Validate prompt effectiveness with sample content
-- **Version control**: Track changes and improvements to prompts
+- **Reset Search Index** — clears all embeddings. The next chat will re-index.
+- **View Statistics** — shows index size and per-transcript chunk counts.
 
-**Prompt Categories:**
-- **Chat prompts**: For interactive conversations with transcripts
-- **Analysis prompts**: For automated content analysis
-- **Speaker prompts**: For speaker identification and tagging
-- **Validation prompts**: For transcript correction and enhancement
+### Appearance
 
-### AI Model Configuration
+- **Theme** — Light / Dark / System. Currently System default.
 
-**Model Selection:**
-- **Primary model**: Main AI model for analysis and chat
-- **Fallback models**: Alternative models if primary is unavailable
-- **Specialized models**: Different models for different types of content
-- **Model switching**: Automatic or manual model selection
+### Privacy
 
-**Model Parameters:**
-- **Temperature**: Creativity vs. consistency in AI responses
-- **Response length**: Preferred length of AI-generated content
-- **Context window**: How much context to provide to the AI
-- **Processing timeout**: Maximum time to wait for AI responses
+A reminder of what stays local and what doesn't:
 
-## Configuration Management
+> DeepTalk stores all data locally on your computer. No data is sent to external services except for transcription and analysis processing through your configured services.
 
-### Settings Backup and Sync
+(Transcription is now always local — that line predates the local Whisper migration. It'll be updated in a future release.)
 
-**Export Settings:**
-- **Full configuration**: All settings and customizations
-- **Selective export**: Choose specific setting categories
-- **Template creation**: Save configurations as templates
-- **Sharing options**: Share configurations with team members
+## Tips
 
-**Import and Migration:**
-- **Configuration import**: Apply settings from exported files
-- **Migration tools**: Transfer settings between installations
-- **Version compatibility**: Handle settings from different DeepTalk versions
-- **Conflict resolution**: Handle conflicts between imported and existing settings
-
-### Team Configuration
-
-**Organizational Settings:**
-- **Default configurations**: Standard settings for new team members
-- **Mandatory settings**: Required configurations for compliance
-- **Recommended settings**: Best practice configurations for your organization
-- **Policy enforcement**: Ensure consistent configurations across team
-
-**Configuration Templates:**
-- **Role-based templates**: Different configurations for different roles
-- **Project templates**: Settings optimized for specific types of projects
-- **Client templates**: Configurations for different client requirements
-- **Use case templates**: Settings for specific workflows or industries
-
-## Troubleshooting Configuration Issues
-
-### Common Configuration Problems
-
-**Service Connection Issues:**
-- **URL verification**: Ensure service URLs are correct and accessible
-- **Network connectivity**: Check firewall and network settings
-- **Service status**: Verify external services are running and responsive
-- **Authentication**: Check if services require API keys or credentials
-
-**Performance Issues:**
-- **Resource allocation**: Adjust memory and CPU limits
-- **Processing queues**: Optimize concurrent processing settings
-- **Storage management**: Clean up temporary files and optimize storage
-- **Network optimization**: Adjust settings for your network conditions
-
-**Quality Issues:**
-- **Service optimization**: Fine-tune transcription and AI service settings
-- **Model selection**: Choose appropriate models for your content type
-- **Processing parameters**: Adjust analysis depth and focus areas
-- **Validation settings**: Optimize correction and enhancement settings
-
-### Getting Configuration Help
-
-**Built-in Help:**
-- **Setting descriptions**: Detailed explanations for each configuration option
-- **Recommended values**: Suggested settings for different use cases
-- **Testing tools**: Built-in tools to test and validate configurations
-- **Reset options**: Easy ways to return to working configurations
-
-**External Resources:**
-- **Documentation**: Detailed guides for service setup and optimization
-- **Community support**: User forums and discussion groups
-- **Technical support**: Direct support for configuration assistance
-- **Best practices**: Guides for optimal configuration in different scenarios
-
----
-
-**Next**: Explore [detailed features →](../features/README.md) or learn about [common workflows →](../tutorials/README.md)
+- **Start with defaults.** Tiny.en + Ollama local + speaker detection on works well for most cases.
+- **If you upgrade your AI**, also try a better Whisper model — the bottleneck for "good summaries" is sometimes transcript quality, not the LLM.
+- **API keys are stored in plain text** in the local SQLite database. Fine for personal use; on a shared machine, consider using Ollama instead.
+- **Settings save immediately.** No "Save" button — every toggle and dropdown writes to the database as you change it.

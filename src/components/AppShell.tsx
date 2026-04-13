@@ -35,14 +35,27 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       }
     };
 
+    // Main process can request a route change via the 'navigate' channel
+    // (used by the Help → User Guide menu entry, for example)
+    const handleNavigate = (page: string) => {
+      if (typeof page !== 'string') return;
+      if (page === 'docs') navigate('/docs');
+      else if (page === 'settings') navigate('/settings');
+      else if (page.startsWith('/')) navigate(page);
+    };
+
     if (window.electronAPI?.onMenuAction) {
       window.electronAPI.onMenuAction(handleMenuAction);
+    }
+    if (window.electronAPI?.onNavigate) {
+      window.electronAPI.onNavigate(handleNavigate);
     }
 
     // Cleanup
     return () => {
       if (window.electronAPI?.removeAllListeners) {
         window.electronAPI.removeAllListeners('menu-action');
+        window.electronAPI.removeAllListeners('navigate');
       }
     };
   }, []);

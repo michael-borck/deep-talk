@@ -244,6 +244,73 @@
     @apply animate-spin rounded-full h-6 w-6
            border-2 border-primary-200 border-t-primary-600 mx-auto;
   }
+
+  /* ============================================
+     DOCS — markdown rendering
+     ============================================ */
+  .docs-prose {
+    @apply text-surface-800 leading-relaxed;
+  }
+  .docs-prose h1 {
+    @apply font-display font-bold text-3xl text-surface-900 mt-2 mb-6;
+  }
+  .docs-prose h2 {
+    @apply font-display font-semibold text-2xl text-surface-900 mt-10 mb-4 pb-2 border-b border-surface-200;
+  }
+  .docs-prose h3 {
+    @apply font-display font-semibold text-lg text-surface-900 mt-7 mb-3;
+  }
+  .docs-prose h4 {
+    @apply font-display font-medium text-base text-surface-800 mt-5 mb-2;
+  }
+  .docs-prose p {
+    @apply text-sm text-surface-700 my-3;
+  }
+  .docs-prose a {
+    @apply text-primary-700 underline decoration-primary-300 underline-offset-2 hover:text-primary-900 hover:decoration-primary-700 transition-colors;
+  }
+  .docs-prose ul {
+    @apply list-disc list-outside pl-6 my-3 space-y-1;
+  }
+  .docs-prose ol {
+    @apply list-decimal list-outside pl-6 my-3 space-y-1;
+  }
+  .docs-prose li {
+    @apply text-sm text-surface-700;
+  }
+  .docs-prose li > p {
+    @apply my-1;
+  }
+  .docs-prose code {
+    @apply text-[0.85em] font-mono text-accent-700 bg-accent-50 border border-accent-100 rounded px-1.5 py-0.5;
+  }
+  .docs-prose pre {
+    @apply bg-surface-900 text-primary-100 rounded-lg p-4 my-4 overflow-x-auto text-xs;
+  }
+  .docs-prose pre code {
+    @apply bg-transparent border-0 text-primary-100 p-0;
+  }
+  .docs-prose blockquote {
+    @apply border-l-4 border-accent-300 pl-4 my-4 italic text-surface-600;
+  }
+  .docs-prose hr {
+    @apply my-8 border-surface-200;
+  }
+  .docs-prose table {
+    @apply w-full text-sm my-4 border-collapse;
+  }
+  .docs-prose th {
+    @apply text-left font-semibold text-surface-800 border-b-2 border-surface-300 px-3 py-2;
+  }
+  .docs-prose td {
+    @apply border-b border-surface-200 px-3 py-2 text-surface-700;
+  }
+  .docs-prose strong {
+    @apply font-semibold text-surface-900;
+  }
+  .docs-prose img {
+    @apply max-w-full rounded-lg my-4;
+  }
 }
 
 /* ============================================

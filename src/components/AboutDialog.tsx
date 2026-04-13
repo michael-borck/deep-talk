@@ -1,4 +1,5 @@
 import React from 'react';
+import { URLS } from '../constants/urls';
 
 interface AboutDialogProps {
   isOpen: boolean;
@@ -101,17 +102,15 @@ export const AboutDialog: React.FC<AboutDialogProps> = ({ isOpen, onClose, onSho
               <span>Licenses</span>
             </button>
             <button
-              onClick={() => window.open('https://github.com/michael-borck/deep-talk', '_blank')}
+              onClick={() => window.open(URLS.REPO, '_blank')}
               className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50 transition-colors"
             >
-              <span>🐙</span>
               <span>GitHub</span>
             </button>
             <button
-              onClick={() => window.open('https://github.com/michael-borck/deep-talk/issues', '_blank')}
+              onClick={() => window.open(URLS.ISSUES, '_blank')}
               className="flex items-center justify-center space-x-2 px-4 py-3 border border-surface-200 rounded-lg hover:bg-surface-50 transition-colors"
             >
-              <span>🐛</span>
               <span>Report Issue</span>
             </button>
           </div>

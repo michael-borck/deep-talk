@@ -7,6 +7,7 @@ const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
 const aiProviders = require('./ai-providers');
+const URLS = require('./electron-urls');
 
 // ============================================
 // Custom protocol for streaming local audio/video files
@@ -1081,6 +1082,34 @@ function createWindow() {
     mainWindow.show();
   });
 
+  // Force ALL window.open() calls from the renderer to open in the user's
+  // system browser instead of spawning a child Electron BrowserWindow. This
+  // is the fix for "clicking a link opens an ugly Electron child window
+  // instead of my real browser". Returning { action: 'deny' } cancels the
+  // child window; shell.openExternal hands the URL to the OS.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('mailto:'))) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // Belt-and-braces: also catch in-page navigation attempts (e.g. <a href>
+  // without target=_blank). Anything that tries to navigate away from the
+  // app shell to an external URL gets handed to the OS browser instead.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = mainWindow.webContents.getURL();
+    const isInternal =
+      url.startsWith('http://localhost:') ||
+      url.startsWith('file://') ||
+      url === currentUrl ||
+      url.startsWith(currentUrl.split('#')[0] + '#'); // hash navigation in HashRouter
+    if (!isInternal && (url.startsWith('http://') || url.startsWith('https://'))) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   // Handle any loading errors
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Failed to load:', errorCode, errorDescription);
@@ -1165,20 +1194,21 @@ function createMenu() {
           label: 'User Guide',
           enabled: true,
           click: () => {
-            shell.openExternal('https://michael-borck.github.io/deep-talk');
+            // Open the in-app docs page (no more system browser hop)
+            mainWindow.webContents.send('navigate', 'docs');
           }
         },
         { type: 'separator' },
         {
           label: 'View on GitHub',
           click: () => {
-            shell.openExternal('https://github.com/michael-borck/deep-talk');
+            shell.openExternal(URLS.REPO);
           }
         },
         {
           label: 'Report Issue',
           click: () => {
-            shell.openExternal('https://github.com/michael-borck/deep-talk/issues');
+            shell.openExternal(URLS.ISSUES);
           }
         },
         {

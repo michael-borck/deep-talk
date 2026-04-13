@@ -219,6 +219,27 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
   - **Bulk operations:** Library page now supports multi-select. TranscriptCard accepts `selectable`/`selected`/`onToggleSelect` props and renders a small checkbox at the top when selectable. Selected cards get an accent ring. The Library header has a Select All / Deselect All toggle. When ≥1 transcript is selected, a sticky bulk action bar slides in with: "+ Add to project..." dropdown, Archive, Delete (move to trash). Each operation processes the selection sequentially with try/catch per item, then fires a toast with N-of-M counts. After each bulk op, the selection clears and the transcript list reloads.
   - **STT confidence (dropped):** transformers.js' whisper pipeline doesn't expose per-chunk logprobs/confidence in its standard output. Surfacing it would require dropping to a lower-level API and computing logprobs manually — cost > value for now. Noted for future work.
   - **Three-way diff view (deferred):** real work, needs a diff library or hand-rolled algorithm + side-by-side viewer. Better as a focused session.
+- **2026-04-14** — In-app docs (Option B chosen). The user discovered that clicking docs links in DeepTalk was opening **child Electron BrowserWindows** (not the system browser as I'd previously claimed) and showing 404s on stale Jekyll pages. Both broken. Fixed by:
+  - Installing `react-markdown` + `remark-gfm`
+  - Adding webpack rule `test: /\.md$/, type: 'asset/source'` so markdown files become raw string imports
+  - Adding `src/declarations.d.ts` so TS understands `*.md` imports
+  - New `src/docs/structure.ts` registry — imports all 22 markdown files at build time, defines categories and ordering, provides `searchDocs()` for client-side search
+  - Rewriting `src/pages/DocsPage.tsx` from a card grid into a proper three-pane layout: left sidebar with category nav, main content pane with rendered markdown, breadcrumbs, prev/next page nav, client-side search box
+  - Adding a `.docs-prose` style block to `index.css` for h1/h2/h3, paragraphs, lists, code blocks, blockquotes, tables, etc.
+  - New `/docs/:category/:page` route in `App.tsx` for deep linking
+  - Main process: `setWindowOpenHandler` on `mainWindow.webContents` that catches every `window.open` from the renderer and forwards it to `shell.openExternal`. Also a `will-navigate` belt-and-braces handler. **Fixes the "child window" bug for every link in the app, not just docs.**
+  - `src/constants/urls.ts` + `public/electron-urls.js` (CJS mirror) — single source of truth for the GitHub repo and issues URLs. Future repo move = one-line change in two files.
+  - Help menu "User Guide" now navigates to in-app `/docs` via the existing `navigate` IPC channel — no more system browser hop
+  - Sidebar "Help & Support" → internal nav to `/docs/troubleshooting/common-issues`
+  - Removed dead `external` branch in Sidebar's helpItems map
+  - AboutDialog imports URLs from constants
+  - **Content refresh:** rewrote 5 most-stale markdown files to reflect current architecture — `getting-started/first-use.md`, `user-guide/settings.md`, `user-guide/uploading-files.md`, `features/transcription.md`, `features/ai-chat.md`. All Speaches references gone. Multi-provider AI documented. Pyannote/wespeaker diarisation explained. Drag-and-drop, bulk operations, AI Correction button, toast notifications, assign-project-after-upload all covered.
+  - Cleaned up stale `@xenova/transformers` reference in `webpack.config.js` externals
 - **Backlog:**
   - STT confidence display (would need lower-level transformers.js API)
   - Three-way diff view: original vs corrected vs speaker-tagged
+  - Refresh remaining stale docs: `getting-started/quick-start.md`, `getting-started/installation.md`, `user-guide/interface-overview.md`, `user-guide/managing-transcripts.md`, `user-guide/projects.md`, `features/analysis.md`, `features/search.md`, `features/export.md`, `tutorials/*.md`, `troubleshooting/*.md`, `reference/*.md` (lower priority — they're less stale than the 5 already done)
+  - Diarisation tuning UI (expose median filter, min duration, cluster threshold as Settings)
+  - Cost tracking for cloud providers (token counter + spend estimate)
+  - API key encryption via Electron's `safeStorage`
+  - First-run modal pointing to in-app docs (now that the docs are actually good)
