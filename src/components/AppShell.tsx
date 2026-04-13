@@ -46,29 +46,36 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     };
   }, []);
 
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('Mac');
+
   return (
-    <div className="flex h-screen bg-surface-50 bg-noise">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={setIsSidebarCollapsed}
-        onAboutClick={() => setShowAboutDialog(true)}
-      />
+    <div className="flex flex-col h-screen bg-surface-50 bg-noise">
+      {/* Full-width draggable title strip for macOS — sits above both the
+          sidebar and the main content so the top edge of the window is
+          draggable and the sidebar logo has clearance from the traffic
+          lights (which hiddenInset floats at the top-left). */}
+      {isMac && (
+        <div className="h-7 w-full bg-surface-900 titlebar-drag flex-shrink-0" />
+      )}
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col relative z-10">
-        {/* Title bar area for macOS */}
-        {navigator.platform.includes('Mac') && (
-          <div className="h-7 bg-surface-50 border-b border-surface-200 titlebar-drag" />
-        )}
+      <div className="flex flex-1 min-h-0 min-w-0">
+        {/* Sidebar */}
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={setIsSidebarCollapsed}
+          onAboutClick={() => setShowAboutDialog(true)}
+        />
 
-        {/* Main content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col relative z-10 min-w-0 min-h-0">
+          {/* Main content */}
+          <main className="flex-1 overflow-auto min-w-0">
+            {children}
+          </main>
 
-        {/* Status bar */}
-        <StatusBar />
+          {/* Status bar */}
+          <StatusBar />
+        </div>
       </div>
 
       {/* About Dialog */}

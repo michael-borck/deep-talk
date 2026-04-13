@@ -1,6 +1,9 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, FolderOpen, Library, Settings, ChevronLeft, ChevronRight, Info, Upload, Search, Trash, Archive, MessageCircle, BookOpen, Keyboard, HelpCircle } from 'lucide-react';
+import packageJson from '../../package.json';
+
+const APP_VERSION = packageJson.version;
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -172,9 +175,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onAbou
               className="text-[#a09585] hover:text-primary-100 transition-colors flex items-center space-x-1.5"
             >
               <Info size={13} />
-              <span>DeepTalk v1.0.0</span>
+              <span>DeepTalk v{APP_VERSION}</span>
             </button>
-            <p className="text-[#6b6358] mt-1">&copy; 2024</p>
+            <p className="text-[#6b6358] mt-1">&copy; {new Date().getFullYear()}</p>
           </div>
         ) : (
           <button

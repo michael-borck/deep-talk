@@ -17,6 +17,7 @@ export const UploadPage: React.FC = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleBrowseClick = async () => {
     const filePaths = await window.electronAPI.dialog.openFile();
@@ -24,6 +25,49 @@ export const UploadPage: React.FC = () => {
       console.log('Selected files:', filePaths);
       setSelectedFiles(filePaths);
     }
+  };
+
+  // Drag-and-drop handlers. In Electron, dropped File objects expose a
+  // non-standard `path` property that gives the absolute filesystem path,
+  // which is what the rest of the upload pipeline expects.
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const paths = files
+      .map((f) => (f as unknown as { path?: string }).path)
+      .filter((p): p is string => !!p && p.length > 0);
+
+    if (paths.length === 0) {
+      alert('Could not read the dropped file paths. Try using the browse button instead.');
+      return;
+    }
+
+    // Merge with existing selection so you can drop multiple batches
+    setSelectedFiles((prev) => {
+      const unique = new Set([...prev, ...paths]);
+      return Array.from(unique);
+    });
   };
 
   const checkForDuplicates = async (fileName: string): Promise<boolean> => {
@@ -196,14 +240,25 @@ export const UploadPage: React.FC = () => {
           <div className="card-interactive p-6 animate-slide-up" style={{ animationDelay: '0.05s', opacity: 0 }}>
             <h2 className="section-title mb-4">Select Files</h2>
             <div
-              className="border-2 border-dashed border-surface-200 rounded-xl p-10 text-center hover:border-surface-300 transition-all duration-300 cursor-pointer"
+              className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-300 cursor-pointer ${
+                isDragging
+                  ? 'border-accent-400 bg-accent-50 scale-[1.01]'
+                  : 'border-surface-200 hover:border-surface-300'
+              }`}
               onClick={handleBrowseClick}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <Upload className="mx-auto h-12 w-12 text-surface-300" strokeWidth={1.5} />
+              <Upload
+                className={`mx-auto h-12 w-12 transition-colors ${isDragging ? 'text-accent-500' : 'text-surface-300'}`}
+                strokeWidth={1.5}
+              />
               <div className="mt-4">
-                <button className="text-base font-medium text-primary-800 hover:text-primary-900 transition-colors">
-                  Click to browse files
-                </button>
+                <p className="text-base font-medium text-primary-800">
+                  {isDragging ? 'Drop to add files' : 'Drag files here, or click to browse'}
+                </p>
                 <p className="mt-1.5 text-xs text-surface-400">
                   Supports MP3, WAV, MP4, MOV, M4A, WebM, OGG and other common formats
                 </p>
@@ -212,7 +267,17 @@ export const UploadPage: React.FC = () => {
 
             {selectedFiles.length > 0 && (
               <div className="mt-5">
-                <h3 className="text-xs font-medium text-surface-500 uppercase tracking-wider mb-3">Selected Files ({selectedFiles.length})</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-medium text-surface-500 uppercase tracking-wider">
+                    Selected Files ({selectedFiles.length})
+                  </h3>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedFiles([]); }}
+                    className="text-xs text-surface-500 hover:text-surface-700 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </div>
                 <div className="panel p-3">
                   <ul className="space-y-2">
                     {selectedFiles.map((filePath, index) => {
@@ -220,7 +285,7 @@ export const UploadPage: React.FC = () => {
                       return (
                         <li key={index} className="flex items-center gap-2.5 text-sm">
                           <FileAudio size={15} className="text-primary-400 flex-shrink-0" />
-                          <span className="text-surface-800 font-medium">{fileName}</span>
+                          <span className="text-surface-800 font-medium truncate">{fileName}</span>
                         </li>
                       );
                     })}
@@ -310,33 +375,34 @@ export const UploadPage: React.FC = () => {
             )}
           </div>
 
-          {/* Upload Action */}
-          <div className="card-interactive p-6 animate-slide-up" style={{ animationDelay: '0.15s', opacity: 0 }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="section-title">Ready to Process</h3>
-                <p className="text-xs text-surface-500 mt-1">
-                  {selectedFiles.length === 0
-                    ? 'Select files to begin processing'
-                    : `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected for processing`
-                  }
-                </p>
-              </div>
+        </div>
+
+        {/* Right column: sticky CTA + Processing Queue */}
+        <div className="lg:col-span-1 animate-slide-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
+          <div className="sticky top-8 space-y-6">
+            {/* Upload Action — always visible while selecting files */}
+            <div className="card-interactive p-5">
+              <h3 className="section-title">Ready to Process</h3>
+              <p className="text-xs text-surface-500 mt-1 mb-4">
+                {selectedFiles.length === 0
+                  ? 'Select files to begin'
+                  : `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} ready`}
+              </p>
               <button
                 onClick={handleUpload}
                 disabled={selectedFiles.length === 0}
-                className="px-6 py-2.5 bg-accent-600 text-white text-sm font-medium rounded-lg hover:bg-accent-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-card hover:shadow-md flex items-center gap-2"
+                className="w-full px-4 py-2.5 bg-accent-600 text-white text-sm font-medium rounded-lg hover:bg-accent-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-card hover:shadow-md flex items-center justify-center gap-2"
               >
                 <Play size={15} />
-                Upload & Process
+                Upload &amp; Process
               </button>
+              {selectedProject && (
+                <p className="text-[11px] text-surface-500 mt-3 text-center">
+                  Will be added to the selected project
+                </p>
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Processing Queue Sidebar */}
-        <div className="lg:col-span-1 animate-slide-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
-          <div className="sticky top-8">
             <ProcessingQueue items={processingQueue} />
           </div>
         </div>
