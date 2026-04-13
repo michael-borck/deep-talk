@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Wand2, Save, Plus, Trash2 } from 'lucide-react';
+import { X, Wand2, Save, Plus, Trash2, Sparkles, Check, Loader2 } from 'lucide-react';
+import {
+  suggestSpeakerImprovements,
+  SpeakerLabelSuggestion,
+  SpeakerMergeSuggestion,
+} from '../services/speakerLabelService';
 
 interface Speaker {
   id: string;
@@ -40,6 +45,16 @@ export const SpeakerTaggingModal: React.FC<SpeakerTaggingModalProps> = ({
   const [selectedSpeaker, setSelectedSpeaker] = useState<string>('');
   const [newSpeakerName, setNewSpeakerName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // AI Correction state — separate from the "Apply AI Suggestions" feature.
+  // This one asks the AI to suggest better labels + merge candidates based on
+  // the current diarised speakers and their actual text content.
+  const [isCorrectingWithAI, setIsCorrectingWithAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [labelSuggestions, setLabelSuggestions] = useState<SpeakerLabelSuggestion[]>([]);
+  const [mergeSuggestions, setMergeSuggestions] = useState<SpeakerMergeSuggestion[]>([]);
+  const [acceptedLabels, setAcceptedLabels] = useState<Set<string>>(new Set());
+  const [acceptedMerges, setAcceptedMerges] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -367,6 +382,167 @@ etc.`;
     setIsProcessing(false);
   };
 
+  // ---------- AI Correction (labels + merge suggestions) ----------
+
+  // Collect up to 5 representative text samples per speaker for the AI.
+  // We pick a mix of short and long turns so the model has enough signal.
+  const collectSpeakerSamples = () => {
+    return speakers.map((speaker) => {
+      const owned = segments
+        .filter((s) => s.speaker === speaker.id && s.text.trim().length > 0)
+        .map((s) => s.text.trim());
+
+      // Rank: prefer medium-length samples (10-30 words) over very short/long
+      const scored = owned.map((text) => {
+        const words = text.split(/\s+/).filter(Boolean).length;
+        const score =
+          words >= 10 && words <= 30 ? 2 : words >= 5 && words <= 50 ? 1 : 0;
+        return { text, score, words };
+      });
+      scored.sort((a, b) => b.score - a.score);
+
+      // Deduplicate, keep up to 5
+      const seen = new Set<string>();
+      const samples: string[] = [];
+      for (const entry of scored) {
+        if (seen.has(entry.text)) continue;
+        seen.add(entry.text);
+        samples.push(entry.text);
+        if (samples.length >= 5) break;
+      }
+
+      return { id: speaker.id, name: speaker.name, samples };
+    });
+  };
+
+  const handleAICorrection = async () => {
+    setIsCorrectingWithAI(true);
+    setAiError(null);
+    setLabelSuggestions([]);
+    setMergeSuggestions([]);
+    setAcceptedLabels(new Set());
+    setAcceptedMerges(new Set());
+
+    try {
+      const speakerSamples = collectSpeakerSamples();
+      const speakersWithContent = speakerSamples.filter((s) => s.samples.length > 0);
+
+      if (speakersWithContent.length === 0) {
+        setAiError('None of the speakers have tagged segments yet. Assign some text to speakers first.');
+        setIsCorrectingWithAI(false);
+        return;
+      }
+
+      const result = await suggestSpeakerImprovements(speakerSamples);
+
+      if (!result.success) {
+        setAiError(result.error || 'AI service failed');
+      } else {
+        setLabelSuggestions(result.labels);
+        setMergeSuggestions(result.merges);
+        // Default: pre-accept label suggestions (they're usually wins), pre-accept high-confidence merges only
+        setAcceptedLabels(new Set(result.labels.map((l) => l.speakerId)));
+        setAcceptedMerges(
+          new Set(
+            result.merges
+              .filter((m) => m.confidence === 'high')
+              .map((m) => `${m.speakerAId}>${m.speakerBId}`)
+          )
+        );
+
+        if (result.labels.length === 0 && result.merges.length === 0) {
+          setAiError('The AI had no suggestions — your current labels look good already.');
+        }
+      }
+    } catch (error) {
+      setAiError((error as Error).message);
+    } finally {
+      setIsCorrectingWithAI(false);
+    }
+  };
+
+  const toggleLabelAccepted = (speakerId: string) => {
+    setAcceptedLabels((prev) => {
+      const next = new Set(prev);
+      if (next.has(speakerId)) next.delete(speakerId);
+      else next.add(speakerId);
+      return next;
+    });
+  };
+
+  const toggleMergeAccepted = (mergeKey: string) => {
+    setAcceptedMerges((prev) => {
+      const next = new Set(prev);
+      if (next.has(mergeKey)) next.delete(mergeKey);
+      else next.add(mergeKey);
+      return next;
+    });
+  };
+
+  const applyAICorrections = () => {
+    // Apply accepted label renames first
+    const renamedSpeakers = speakers.map((s) => {
+      if (!acceptedLabels.has(s.id)) return s;
+      const suggestion = labelSuggestions.find((l) => l.speakerId === s.id);
+      if (!suggestion) return s;
+      return { ...s, name: suggestion.suggestedName };
+    });
+
+    // Apply accepted merges: B gets merged into A. Segments tagged with B
+    // are reassigned to A, then B is removed from the speakers list.
+    // We process merges in order, resolving transitively if later merges
+    // target a speaker already merged into someone else.
+    let workingSpeakers = [...renamedSpeakers];
+    let workingSegments = [...segments];
+    const mergedInto = new Map<string, string>(); // B -> resolved target A
+
+    const resolve = (id: string): string => {
+      let cur = id;
+      while (mergedInto.has(cur)) cur = mergedInto.get(cur)!;
+      return cur;
+    };
+
+    for (const merge of mergeSuggestions) {
+      const key = `${merge.speakerAId}>${merge.speakerBId}`;
+      if (!acceptedMerges.has(key)) continue;
+      const targetA = resolve(merge.speakerAId);
+      const targetB = resolve(merge.speakerBId);
+      if (targetA === targetB) continue;
+      mergedInto.set(targetB, targetA);
+    }
+
+    if (mergedInto.size > 0) {
+      workingSegments = workingSegments.map((seg) => {
+        if (seg.speaker && mergedInto.has(seg.speaker)) {
+          return { ...seg, speaker: resolve(seg.speaker) };
+        }
+        return seg;
+      });
+      workingSpeakers = workingSpeakers.filter((s) => !mergedInto.has(s.id));
+    }
+
+    setSpeakers(workingSpeakers);
+    setSegments(workingSegments);
+
+    // Clear suggestions — user has applied them
+    setLabelSuggestions([]);
+    setMergeSuggestions([]);
+    setAcceptedLabels(new Set());
+    setAcceptedMerges(new Set());
+    setAiError(null);
+  };
+
+  const dismissAISuggestions = () => {
+    setLabelSuggestions([]);
+    setMergeSuggestions([]);
+    setAcceptedLabels(new Set());
+    setAcceptedMerges(new Set());
+    setAiError(null);
+  };
+
+  const hasSuggestionsToApply =
+    labelSuggestions.length > 0 || mergeSuggestions.length > 0;
+
   const handleSave = () => {
     // Build tagged transcript
     const taggedLines = segments.map(seg => {
@@ -524,25 +700,166 @@ etc.`;
 
             {/* Actions */}
             <div className="space-y-3">
+              {/* AI Correction — rename + merge suggestions based on what
+                  speakers actually say. Works on top of the auto-diarised
+                  labels; complements the segment-tagging feature below. */}
+              <button
+                onClick={handleAICorrection}
+                disabled={isCorrectingWithAI || speakers.length === 0}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  isCorrectingWithAI || speakers.length === 0
+                    ? 'bg-surface-100 text-surface-400 cursor-not-allowed'
+                    : 'bg-accent-600 text-white hover:bg-accent-700'
+                }`}
+              >
+                {isCorrectingWithAI ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                <span>{isCorrectingWithAI ? 'Thinking...' : 'AI Correction'}</span>
+              </button>
+              <p className="text-[11px] text-surface-500 text-center -mt-1">
+                Suggest meaningful labels and flag speakers that might be the same person
+              </p>
+
               <button
                 onClick={applyAISuggestions}
                 disabled={isProcessing || taggedCount < 2}
-                className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
                   isProcessing || taggedCount < 2
                     ? 'bg-surface-100 text-surface-400 cursor-not-allowed'
-                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-primary-800 text-primary-100 hover:bg-primary-900'
                 }`}
               >
                 <Wand2 size={18} />
-                <span>{isProcessing ? 'Processing...' : 'Apply AI Suggestions'}</span>
+                <span>{isProcessing ? 'Processing...' : 'Extend Manual Tags'}</span>
               </button>
-              
+
               {taggedCount < 2 && (
-                <p className="text-xs text-surface-500 text-center">
-                  Tag at least 2 segments to enable AI assistance
+                <p className="text-[11px] text-surface-500 text-center -mt-1">
+                  Tag at least 2 segments manually to enable tag extension
                 </p>
               )}
+
+              {/* AI error / empty result message */}
+              {aiError && (
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  {aiError}
+                </div>
+              )}
             </div>
+
+            {/* AI Correction suggestions panel */}
+            {hasSuggestionsToApply && (
+              <div className="mt-6 border-t border-surface-200 pt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-surface-900 flex items-center gap-2">
+                    <Sparkles size={14} className="text-accent-500" />
+                    AI Suggestions
+                  </h3>
+                  <button
+                    onClick={dismissAISuggestions}
+                    className="text-xs text-surface-500 hover:text-surface-700"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+
+                {/* Label suggestions */}
+                {labelSuggestions.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-medium text-surface-500 uppercase tracking-wider mb-2">
+                      Rename speakers ({labelSuggestions.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {labelSuggestions.map((label) => {
+                        const accepted = acceptedLabels.has(label.speakerId);
+                        return (
+                          <label
+                            key={label.speakerId}
+                            className={`flex items-start gap-2 p-2.5 rounded-lg cursor-pointer border transition-colors ${
+                              accepted
+                                ? 'border-accent-300 bg-accent-50'
+                                : 'border-surface-200 bg-white hover:border-surface-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={accepted}
+                              onChange={() => toggleLabelAccepted(label.speakerId)}
+                              className="mt-0.5 accent-accent-600 flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-surface-800">
+                                <span className="line-through text-surface-400">{label.currentName}</span>
+                                <span className="mx-1.5 text-surface-400">→</span>
+                                <span className="font-semibold text-surface-900">{label.suggestedName}</span>
+                              </div>
+                              <p className="text-[11px] text-surface-500 mt-0.5">{label.reasoning}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Merge suggestions */}
+                {mergeSuggestions.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-medium text-surface-500 uppercase tracking-wider mb-2">
+                      Merge suggestions ({mergeSuggestions.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {mergeSuggestions.map((merge) => {
+                        const key = `${merge.speakerAId}>${merge.speakerBId}`;
+                        const accepted = acceptedMerges.has(key);
+                        const confidenceColor =
+                          merge.confidence === 'high'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : merge.confidence === 'medium'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-surface-100 text-surface-600';
+                        return (
+                          <label
+                            key={key}
+                            className={`flex items-start gap-2 p-2.5 rounded-lg cursor-pointer border transition-colors ${
+                              accepted
+                                ? 'border-accent-300 bg-accent-50'
+                                : 'border-surface-200 bg-white hover:border-surface-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={accepted}
+                              onChange={() => toggleMergeAccepted(key)}
+                              className="mt-0.5 accent-accent-600 flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs text-surface-800">
+                                Merge <span className="font-semibold">{merge.speakerBName}</span> into{' '}
+                                <span className="font-semibold">{merge.speakerAName}</span>
+                                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-medium uppercase ${confidenceColor}`}>
+                                  {merge.confidence}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-surface-500 mt-0.5">{merge.reasoning}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={applyAICorrections}
+                  disabled={acceptedLabels.size === 0 && acceptedMerges.size === 0}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent-600 text-white text-sm font-medium hover:bg-accent-700 disabled:bg-surface-100 disabled:text-surface-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Check size={15} />
+                  Apply {acceptedLabels.size + acceptedMerges.size} change
+                  {acceptedLabels.size + acceptedMerges.size !== 1 ? 's' : ''}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Transcript segments */}
