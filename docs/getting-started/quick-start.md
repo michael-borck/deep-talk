@@ -1,230 +1,82 @@
-# Quick Start Tutorial
+# Quick Start
 
-This hands-on tutorial will walk you through your first complete DeepTalk workflow, from uploading a file to exploring the results. You'll learn the essential features and see how everything works together.
+The speed-run version of getting productive with DeepTalk. If you've already read [First Use](first-use.md), skip straight to Step 1.
 
-## What You'll Accomplish
+**Time needed:** about 10 minutes, most of which is waiting for the first model download.
 
-By the end of this tutorial, you'll have:
-- ✅ Uploaded and processed your first audio file
-- ✅ Explored the transcription results
-- ✅ Understood the main interface elements
-- ✅ Learned basic organization with projects
-- ✅ Explored export options
-- ✅ (Optional) Set up enhanced services
+## Step 1 — Pick a transcription model
 
-**Time needed**: 15-30 minutes
+Open **Settings → Transcription**. Three choices:
 
-## Prerequisites
+| Model | Size | When to pick |
+|---|---|---|
+| **Tiny (English)** | ~75 MB | Default. Fastest. Fine for most recordings. |
+| **Base (English)** | ~140 MB | Recommended balance of speed and accuracy. |
+| **Small (English)** | ~470 MB | Best accuracy. Pick on a fast machine. |
 
-- DeepTalk installed and launched
-- A short audio or video file (2-5 minutes recommended for first try)
-- Basic familiarity with the interface (covered in [First Use Guide](first-use.md))
+Click **Download model now** to pre-fetch it, or just move on — DeepTalk will download it the first time you hit Transcribe.
 
-## Step 1: Prepare Your Test File
+## Step 2 — Point DeepTalk at an LLM
 
-### Choose a Good Test File
-For your first experience, pick an audio file that is:
-- **Short**: 2-5 minutes (faster processing)
-- **Clear**: Good audio quality
-- **Interesting**: Content you'd like to analyze
-- **Appropriate**: Since this is a test, use something simple
+Open **Settings → Processing → AI Analysis Service**. Everything after transcription (summary, themes, action items, chat) needs a language model.
 
-### Supported Formats
-DeepTalk accepts many formats including:
-- **Audio**: MP3, WAV, M4A, OGG
-- **Video**: MP4, AVI, MOV, WebM
+- **Stay private** — install [Ollama](https://ollama.com) and run `ollama pull llama3.2:3b`. Leave the provider set to Ollama. Nothing leaves your machine.
+- **Want more power** — switch to OpenAI, Anthropic, Groq, Gemini, OpenRouter, or a custom endpoint. Paste the API key. A "☁ Cloud" banner reminds you transcripts will be sent to that provider.
 
-## Step 2: Upload Your First File
+Click **Test Connection**, then **Refresh Models** and pick one. That's it.
 
-### From the Library Page
-1. **Click** the 📋 **Library** tab in the top navigation
-2. **Look** for an "Upload" or "Add Transcript" button
-3. **Click** the upload button
+## Step 3 — Upload a file
 
-### Upload Process
-1. **Select your file** using the file browser
-2. **Add a title** (optional, but recommended)
-3. **Add a description** (optional)
-4. **Click "Upload" or "Start Processing"**
+Click **Upload & Process** in the sidebar. Drag an audio or video file into the dropzone (MP3, WAV, M4A, OGG, MP4, MOV, WebM, FLAC — most formats work). Optionally assign it to a project. Click **Upload & Process**.
 
-### What Happens Next
-- DeepTalk will begin processing your file
-- You'll see a progress indicator
-- Processing time depends on file length and your computer's speed
-- For a 3-minute file, expect 1-5 minutes processing time
+DeepTalk will:
 
-## Step 3: Explore the Processing
+1. Decode the audio
+2. Transcribe with Whisper (local)
+3. Detect speakers from audio with pyannote + wespeaker (local, if enabled)
+4. Run AI analysis for summary, themes, sentiment, action items
+5. Save everything to the Library
 
-### Processing Steps You'll See
-1. **File Upload**: Your file is copied into DeepTalk
-2. **Audio Extraction**: Audio is prepared for transcription
-3. **Transcription**: Speech is converted to text
-4. **Analysis**: Basic content analysis is performed
-5. **Completion**: Results are saved and ready to view
+You can navigate away — processing continues in the background. A toast tells you when it's done.
 
-### During Processing
-- **Stay on the page** to watch progress, or
-- **Navigate away** - processing continues in the background
-- **Check the Home page** for overall status
+## Step 4 — Read the results
 
-## Step 4: Review Your Results
+Click the transcript in the **Library**. The detail page has:
 
-### Viewing the Transcript
-Once processing is complete:
-1. **Go to Library** if you're not already there
-2. **Find your transcript** in the list
-3. **Click on it** to open the detailed view
+- **Overview** — summary, key topics, action items, sentiment, notable quotes
+- **Transcript** — the full text with speaker tags and timestamps; click a line to jump the audio player to that point
+- **Analysis** — deeper research views (themes, Q&A pairs, concept frequency, speaker talk-time)
+- **Chat** — ask questions about the content
 
-### What You'll See
-- **Transcript text**: The speech converted to text
-- **Metadata**: File information, duration, processing date
-- **Basic analysis**: Key topics, word count, etc.
-- **Action buttons**: Edit, export, delete options
+If you need to rename speakers or fix diarisation mistakes, open **Speaker Tagging** from the transcript detail page.
 
-### Understanding the Interface
-- **Left panel**: Transcript list and navigation
-- **Main area**: Transcript content and details
-- **Right panel**: Analysis and insights (if available)
+## Step 5 — Organise with projects
 
-## Step 5: Basic Organization
+Projects let you analyse multiple recordings together.
 
-### Creating Your First Project
-Projects help organize related transcripts:
+1. Sidebar → **Projects** → **New Project**
+2. Give it a name, optional description, colour, icon
+3. Open the project and click **Add Transcripts** to include recordings from the Library
+4. Use the project's **Insights**, **Cross-transcript Search**, and **Chat** tabs to work across the whole set
 
-1. **Go to the** 📁 **Projects** tab
-2. **Click "Create Project"** or "New Project"
-3. **Enter a project name** (e.g., "My Test Project")
-4. **Add a description** (optional)
-5. **Save** the project
+A project's chat has access to every transcript in the project at once — good for questions like "which interviews mentioned the Q3 roadmap?".
 
-### Adding Transcripts to Projects
-1. **Open your project**
-2. **Click "Add Transcript"** or similar button
-3. **Select** your uploaded transcript
-4. **Confirm** the addition
+## Step 6 — Export
 
-**Benefits of Projects:**
-- Group related content together
-- Analyze multiple transcripts as a unit
-- Better organization and navigation
-- Enhanced search across related content
+From any transcript detail page, click **Export** to save as Markdown, TXT, JSON, or PDF. Projects have their own export with multi-transcript analysis bundled in.
 
-## Step 6: Explore Basic Features
+## Tips
 
-### Transcript Editing
-- **Click the "Edit" button** to make corrections
-- **Edit the text** if you notice transcription errors
-- **Save changes** when done
+- **Start with short files** while you're learning. A 2-minute recording gives you the full workflow in under a minute of processing on an M-series Mac.
+- **Defaults are sensible.** Tiny.en + Ollama + speaker detection is a reasonable starting point for most users.
+- **Settings save immediately.** No Save button.
+- **Press `Cmd/Ctrl + ?`** anytime for the full keyboard shortcuts list.
 
-### Search Functionality
-- **Use the search bar** to find specific words or phrases
-- **Try searching** for keywords from your transcript
-- **Notice** how results are highlighted
+## Next steps
 
-### Export Options
-1. **Click "Export"** or look for export buttons
-2. **Choose format**: Text, PDF, or other available formats
-3. **Download** your processed transcript
-
-## Step 7: Optional - Enhanced Services Setup
-
-For the full DeepTalk experience, you can set up external services:
-
-### Option A: Basic Setup (Recommended for Beginners)
-Continue using DeepTalk as-is with the features you've just learned. You can always add services later!
-
-### Option B: Enhanced Transcription (Speaches)
-For better transcription quality:
-
-1. **Install Speaches** (separate application)
-2. **Configure** in Settings → Transcription
-3. **Set URL** to your Speaches instance
-4. **Test connection**
-
-### Option C: AI Analysis (Ollama)
-For advanced AI features and chat:
-
-1. **Install Ollama** (separate application)  
-2. **Download a model** (e.g., llama2)
-3. **Configure** in Settings → Processing
-4. **Test connection**
-
-**Note**: Service setup instructions are detailed in our [service-specific guides](../reference/system-requirements.md).
-
-## Step 8: Understanding Your Workflow
-
-### The Basic DeepTalk Workflow
-1. **Upload** → Add audio/video files
-2. **Process** → Transcribe and analyze
-3. **Organize** → Group into projects
-4. **Review** → Read and edit transcripts
-5. **Export** → Share or archive results
-
-### Tips for Success
-- **Start small**: Use shorter files while learning
-- **Good audio quality**: Better input = better results
-- **Organize early**: Create projects before you have many transcripts
-- **Regular exports**: Back up important work
-- **Explore gradually**: Try new features as you get comfortable
-
-## What's Next?
-
-### Immediate Next Steps
-1. **Try uploading 2-3 more files** to get comfortable with the process
-2. **Experiment with projects** and organization
-3. **Explore the Settings** to customize your experience
-
-### Learning More
-- **[User Guide](../user-guide/README.md)**: Comprehensive feature documentation
-- **[Tutorials](../tutorials/README.md)**: Advanced workflows and use cases
-- **[Features](../features/README.md)**: Detailed explanations of capabilities
-
-### Advanced Features to Explore Later
-- **AI Chat**: Conversation with your transcripts (requires Ollama)
-- **Advanced Search**: Vector-based semantic search
-- **Bulk Processing**: Handle multiple files at once
-- **Custom Analysis**: Configure analysis parameters
-
-## Troubleshooting Your First Session
-
-### Common Issues
-
-**Processing takes a long time**
-- Try a shorter file (under 2 minutes)
-- Check your computer's available memory
-- Close other applications during processing
-
-**Poor transcription quality**
-- Ensure good audio quality in source file
-- Consider setting up Speaches for better results
-- Edit transcripts manually for corrections
-
-**Can't find uploaded files**
-- Check the Library tab
-- Look in the "Recent" section on Home page
-- Use the search function
-
-**Interface feels confusing**
-- Review the [Interface Overview](../user-guide/interface-overview.md)
-- Take your time exploring each tab
-- Focus on one feature at a time
-
-### Getting Help
-- **[FAQ](../troubleshooting/faq.md)**: Common questions and answers
-- **[Common Issues](../troubleshooting/common-issues.md)**: Technical problem solutions
-- **[Community](https://github.com/michael-borck/deep-talk/discussions)**: Connect with other users
-
-## Congratulations!
-
-You've successfully completed your first DeepTalk workflow! You now know:
-- How to upload and process files
-- How to navigate the interface
-- How to organize content with projects
-- How to export your results
-- Where to go for additional help
-
-**Keep exploring** - DeepTalk has many more powerful features to discover as you become more comfortable with the basics.
-
----
-
-**Continue learning**: [User Guide →](../user-guide/README.md) | [Tutorials →](../tutorials/README.md)
+- [Interface Overview](../user-guide/interface-overview.md) — full tour of the window
+- [Managing Transcripts](../user-guide/managing-transcripts.md) — library, archive, trash, bulk ops
+- [Projects](../user-guide/projects.md) — cross-transcript analysis
+- [Analysis](../features/analysis.md) — what each analysis view means
+- [AI Chat](../features/ai-chat.md) — the three chat modes explained
+- [Troubleshooting](../troubleshooting/common-issues.md) — if something misbehaves

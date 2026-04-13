@@ -1,140 +1,99 @@
-# Installation Guide
+# Installation
 
-This guide will help you download and install DeepTalk on your computer. DeepTalk supports Windows, macOS, and Linux.
+DeepTalk is a desktop Electron app. There are prebuilt installers for macOS, Windows, and Linux on the [Releases page](https://github.com/michael-borck/deep-talk/releases).
 
-## System Requirements
+## System requirements
 
-Before installing, make sure your system meets these minimum requirements:
+| | Minimum | Recommended |
+|---|---|---|
+| **OS** | macOS 11, Windows 10, Ubuntu 20.04 (or equivalent) | macOS 13+, Windows 11, recent Linux |
+| **CPU** | Any 64-bit x86 or Apple Silicon | Apple Silicon (M1/M2/M3/M4) or recent Intel/AMD |
+| **RAM** | 4 GB | 8 GB+ |
+| **Disk** | 2 GB free | 10 GB+ (for models and your transcript library) |
+| **GPU** | Not required | Not used — all inference is CPU-only in the current build |
 
-### Minimum Requirements
-- **RAM**: 4GB (8GB recommended)
-- **Storage**: 500MB free space (more for your transcripts)
-- **Operating System**: 
-  - Windows 10 or later
-  - macOS 10.14 (Mojave) or later
-  - Linux (Ubuntu 18.04+, or equivalent)
+Apple Silicon Macs are by far the fastest platform for local transcription and diarisation. Intel Macs and older x86 Linux laptops work but are noticeably slower.
 
-### Recommended Requirements
-- **RAM**: 8GB or more
-- **Storage**: 2GB+ free space
-- **Audio**: Sound card or audio interface (for audio playback)
+## macOS
 
-## Download DeepTalk
+1. Download the `.dmg` from the Releases page.
+2. Open it and drag **DeepTalk** into Applications.
+3. Launch it from Applications or Spotlight.
 
-### Option 1: GitHub Releases (Recommended)
+DeepTalk is code-signed and notarised, so macOS Gatekeeper accepts it without warnings. If you see a "damaged" error, you're likely running an unsigned nightly — right-click the app → Open the first time.
 
-1. Visit the [DeepTalk Releases page](https://github.com/michael-borck/deep-talk/releases)
-2. Find the latest release
-3. Download the appropriate file for your operating system:
+## Windows
 
-#### Windows
-- **File**: `DeepTalk-Setup-x.x.x.exe`
-- **Size**: ~150MB
-- **Type**: Windows installer
+1. Download the `.exe` installer from the Releases page.
+2. Run it. Windows SmartScreen may prompt — click **More info** → **Run anyway** if the publisher is recognised.
+3. Launch **DeepTalk** from the Start menu.
 
-#### macOS
-- **File**: `DeepTalk-x.x.x.dmg` (Intel & Apple Silicon)
-- **Size**: ~150MB
-- **Type**: macOS disk image
+Data lives in `%APPDATA%\deep-talk` by default. You can move it from **Settings → General → Storage & Backup**.
 
-#### Linux
-- **AppImage**: `DeepTalk-x.x.x.AppImage` (Universal)
-- **Debian/Ubuntu**: `DeepTalk-x.x.x.deb`
-- **Size**: ~150MB
+## Linux
 
-## Installation Instructions
+Download the `.AppImage` from the Releases page:
 
-### Windows Installation
+```bash
+chmod +x DeepTalk-*.AppImage
+./DeepTalk-*.AppImage
+```
 
-1. **Download** the `.exe` installer from the releases page
-2. **Run** the installer by double-clicking the downloaded file
-3. **Follow** the installation wizard:
-   - Choose installation location (default is recommended)
-   - Select whether to create desktop shortcut
-   - Choose whether to launch DeepTalk after installation
-4. **Launch** DeepTalk from the Start Menu or desktop shortcut
+Or the `.deb` on Debian/Ubuntu:
 
-**Note**: Windows may show a security warning. Click "More info" and then "Run anyway" if needed.
+```bash
+sudo dpkg -i deep-talk_*.deb
+```
 
-### macOS Installation
+On Linux, API key encryption requires a running keyring service (`libsecret` via GNOME Keyring or KWallet). Without one, DeepTalk falls back to storing keys as plain text — fine for personal machines, not for shared workstations.
 
-1. **Download** the `.dmg` file from the releases page
-2. **Open** the downloaded DMG file
-3. **Drag** DeepTalk to your Applications folder
-4. **Launch** DeepTalk from Applications or Spotlight
+## What gets installed where
 
-**Important**: macOS may block the app on first launch:
-- Go to System Preferences → Security & Privacy
-- Click "Open Anyway" next to the DeepTalk entry
-- Or right-click DeepTalk in Applications and select "Open"
+| Platform | App binary | User data |
+|---|---|---|
+| macOS | `/Applications/DeepTalk.app` | `~/Library/Application Support/deep-talk/` |
+| Windows | `C:\Users\<you>\AppData\Local\Programs\deep-talk\` | `%APPDATA%\deep-talk\` |
+| Linux | `/opt/DeepTalk/` or AppImage mount point | `~/.config/deep-talk/` |
 
-### Linux Installation
+User data includes:
 
-#### Option A: AppImage (Recommended)
-1. **Download** the `.AppImage` file
-2. **Make it executable**: `chmod +x DeepTalk-*.AppImage`
-3. **Run** the AppImage: `./DeepTalk-*.AppImage`
+- `deeptalk.db` — the SQLite database (transcripts, projects, settings, chat history)
+- `models/` — cached Whisper, pyannote, and wespeaker model files
+- `backups/` — automated backups, if auto-backup is enabled
 
-#### Option B: Debian/Ubuntu Package
-1. **Download** the `.deb` file
-2. **Install** using: `sudo dpkg -i DeepTalk-*.deb`
-3. **Fix dependencies** if needed: `sudo apt-get install -f`
-4. **Launch** from applications menu or run `deeptalk`
+You can change the database location from **Settings → General → Storage & Backup → Database location**. The app will move the file for you.
 
-## Verification
+## Optional: install Ollama for local AI analysis
 
-After installation, verify that DeepTalk is working correctly:
+DeepTalk's AI analysis (summaries, themes, chat) needs a language model. The privacy-preserving default is [Ollama](https://ollama.com), which also runs on your machine.
 
-1. **Launch** DeepTalk
-2. **Check** that the application opens without errors
-3. **Verify** you see the welcome screen or main interface
-4. **Confirm** the version number matches what you downloaded
+1. Download Ollama from [ollama.com](https://ollama.com) and install it.
+2. Pull a model from a terminal:
 
-## What's Included
+   ```bash
+   ollama pull llama3.2:3b
+   ```
 
-DeepTalk comes with everything you need to get started:
+   A 3B-parameter model is plenty for summaries and chat on most machines. Pull something bigger (`llama3.1:8b`, `qwen2.5:14b`) if you have the RAM.
 
-- ✅ **FFmpeg**: Bundled for audio/video processing
-- ✅ **Local Database**: SQLite for storing your data
-- ✅ **User Interface**: Complete desktop application
-- ✅ **Basic Processing**: Works offline without external services
+3. Leave DeepTalk's AI provider set to **Ollama (local)** in Settings. The default URL (`http://localhost:11434/v1`) will just work.
 
-## Optional Services (Not Required for Basic Use)
+If you'd rather use a cloud provider (OpenAI, Anthropic, Groq, Gemini, OpenRouter), skip Ollama entirely and configure the provider in Settings.
 
-For enhanced features, you can optionally install:
+## First launch
 
-- **Speaches**: Enhanced speech-to-text service
-- **Ollama**: Local AI analysis and chat features
+On first run DeepTalk shows a welcome modal explaining the privacy model and linking to this quick-start. Dismiss it once — it won't show again unless you clear browser storage or upgrade to a major new release.
 
-These are covered in the [Quick Start Tutorial](quick-start.md) and can be added anytime.
+The first time you transcribe anything, DeepTalk downloads the Whisper model you selected (~75-470 MB). The first time you enable speaker detection, it also downloads pyannote + wespeaker (~30 MB combined). Both happen in the background with progress notifications. After that, everything is cached — no further downloads, no network calls during transcription.
 
-## Troubleshooting Installation
+## Uninstalling
 
-### Common Issues
+- **macOS** — drag the app to Trash. Remove `~/Library/Application Support/deep-talk/` to delete data.
+- **Windows** — use Settings → Apps, or the uninstaller in the install directory. Remove `%APPDATA%\deep-talk\` to delete data.
+- **Linux** — `sudo dpkg -r deep-talk` or delete the AppImage. Remove `~/.config/deep-talk/` to delete data.
 
-**Windows: "Windows protected your PC"**
-- Click "More info" → "Run anyway"
-- Or add an exception in Windows Defender
+## Next steps
 
-**macOS: "Cannot be opened because it is from an unidentified developer"**
-- Go to System Preferences → Security & Privacy
-- Click "Open Anyway"
-
-**Linux: "Permission denied"**
-- Make sure the AppImage is executable: `chmod +x DeepTalk-*.AppImage`
-
-**General: Application won't start**
-- Check [System Requirements](../reference/system-requirements.md)
-- Try running from command line to see error messages
-- Check our [Common Issues](../troubleshooting/common-issues.md) guide
-
-### Getting Help
-
-If you encounter issues not covered here:
-- Check the [Troubleshooting Guide](../troubleshooting/common-issues.md)
-- Visit [GitHub Issues](https://github.com/michael-borck/deep-talk/issues)
-- Review [System Requirements](../reference/system-requirements.md)
-
----
-
-**Next Step**: [First Use Setup →](first-use.md)
+- [First Use](first-use.md) — what you'll see on launch
+- [Quick Start](quick-start.md) — your first transcript in 10 minutes
+- [Settings](../user-guide/settings.md) — every setting explained

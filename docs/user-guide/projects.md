@@ -1,334 +1,120 @@
-# Working with Projects
-
-Projects in DeepTalk provide powerful organization and analysis capabilities, allowing you to group related transcripts and gain insights across multiple conversations. This guide covers everything from basic project creation to advanced cross-transcript analysis.
-
-## Understanding Projects
-
-### What are Projects?
-Projects are organizational containers that group related transcripts together for:
-- **Thematic organization**: Group content by topic, client, or purpose
-- **Cross-transcript analysis**: Analyze patterns across multiple conversations
-- **Collaboration**: Share related content with team members
-- **Reporting**: Generate insights from combined transcript data
-- **Workflow management**: Track progress across related conversations
-
-### Project Benefits
-- **Unified analysis**: See patterns across multiple transcripts
-- **Better organization**: Keep related content together
-- **Collaborative workflows**: Team access to project content
-- **Comprehensive insights**: Project-level summaries and trends
-- **Efficient management**: Bulk operations across related transcripts
-
-## Creating Projects
-
-### Basic Project Creation
-
-**From Projects Page:**
-1. **Navigate** to 📁 Projects tab
-2. **Click** "Create New Project" button
-3. **Enter project details**:
-   - **Name**: Descriptive project title
-   - **Description**: Purpose and scope
-   - **Category**: Project type or department
-   - **Tags**: Relevant keywords for discovery
-
-4. **Configure settings**:
-   - **Privacy level**: Private, team, or public access
-   - **Analysis preferences**: Default analysis settings
-   - **Notification settings**: Updates and progress alerts
-
-5. **Save** to create the project
-
-**Quick Project Creation:**
-- **From transcript**: Create project while uploading files
-- **From existing content**: Select transcripts and "Add to New Project"
-- **Template-based**: Use project templates for common use cases
-
-### Project Configuration
-
-**Basic Information:**
-- **Project name**: Clear, descriptive title
-- **Description**: Detailed explanation of project purpose
-- **Keywords/tags**: Searchable terms for discovery
-- **Category**: Business type, department, or purpose classification
-
-**Advanced Settings:**
-- **Default analysis**: AI analysis settings for all project transcripts
-- **Speaker preferences**: Default speaker handling and naming
-- **Export templates**: Standardized export formats for project content
-- **Collaboration rules**: Team access and permissions
-
-## Adding Content to Projects
-
-### Adding New Transcripts
-
-**Upload Directly to Project:**
-1. **Open** the target project
-2. **Click** "Add Transcripts" or "Upload to Project"
-3. **Select files** using standard upload process
-4. **Files automatically** assigned to the project
-
-**Benefits of Direct Upload:**
-- **Automatic organization**: No need to move files later
-- **Consistent settings**: Project defaults applied to all uploads
-- **Streamlined workflow**: Single-step upload and organization
-
-### Adding Existing Transcripts
-
-**From Library:**
-1. **Go to** 📋 Library page
-2. **Select** one or more transcripts
-3. **Click** "Add to Project" button
-4. **Choose** target project from list
-5. **Confirm** addition to project
-
-**From Transcript Detail:**
-1. **Open** any transcript
-2. **Find** "Project Assignment" section
-3. **Select** target project from dropdown
-4. **Save** the assignment
-
-**Bulk Assignment:**
-- **Select multiple** transcripts in Library
-- **Use "Bulk Actions"** → "Add to Project"
-- **Choose project** and confirm batch assignment
-- **Monitor progress** for large batches
-
-### Moving Between Projects
-
-**Single Transcript:**
-- **Open transcript** details
-- **Change project** assignment in metadata
-- **Save** to move to new project
-
-**Multiple Transcripts:**
-- **Select transcripts** in Library or current project
-- **Use "Move to Project"** action
-- **Choose destination** project
-- **Confirm** the move operation
-
-## Project Organization
-
-### Project Structure
-
-**Hierarchical Organization:**
-- **Main project**: Top-level container
-- **Sub-categories**: Organize within projects using tags or collections
-- **Cross-references**: Link related content across projects
-- **Timeline organization**: Chronological arrangement of content
-
-**Content Grouping Strategies:**
-- **By speaker**: Group sessions by participant
-- **By topic**: Organize around themes or subjects
-- **By date**: Chronological organization
-- **By status**: Group by completion or review status
-
-### Project Navigation
-
-**Project Dashboard:**
-- **Overview statistics**: Total transcripts, duration, processing status
-- **Recent activity**: Latest additions and analysis updates
-- **Key insights**: Project-level summaries and findings
-- **Quick actions**: Common operations for project content
-
-**Content Views:**
-- **List view**: Detailed transcript information in table format
-- **Grid view**: Visual cards showing transcript thumbnails
-- **Timeline view**: Chronological arrangement of content
-- **Analysis view**: Focus on insights and summaries
-
-## Cross-Transcript Analysis
-
-### Project-Level Insights
-
-**Comprehensive Analysis:**
-- **Unified themes**: Common topics across all project transcripts
-- **Speaker patterns**: Participation and interaction analysis
-- **Temporal trends**: How topics and sentiment change over time
-- **Key relationships**: Connections between different conversations
-
-**Automated Insights:**
-- **Project summary**: Overall themes and conclusions
-- **Action items**: Consolidated tasks from all transcripts
-- **Decision tracking**: Important decisions made across conversations
-- **Follow-up analysis**: Items requiring attention across sessions
-
-### Pattern Recognition
-
-**Topic Evolution:**
-- **Theme progression**: How topics develop across conversations
-- **Emerging issues**: New topics appearing in recent transcripts
-- **Resolution tracking**: Follow issues from identification to resolution
-- **Stakeholder involvement**: Track who participates in which topics
-
-**Speaker Analytics:**
-- **Participation patterns**: Who speaks most/least in different contexts
-- **Expertise identification**: Subject matter experts by topic
-- **Communication styles**: Analysis of individual speaking patterns
-- **Relationship mapping**: Interaction patterns between speakers
-
-### Comparative Analysis
-
-**Across Time Periods:**
-- **Before/after comparisons**: Analyze changes over time
-- **Trend identification**: Spot increasing or decreasing focus areas
-- **Seasonal patterns**: Identify recurring themes or cycles
-- **Progress tracking**: Measure advancement toward goals
-
-**Across Speaker Groups:**
-- **Department differences**: Compare perspectives across teams
-- **Role-based analysis**: Different viewpoints by job function
-- **Stakeholder alignment**: Consensus and disagreement patterns
-- **Communication effectiveness**: Clarity and understanding metrics
-
-## Collaboration Features
-
-### Team Access and Permissions
-
-**Permission Levels:**
-- **Owner**: Full control, can delete project and manage permissions
-- **Editor**: Can add content, edit transcripts, and modify analysis
-- **Contributor**: Can add content and comments but not edit existing material
-- **Viewer**: Read-only access to project content and analysis
-
-**Access Management:**
-- **Team invitations**: Invite specific users to project
-- **Role assignment**: Set appropriate permission level for each member
-- **Access review**: Regularly review and update permissions
-- **External sharing**: Share with users outside your organization
-
-### Collaborative Workflows
-
-**Review Processes:**
-- **Assignment**: Assign specific transcripts to team members for review
-- **Status tracking**: Monitor completion of review tasks
-- **Approval workflows**: Multi-stage approval for important content
-- **Change notifications**: Alert team members to updates and changes
-
-**Communication:**
-- **Project comments**: Team discussion about overall project
-- **Transcript annotations**: Collaborative notes on specific content
-- **Review feedback**: Structured feedback and approval processes
-- **Status updates**: Regular communication about project progress
-
-## Project Analysis and Reporting
-
-### Analysis Configuration
-
-**Project-Wide Settings:**
-- **Analysis depth**: Comprehensive vs. summary analysis
-- **Focus areas**: Emphasize specific types of insights
-- **Custom prompts**: Tailored analysis for project needs
-- **Comparison baselines**: Standard metrics for consistency
-
-**Scheduled Analysis:**
-- **Regular updates**: Automatic re-analysis as new content is added
-- **Trigger conditions**: Re-analyze when significant new content is added
-- **Progress reports**: Regular summary of project insights
-- **Alert thresholds**: Notifications for significant changes or discoveries
-
-### Reporting Features
-
-**Standard Reports:**
-- **Executive summary**: High-level overview for leadership
-- **Detailed analysis**: Comprehensive findings and recommendations
-- **Progress reports**: Status updates and milestone tracking
-- **Comparative analysis**: Before/after or cross-group comparisons
-
-**Custom Reports:**
-- **Template creation**: Develop standardized report formats
-- **Data selection**: Choose specific insights and metrics
-- **Formatting options**: Professional layouts and branding
-- **Export formats**: PDF, Word, PowerPoint, or web formats
-
-### Data Export and Integration
-
-**Project Export Options:**
-- **Complete project**: All transcripts, analysis, and metadata
-- **Summary only**: Consolidated insights without full transcripts
-- **Selected content**: Choose specific transcripts or time periods
-- **Analysis data**: Structured data for further analysis
-
-**Integration Capabilities:**
-- **Business intelligence**: Export to BI tools for advanced analytics
-- **Document management**: Integration with SharePoint, Confluence, etc.
-- **CRM systems**: Connect insights to customer relationship platforms
-- **Project management**: Link to project tracking and planning tools
-
-## Advanced Project Features
-
-### Project Templates
-
-**Template Creation:**
-- **Save project structure**: Create reusable project configurations
-- **Include settings**: Default analysis, permissions, and workflows
-- **Standard categories**: Predefined tags and organization schemes
-- **Workflow templates**: Standard processes for common project types
-
-**Template Usage:**
-- **Quick setup**: Start new projects with proven configurations
-- **Consistency**: Ensure standard approaches across similar projects
-- **Best practices**: Incorporate lessons learned from successful projects
-- **Team efficiency**: Reduce setup time for recurring project types
-
-### Automation and Integration
-
-**Automated Workflows:**
-- **Content routing**: Automatically assign new uploads to appropriate projects
-- **Analysis triggers**: Run analysis when project reaches specific milestones
-- **Notification rules**: Alert stakeholders to important developments
-- **Report generation**: Automatically create and distribute regular reports
-
-**External Integrations:**
-- **Calendar integration**: Link project timelines to meeting schedules
-- **Email automation**: Send project updates and reports via email
-- **Slack/Teams notifications**: Real-time alerts in team communication channels
-- **API access**: Custom integrations with other business systems
-
-## Project Management Best Practices
-
-### Planning and Setup
-
-**Project Definition:**
-- **Clear objectives**: Define what you want to achieve
-- **Scope boundaries**: Determine what content belongs in the project
-- **Success metrics**: Establish how you'll measure project success
-- **Timeline expectations**: Set realistic schedules for content and analysis
-
-**Team Organization:**
-- **Role clarity**: Define responsibilities for each team member
-- **Access controls**: Set appropriate permissions from the start
-- **Communication plans**: Establish regular update and review schedules
-- **Quality standards**: Define expectations for transcript quality and analysis
-
-### Ongoing Management
-
-**Content Organization:**
-- **Consistent naming**: Use standardized naming conventions
-- **Regular cleanup**: Remove outdated or irrelevant content
-- **Quality monitoring**: Ensure transcript accuracy and completeness
-- **Progress tracking**: Monitor advancement toward project goals
-
-**Analysis Optimization:**
-- **Regular reviews**: Periodically review and update analysis settings
-- **Insight validation**: Verify AI-generated insights with human expertise
-- **Trend monitoring**: Watch for emerging patterns and themes
-- **Actionable outcomes**: Ensure analysis leads to concrete actions
-
-### Quality Assurance
-
-**Content Quality:**
-- **Review standards**: Establish criteria for transcript approval
-- **Accuracy verification**: Regular spot-checks of transcription quality
-- **Speaker validation**: Confirm speaker identification accuracy
-- **Completeness checks**: Ensure all relevant content is included
-
-**Analysis Quality:**
-- **Insight validation**: Cross-check AI analysis with human understanding
-- **Bias detection**: Watch for and correct analytical biases
-- **Consistency monitoring**: Ensure similar content receives similar analysis
-- **Continuous improvement**: Refine analysis settings based on results
-
----
-
-**Next**: Learn about [settings and configuration →](settings.md)
+# Projects
+
+Projects group related transcripts so DeepTalk can analyse them together. A single interview is a transcript. A batch of twelve interviews for the same study is a project.
+
+## When to use a project
+
+- **Interview studies** — multiple conversations around the same research questions
+- **Lecture series** — every session of a course
+- **Meeting cadences** — all the weekly team meetings for a quarter
+- **Customer calls** — everything a support team handled in a period
+- **Podcasts** — all episodes of a show
+
+Anywhere you'd want to answer questions like "what themes repeat across these?" or "how did the conversation shift over time?" is a project.
+
+## Creating a project
+
+Sidebar → **Projects** → **New Project**. Fill in:
+
+- **Name** — required
+- **Description** — optional, used as context in the AI prompts
+- **Color** and **icon** — visual shorthand for the project card
+- **Tags** — free-form, for filtering
+
+Click Create and you land on the project detail page.
+
+## Adding transcripts
+
+Two ways:
+
+1. **From the project page** — click **Add Transcripts**, then select from the modal. You can filter by date, tag, status.
+2. **From the Library** — open a transcript and click **Add to Project**. Or select multiple transcripts in bulk mode and add them all at once.
+
+A transcript can belong to multiple projects. Removing it from one doesn't affect the others or delete the transcript itself.
+
+## Project detail page
+
+Tabs along the top:
+
+- **Overview** — project-level summary and themes (generated from the combined transcripts)
+- **Transcripts** — the member list with add/remove controls
+- **Insights** — cross-transcript metrics, sentiment trends, theme evolution
+- **Cross-transcript Search** — query across every recording in the project
+- **Chat** — project-scoped AI chat
+- **Export** — multi-transcript analysis bundles
+
+## Overview and analysis
+
+The project overview runs an AI analysis across the combined text of every member transcript. You'll see:
+
+- **Project summary** — a narrative synthesis of what the transcripts cover
+- **Key themes** — recurring topics with counts and example quotes
+- **Key insights** — higher-level observations the AI surfaces
+- **Last analysis** timestamp — click **Re-analyse** to refresh when you add transcripts
+
+Analysis is cached in the database so you're not paying for it repeatedly. Re-analyse only when the set has changed meaningfully.
+
+## Insights dashboard
+
+The Insights tab shows cross-transcript metrics:
+
+- **Theme evolution** — how often each theme appears across the transcripts, ordered by date
+- **Sentiment over time** — the sentiment trajectory across the project
+- **Speaker comparison** — for projects where the same speakers appear in multiple recordings
+- **Talk-time distribution** — who dominates across the project
+- **Concept frequency** — which ideas show up where
+
+The specific panels depend on how your transcripts are structured. Single-speaker-per-recording projects get different views than multi-speaker conversation projects.
+
+## Cross-transcript search
+
+The Cross-transcript Search tab lets you query across every member transcript at once. Three modes:
+
+- **Keyword** — fast literal match
+- **Semantic** — vector-based similarity using the embeddings DeepTalk builds for chat
+- **Hybrid** — both, ranked together
+
+Results show which transcript each match came from, the surrounding context, and a jump link to open the transcript at that point.
+
+## Project chat
+
+Project-scoped AI chat, under the **Chat** tab. Unlike a single-transcript chat, this one has access to every transcript in the project. Ask questions like:
+
+- "Which interviews mentioned the Q3 roadmap?"
+- "Summarise the customer complaints from the last month of calls"
+- "What did each participant say about onboarding?"
+
+Project chat uses the same three conversation modes as regular chat (Quote Lookup / Smart Search / Full Transcript), configured in **Settings → Chat**.
+
+Chat history is saved per-project and survives across sessions.
+
+## Exporting projects
+
+The Export tab bundles:
+
+- The project summary and themes
+- Insights from the dashboard
+- Optional: the full text of each member transcript
+- Optional: per-transcript analysis
+
+Output formats match transcript exports (Markdown, TXT, JSON, PDF). Pick what to include in the export modal.
+
+## Archiving and deleting
+
+Projects have the same archive/trash flow as transcripts. Archiving a project does **not** archive its transcripts — the transcripts stay in the Library, they're just no longer shown on the project page.
+
+Deleting a project removes the project itself but leaves the member transcripts alone. If you want to delete everything, do a bulk delete on the transcripts first.
+
+## Tips
+
+- **Analyse in passes.** Run the project overview analysis once, look at the themes, then dive into specific cross-transcript searches for the ones you care about.
+- **Use the description field.** The AI reads the project description when it generates the project summary — giving it context ("these are 1-on-1 interviews about onboarding friction") measurably improves output quality.
+- **Don't over-group.** 50-transcript projects are fine. 500-transcript projects make the combined analysis slow and less coherent. Split by theme or time period if a project grows too big.
+- **Re-analyse deliberately.** Cached analysis is fine until the set changes. You don't need to re-analyse every time you open the project.
+
+## Next steps
+
+- [Managing Transcripts](managing-transcripts.md)
+- [Analysis](../features/analysis.md) — transcript-level analysis views
+- [Search](../features/search.md) — full search documentation
+- [AI Chat](../features/ai-chat.md) — conversation modes explained

@@ -1,408 +1,121 @@
 # System Requirements
 
-Complete technical specifications and requirements for DeepTalk installation and optimal performance. This guide covers hardware, software, network, and external service requirements.
+Hardware, OS, and runtime requirements for DeepTalk.
 
-## Minimum System Requirements
+## Operating system
 
-### Hardware Requirements
+| Platform | Minimum | Recommended |
+|---|---|---|
+| **macOS** | macOS 11 Big Sur | macOS 13 Ventura or later |
+| **Windows** | Windows 10 (64-bit) | Windows 11 |
+| **Linux** | Ubuntu 20.04 or equivalent (glibc 2.31+) | Recent mainstream distro |
 
-**Processor (CPU):**
-- **Minimum**: Dual-core 2.0 GHz processor
-- **Recommended**: Quad-core 2.5 GHz or higher
-- **Optimal**: 8+ core processor for large-scale processing
-- **Architecture**: x64 (64-bit) required
-- **Notes**: Multi-core processors significantly improve processing speed
+DeepTalk is built on Electron, so anything that runs recent Chrome and Node.js will run DeepTalk.
 
-**Memory (RAM):**
-- **Minimum**: 4GB RAM
-- **Recommended**: 8GB RAM
-- **Optimal**: 16GB+ RAM for large files and concurrent processing
-- **Usage patterns**:
-  - Basic usage: 2-4GB
-  - Multiple large files: 8-12GB
-  - Enterprise/team usage: 16GB+
+## CPU
 
-**Storage:**
-- **Minimum**: 2GB free disk space for installation
-- **Recommended**: 10GB+ for content library growth
-- **Optimal**: 50GB+ for extensive content libraries
-- **Type**: SSD strongly recommended for performance
-- **Speed**: 7200 RPM minimum for traditional drives
+DeepTalk runs all ML inference (Whisper, pyannote, wespeaker, embeddings) on the CPU. There's no GPU acceleration in the current build.
 
-**Network:**
-- **Minimum**: Stable internet connection for external services
-- **Recommended**: Broadband connection (10+ Mbps)
-- **Optimal**: High-speed broadband (50+ Mbps) for cloud services
-- **Local**: Gigabit Ethernet for local service integration
+| Hardware class | Performance |
+|---|---|
+| **Apple Silicon (M1/M2/M3/M4)** | Excellent. Tiny.en at 2-3× realtime, diarisation pipeline fast. |
+| **Recent Intel / AMD x86 (2020+, 6+ cores)** | Good. Tiny.en at ~1.5× realtime, diarisation comfortable. |
+| **Older Intel / AMD x86 (2017 or earlier, 4 cores)** | Acceptable for short recordings. Use tiny.en, consider disabling diarisation. |
+| **Low-power ARM (Raspberry Pi, ChromeOS Flex)** | Not recommended — inference is too slow for practical use. |
 
-### Software Requirements
+On Apple Silicon you can comfortably run the Small.en model and diarisation together. On older Intel hardware, stick with Tiny.en and turn off speaker detection for single-speaker recordings.
 
-**Operating System:**
+## Memory (RAM)
 
-**Windows:**
-- **Minimum**: Windows 10 (version 1809 or later)
-- **Recommended**: Windows 10 (latest version) or Windows 11
-- **Architecture**: 64-bit (x64) required
-- **Updates**: Latest Windows updates recommended
+| Use case | Minimum | Recommended |
+|---|---|---|
+| **Idle DeepTalk** | 500 MB | — |
+| **Tiny.en transcription** | 1 GB free | 2 GB free |
+| **Base.en transcription** | 1.5 GB free | 2 GB free |
+| **Small.en transcription** | 2 GB free | 3 GB free |
+| **Diarisation added** | +500 MB | +500 MB |
+| **Ollama model running alongside** | 4-8 GB free for the model itself | 8 GB+ |
 
-**macOS:**
-- **Minimum**: macOS 10.14 (Mojave)
-- **Recommended**: macOS 11 (Big Sur) or later
-- **Architecture**: Intel x64 or Apple Silicon (M1/M2)
-- **Updates**: Latest macOS updates recommended
+If you're running local Ollama in parallel, that model needs its own memory — a 3B model needs ~2-4 GB, an 8B model needs ~5-8 GB, a 14B model needs ~10-14 GB. Plan accordingly.
 
-**Linux:**
-- **Minimum**: Ubuntu 18.04 LTS or equivalent
-- **Recommended**: Ubuntu 20.04 LTS or later
-- **Other distributions**: Debian 10+, CentOS 8+, Fedora 30+
-- **Architecture**: x64 (64-bit)
-- **Dependencies**: See Linux-specific requirements below
+Minimum total system RAM to run DeepTalk comfortably: **4 GB**. Recommended: **8 GB+**. If you want cloud-class AI locally (bigger Ollama models): **16 GB+**.
 
-**Runtime Requirements:**
-- **Node.js**: Version 16.0 or later (if applicable)
-- **Electron**: Bundled with application
-- **System libraries**: Platform-specific audio/video codecs
+## Disk space
 
-## Recommended System Specifications
+| Component | Size |
+|---|---|
+| DeepTalk application | ~300 MB |
+| Whisper Tiny.en model | ~75 MB |
+| Whisper Base.en model | ~140 MB |
+| Whisper Small.en model | ~470 MB |
+| Pyannote segmentation model | ~6 MB |
+| Wespeaker embedding model | ~25 MB |
+| SQLite database | KB per transcript (scales with library size) |
+| Automated backups | Optional, configurable retention |
 
-### Performance Tiers
+**Minimum free disk space**: 2 GB (for the app, one Whisper model, and diarisation models).
+**Recommended**: 10+ GB (room for multiple Whisper models, a growing library, and backups).
 
-**Basic User (Individual, Small Files):**
-- **CPU**: Quad-core 2.5 GHz
-- **RAM**: 8GB
-- **Storage**: 256GB SSD
-- **Network**: 25 Mbps broadband
-- **Use case**: Personal use, small meetings, occasional transcription
+## Network
 
-**Power User (Frequent Use, Large Files):**
-- **CPU**: 6-8 core 3.0 GHz+
-- **RAM**: 16GB
-- **Storage**: 512GB SSD
-- **Network**: 100 Mbps broadband
-- **Use case**: Regular professional use, larger meetings, frequent analysis
+DeepTalk needs network access for:
 
-**Team/Enterprise (Multiple Users, Heavy Processing):**
-- **CPU**: 8+ core 3.5 GHz+
-- **RAM**: 32GB+
-- **Storage**: 1TB+ SSD
-- **Network**: Gigabit connection
-- **Use case**: Team deployment, enterprise usage, high-volume processing
+- Downloading Whisper / pyannote / wespeaker models the first time you use each (one-time)
+- Talking to cloud AI providers if you pick one (OpenAI, Anthropic, etc.)
+- Talking to a local Ollama server if it's running on a different host
+- Checking for updates (manual, not automatic in the current build)
 
-### Performance Optimization Hardware
+Once models are cached and you're using local Ollama, DeepTalk can run fully offline.
 
-**CPU Considerations:**
-- **Single-thread performance**: Important for real-time processing
-- **Multi-thread performance**: Critical for batch operations
-- **Cache size**: Larger L3 cache improves performance
-- **Thermal design**: Sustained performance under load
+## Display
 
-**Memory Optimization:**
-- **Speed**: DDR4-3200 or faster
-- **Capacity**: Scale with typical file sizes and concurrent usage
-- **Configuration**: Dual-channel configuration preferred
-- **Swap space**: 2x RAM size for virtual memory
+- **Minimum resolution**: 1280×720
+- **Recommended resolution**: 1440×900 or larger
+- **High-DPI displays**: fully supported on macOS, Windows, and Linux
 
-**Storage Performance:**
-- **NVMe SSD**: Best performance for application and working files
-- **SATA SSD**: Good performance, cost-effective option
-- **Separate drives**: OS on SSD, content library on separate fast drive
-- **Network storage**: High-performance NAS for shared team libraries
+The transcript detail page benefits from wider screens because of the tab layout and sidebar panels. 13" laptops work fine; larger screens let you see more at once.
 
-## External Service Requirements
+## Audio hardware
 
-### Speaches (Enhanced Transcription)
+Not required to run DeepTalk — it only processes files you've already recorded. For playback in the transcript detail page, any working audio output works.
 
-**System Requirements:**
-- **CPU**: 4+ cores recommended for model execution
-- **RAM**: 8GB+ for large models, 4GB minimum for small models
-- **Storage**: 5-20GB for model storage depending on models used
-- **GPU**: Optional but recommended for faster processing (CUDA-compatible)
+## Optional dependencies
 
-**Model Requirements:**
-```
-Model Size           RAM Required    Storage    Processing Speed
-─────────────       ────────────    ───────    ────────────────
-whisper-tiny        1GB             39MB       ~32x real-time
-whisper-base        1GB             142MB      ~16x real-time
-whisper-small       2GB             461MB      ~6x real-time
-whisper-medium      5GB             1.5GB      ~2x real-time
-whisper-large       10GB            2.9GB      ~1x real-time
-```
+These aren't bundled with DeepTalk but enable specific features:
 
-**Network Requirements:**
-- **Local installation**: No network required after model download
-- **Remote deployment**: Stable network connection to Speaches service
-- **Bandwidth**: 1-10 Mbps depending on audio file sizes
+### Ollama (for local AI)
 
-### Ollama (AI Analysis)
+Install separately from [ollama.com](https://ollama.com). Pull at least one model:
 
-**System Requirements:**
-- **CPU**: 4+ cores for reasonable performance
-- **RAM**: Varies significantly by model size (see model requirements)
-- **Storage**: 5-50GB depending on models installed
-- **GPU**: Optional but dramatically improves performance
-
-**Model Requirements:**
-```
-Model               RAM Required    Storage    Use Case
-──────             ────────────    ───────    ────────
-llama2:7b          8GB             3.8GB      General purpose
-llama2:13b         16GB            7.3GB      Better analysis
-llama2:70b         64GB            39GB       Highest quality
-mistral:7b         8GB             4.1GB      Efficient performance
-codellama:7b       8GB             3.8GB      Technical content
-```
-
-**GPU Acceleration:**
-- **NVIDIA**: CUDA-compatible GPUs (GTX 1060+ recommended)
-- **AMD**: ROCm support (limited model compatibility)
-- **Apple Silicon**: Built-in GPU acceleration (M1/M2)
-- **Performance impact**: 5-50x faster processing with appropriate GPU
-
-### Cloud Service Alternatives
-
-**Cloud Transcription Services:**
-- **Network**: Stable broadband connection required
-- **Latency**: <200ms for optimal experience
-- **Bandwidth**: Upload bandwidth proportional to file sizes
-- **Data usage**: Consider metered connections
-
-**Cloud AI Services:**
-- **Network**: Stable connection with low latency
-- **API limits**: Check service rate limits and quotas
-- **Data transfer**: Consider privacy and bandwidth implications
-- **Fallback**: Local services recommended as backup
-
-## Platform-Specific Requirements
-
-### Windows-Specific
-
-**Additional Requirements:**
-- **Visual C++ Redistributable**: Latest version required
-- **Windows Media Foundation**: For audio/video codec support
-- **DirectX**: DirectX 11 or later
-- **PowerShell**: Version 5.1 or later (for automation)
-
-**Windows Features:**
-- **Windows Subsystem for Linux**: Optional, for advanced users
-- **Hyper-V**: If running services in virtual machines
-- **Windows Defender**: Exclusions may be needed for performance
-
-**Performance Considerations:**
-- **Antivirus**: Configure exclusions for DeepTalk directories
-- **Power management**: Use "High Performance" power plan
-- **Background apps**: Disable unnecessary startup applications
-- **Storage sense**: Configure to avoid interference with processing
-
-### macOS-Specific
-
-**Additional Requirements:**
-- **Xcode Command Line Tools**: Required for some external services
-- **Homebrew**: Recommended for external service installation
-- **Rosetta 2**: Required for Intel apps on Apple Silicon
-- **SIP (System Integrity Protection)**: May affect some integrations
-
-**macOS Features:**
-- **Gatekeeper**: Configure for external service installation
-- **Privacy permissions**: Grant microphone and file access
-- **Spotlight**: Exclude processing directories for performance
-- **Energy Saver**: Configure for sustained performance
-
-**Apple Silicon Considerations:**
-- **Native support**: Check if external services support Apple Silicon
-- **Rosetta 2**: Performance impact for Intel-only applications
-- **Memory efficiency**: Apple Silicon uses unified memory architecture
-- **Thermal management**: Excellent sustained performance characteristics
-
-### Linux-Specific
-
-**Distribution Requirements:**
-```
-Distribution        Version         Notes
-────────────       ─────────       ─────
-Ubuntu             18.04+          LTS recommended
-Debian             10+             Stable release
-CentOS/RHEL        8+              Enterprise deployment
-Fedora             30+             Recent packages
-Arch Linux         Rolling         Advanced users
-openSUSE           15.0+           Enterprise alternative
-```
-
-**Package Dependencies:**
 ```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install build-essential curl git python3 python3-pip
-sudo apt install ffmpeg libasound2-dev libglib2.0-dev
-sudo apt install libgtk-3-dev libnotify-dev libnss3-dev
-
-# CentOS/RHEL/Fedora
-sudo dnf install gcc-c++ make curl git python3 python3-pip
-sudo dnf install ffmpeg alsa-lib-devel glib2-devel
-sudo dnf install gtk3-devel libnotify-devel nss-devel
-
-# Arch Linux
-sudo pacman -S base-devel curl git python python-pip
-sudo pacman -S ffmpeg alsa-lib glib2 gtk3 libnotify nss
+ollama pull llama3.2:3b
 ```
 
-**System Configuration:**
-- **Audio system**: PulseAudio or ALSA properly configured
-- **Display server**: X11 or Wayland with appropriate permissions
-- **User permissions**: Audio group membership for audio access
-- **SELinux/AppArmor**: Configure policies if enabled
+Runs as a background service on `localhost:11434` by default. DeepTalk auto-detects it.
 
-## Network and Connectivity
+### Linux keyring service
 
-### Bandwidth Requirements
+For encrypted API key storage on Linux, install one of:
 
-**Upload Bandwidth:**
-```
-File Size          Upload Time (10 Mbps)    Upload Time (100 Mbps)
-─────────         ─────────────────────    ──────────────────────
-10MB (10 min)     8 seconds                <1 second
-50MB (50 min)     40 seconds               4 seconds
-200MB (3 hours)   2.7 minutes              16 seconds
-500MB (8 hours)   6.7 minutes              40 seconds
-```
+- GNOME Keyring (default on GNOME desktops)
+- KWallet (default on KDE)
+- Any other `libsecret` provider
 
-**Download Bandwidth:**
-- **Model downloads**: One-time large downloads (1-40GB)
-- **Software updates**: Periodic smaller downloads (100MB-1GB)
-- **Cloud services**: Ongoing API communication (minimal)
+Without a keyring, DeepTalk falls back to plain-text key storage with a warning.
 
-### Network Configuration
+### FFmpeg
 
-**Firewall Configuration:**
-```
-Service           Port      Protocol    Direction
-─────────        ──────    ────────    ─────────
-DeepTalk         3000      TCP         Inbound (if web interface)
-Speaches         8000      TCP         Inbound/Outbound
-Ollama           11434     TCP         Inbound/Outbound
-SSH (optional)   22        TCP         Inbound (for remote access)
-```
+Bundled with DeepTalk. You don't need a separate install.
 
-**Proxy and Corporate Networks:**
-- **HTTP/HTTPS proxy**: Configure for external service access
-- **Corporate firewall**: Allow traffic to required services
-- **VPN considerations**: Ensure VPN doesn't block local services
-- **DNS configuration**: Resolve localhost and service names correctly
+## Not required
 
-### Security Considerations
+- **No account or sign-in.** DeepTalk has no cloud component.
+- **No GPU.** All inference runs on CPU in the current build.
+- **No Python.** Whisper runs via `@huggingface/transformers` (JavaScript/ONNX).
+- **No Docker.** Just install the app.
 
-**Local Network Security:**
-- **Firewall rules**: Restrict access to local services as needed
-- **Authentication**: Configure service authentication if exposed
-- **Encryption**: Use HTTPS/TLS for external communications
-- **Access control**: Limit service access to authorized users
+## Next steps
 
-**Data Protection:**
-- **Local processing**: Most data processed locally for privacy
-- **Cloud services**: Understand data handling policies
-- **Encryption**: Data encrypted in transit and at rest
-- **Backup security**: Secure backup and archive procedures
-
-## Performance Benchmarks
-
-### Processing Performance
-
-**Transcription Performance (Speaches):**
-```
-Model Size        Real-time Factor    1-hour File Processing
-────────────     ────────────────    ──────────────────────
-whisper-tiny     32x                 ~2 minutes
-whisper-base     16x                 ~4 minutes
-whisper-small    6x                  ~10 minutes
-whisper-medium   2x                  ~30 minutes
-whisper-large    1x                  ~60 minutes
-```
-
-**Analysis Performance (Ollama):**
-```
-Model Size        Tokens/Second    Analysis Time (1-hour transcript)
-────────────     ─────────────    ──────────────────────────────
-7B parameters    10-50            2-10 minutes
-13B parameters   5-25             4-20 minutes
-70B parameters   1-10             10-60 minutes
-```
-
-**System Performance Indicators:**
-- **Memory usage**: Should not exceed 80% of available RAM
-- **CPU usage**: Sustained 70-90% during processing is normal
-- **Disk I/O**: SSD recommended for processing-heavy workloads
-- **Network usage**: Minimal for local processing, variable for cloud
-
-### Scalability Metrics
-
-**Single User Performance:**
-- **Concurrent files**: 1-3 files processing simultaneously
-- **File size limit**: 2GB per file recommended
-- **Daily throughput**: 50-200 hours of audio per day
-- **Storage growth**: Plan for 10-50GB per 1000 hours of content
-
-**Team Performance:**
-- **Concurrent users**: 5-20 users per server deployment
-- **Shared processing**: Queue management for multiple users
-- **Storage sharing**: Network storage for team content libraries
-- **Resource scaling**: Linear scaling with user count
-
-## Troubleshooting Performance Issues
-
-### Common Performance Problems
-
-**Slow Processing:**
-- **Insufficient RAM**: Upgrade memory or process smaller files
-- **CPU bottleneck**: Use faster processor or enable GPU acceleration
-- **Disk I/O**: Switch to SSD or optimize disk configuration
-- **Network latency**: Use local services instead of cloud when possible
-
-**Memory Issues:**
-- **Out of memory errors**: Reduce file size or increase RAM
-- **Memory leaks**: Restart services periodically
-- **Swap usage**: Monitor virtual memory usage
-- **Resource monitoring**: Use system tools to track memory usage
-
-**Storage Problems:**
-- **Insufficient space**: Clear temporary files and old content
-- **Slow disk access**: Defragment drives or upgrade to SSD
-- **Network storage**: Optimize network storage configuration
-- **Backup management**: Implement efficient backup strategies
-
-### Performance Optimization
-
-**System Optimization:**
-```bash
-# Linux: Monitor system performance
-htop                    # Real-time process monitoring
-iotop                   # Disk I/O monitoring
-nethogs                 # Network usage by process
-df -h                   # Disk usage
-
-# macOS: Monitor system performance
-top -o cpu              # CPU usage monitoring
-top -o rsize            # Memory usage monitoring
-iostat                  # Disk I/O statistics
-
-# Windows: Use built-in tools
-Task Manager            # Resource monitoring
-Resource Monitor        # Detailed resource tracking
-Performance Monitor     # Historical performance data
-```
-
-**Service Optimization:**
-- **Model selection**: Use appropriate models for quality vs. speed needs
-- **Batch processing**: Process multiple files during off-peak hours
-- **Resource allocation**: Configure services for available hardware
-- **Monitoring**: Track performance metrics and optimize accordingly
-
-**Hardware Upgrades (Priority Order):**
-1. **RAM**: Most immediate impact for large files
-2. **SSD**: Dramatic improvement in file operations
-3. **CPU**: Better performance for processing-intensive tasks
-4. **GPU**: Significant acceleration for supported operations
-5. **Network**: Important for cloud services and team collaboration
-
----
-
-**System Check**: Use the diagnostic commands provided to verify your system meets requirements before installation, and monitor performance during operation to identify optimization opportunities.
+- [Installation](../getting-started/installation.md) — platform-specific install steps
+- [First Use](../getting-started/first-use.md) — initial setup
+- [Common Issues](../troubleshooting/common-issues.md) — performance tuning and fixes

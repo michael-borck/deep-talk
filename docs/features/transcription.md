@@ -94,7 +94,7 @@ The current pipeline uses voice fingerprints from the actual audio, which is dra
 
 ### Tuning (advanced)
 
-The diarisation tunables are currently hardcoded in the main process module. The defaults work well across a range of audio types:
+Every diarisation tunable is exposed as a slider under **Settings → Processing → Advanced diarisation tuning** (inside the Detect speakers collapsible). Defaults are validated across a range of audio types:
 
 - Median filter: 11 frames
 - Min duration on (turn length): 0.5s
@@ -102,7 +102,7 @@ The diarisation tunables are currently hardcoded in the main process module. The
 - Cluster threshold (cosine similarity): 0.5
 - Noise reassignment minimum: 3.0s
 
-A future release will expose these in Settings for users with unusual audio.
+Don't touch these unless the pipeline is misbehaving on a specific file — tuning is a last resort after Speaker Tagging can't fix the result manually. See the [Advanced Features Tutorial](../tutorials/advanced-features.md#diarisation-tuning) for guidance on which knob to turn when.
 
 ## After diarisation: manual correction
 

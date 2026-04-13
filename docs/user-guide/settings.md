@@ -46,7 +46,7 @@ A coloured banner under the dropdown reminds you which mode you're in (green for
 
 **Server URL** auto-fills with the provider's default but stays editable for custom Ollama ports, WSL setups, enterprise proxies, etc.
 
-**API Key** field appears only for cloud providers. Stored locally in the SQLite settings table, never logged.
+**API Key** field appears only for cloud providers. Stored encrypted via your OS keychain (macOS Keychain, Windows DPAPI, libsecret on Linux). Never logged. On Linux machines without a keyring service, DeepTalk falls back to plain text and warns you.
 
 **Test Connection** runs a cheap probe (lists models) to verify the URL and key work.
 
@@ -63,6 +63,12 @@ When on, after Whisper finishes, DeepTalk runs:
 3. **Agglomerative clustering** to assign global speaker labels across the whole recording
 
 Adds about 1× the audio length to processing time. Turn it off for single-speaker recordings to save time.
+
+**Advanced diarisation tuning** (collapsible) — exposes the pipeline's tunables as sliders: cluster similarity threshold, median filter frames, min turn duration, min gap to split, noise cluster minimum. Defaults are validated across clean, noisy, and multi-speaker recordings — only touch these if the pipeline misbehaves on a specific file. Click **Reset to defaults** to revert.
+
+### Session token usage
+
+A live counter of the tokens your AI provider has consumed since DeepTalk launched. Totals break down by provider and model. Reset manually, or let it reset automatically when you relaunch the app. Local providers (Ollama) report tokens but no cost.
 
 ### Transcript correction
 
@@ -134,5 +140,5 @@ A reminder of what stays local and what doesn't:
 
 - **Start with defaults.** Tiny.en + Ollama local + speaker detection on works well for most cases.
 - **If you upgrade your AI**, also try a better Whisper model — the bottleneck for "good summaries" is sometimes transcript quality, not the LLM.
-- **API keys are stored in plain text** in the local SQLite database. Fine for personal use; on a shared machine, consider using Ollama instead.
+- **API keys are encrypted at rest** via your OS keychain. On Linux without a keyring service DeepTalk falls back to plain text — use Ollama on shared machines if that matters.
 - **Settings save immediately.** No "Save" button — every toggle and dropdown writes to the database as you change it.

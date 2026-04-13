@@ -1,319 +1,157 @@
 # Interface Overview
 
-This guide provides a comprehensive walkthrough of DeepTalk's interface, helping you understand and navigate the application efficiently.
-
-## Main Interface Layout
-
-DeepTalk uses a clean, tab-based interface designed for ease of use and efficient workflow management.
-
-### Top Navigation Bar
-The primary navigation consists of five main tabs:
-
-#### 🏠 Home
-**Your dashboard and activity center**
-- Recent transcripts and activity overview
-- Service status indicators
-- Quick access to common actions
-- Project highlights and statistics
-
-#### 📁 Projects  
-**Project organization and management**
-- Create and manage transcript projects
-- Project-level analysis and insights
-- Bulk operations across related transcripts
-- Collaboration and sharing features
-
-#### 📋 Library
-**Individual transcript management**
-- Complete list of all transcripts
-- Advanced search and filtering
-- Individual transcript details and editing
-- Bulk operations and organization tools
-
-#### ⚙️ Settings
-**Application configuration and preferences**
-- Service configuration (Speaches, Ollama)
-- Processing and analysis settings
-- Interface preferences and themes
-- Data management and backup options
-
-#### ℹ️ About
-**Application information and help**
-- Version information and updates
-- License and attribution details
-- Links to documentation and support
-- System diagnostic information
-
-## Page Layouts and Components
-
-### Home Page Layout
-
-**Header Section:**
-- Welcome message and current user status
-- Service connection status indicators
-- Quick action buttons for common tasks
-
-**Recent Activity:**
-- Recently processed transcripts
-- Recent project activity
-- Processing queue status
-
-**Quick Actions:**
-- Upload new files
-- Create new projects
-- Access recent work
-
-**Statistics Dashboard:**
-- Total transcripts processed
-- Total processing time
-- Storage usage information
-
-### Projects Page Layout
-
-**Project List View:**
-- Grid or list display of all projects
-- Project thumbnails and metadata
-- Quick actions (open, edit, delete)
-- Creation date and last modified
-
-**Project Detail View:**
-- Project information and description
-- Associated transcripts list
-- Project-level analysis results
-- Management tools and settings
-
-**Project Creation/Edit:**
-- Project name and description fields
-- Category and tag assignment
-- Sharing and collaboration settings
-- Template selection options
-
-### Library Page Layout
-
-**Transcript List:**
-- Searchable and filterable transcript list
-- Multiple view options (grid, list, detail)
-- Sorting options (date, name, duration, status)
-- Bulk selection and operations
-
-**Transcript Detail View:**
-- Full transcript text display
-- Metadata and file information
-- Analysis results and insights
-- Edit and annotation tools
-
-**Search and Filter Panel:**
-- Text search across all transcripts
-- Date range filtering
-- Project and tag filtering
-- Advanced search options
-
-### Settings Page Layout
-
-**Tabbed Configuration:**
-- Transcription settings
-- Processing and AI settings
-- Interface preferences
-- Data and backup settings
-
-**Service Configuration:**
-- URL and connection settings
-- Model selection and parameters
-- Test connection functionality
-- Status indicators and diagnostics
-
-## Key Interface Elements
-
-### Status Indicators
-
-**Service Status:**
-- 🟢 **Green dot**: Service connected and operational
-- 🟡 **Yellow dot**: Service connecting or limited functionality
-- 🔴 **Red dot**: Service error or disconnected
-
-**Processing Status:**
-- ⏳ **Processing**: File is being transcribed or analyzed
-- ✅ **Complete**: Processing finished successfully
-- ❌ **Error**: Processing failed (see error details)
-- ⏸️ **Paused**: Processing paused or queued
-
-**File Status:**
-- 📄 **New**: Recently uploaded, not yet processed
-- 📝 **Transcribed**: Speech-to-text completed
-- 🔍 **Analyzed**: AI analysis completed
-- 📁 **Archived**: Moved to archive/completed status
-
-### Action Buttons and Controls
-
-**Primary Actions:**
-- **Upload**: Add new files to DeepTalk
-- **Create Project**: Start a new project
-- **Export**: Download or share content
-- **Settings**: Access configuration options
-
-**Transcript Actions:**
-- **Play**: Listen to original audio (if available)
-- **Edit**: Modify transcript text
-- **Analyze**: Run AI analysis
-- **Share**: Export or share transcript
-
-**Bulk Actions:**
-- **Select All**: Choose multiple items
-- **Batch Process**: Apply actions to multiple files
-- **Bulk Export**: Download multiple transcripts
-- **Organize**: Move items to projects or categories
-
-### Search and Navigation
-
-**Global Search:**
-- Available from any page
-- Searches across all transcripts and projects
-- Supports both keyword and semantic search
-- Real-time results and suggestions
-
-**Filtering Options:**
-- **By Date**: Show content from specific time periods
-- **By Project**: Filter to specific project content
-- **By Status**: Show only completed, processing, or error items
-- **By Speaker**: Filter by identified speakers (if available)
-
-**Navigation Breadcrumbs:**
-- Shows current location in application hierarchy
-- Clickable path elements for quick navigation
-- Especially useful in project and transcript detail views
-
-## Window Management
-
-### Responsive Design
-DeepTalk's interface adapts to different window sizes:
-
-**Full Window (Recommended):**
-- All features and panels visible
-- Optimal workflow and navigation
-- Best for primary work sessions
-
-**Reduced Width:**
-- Panels may collapse or stack
-- Navigation remains accessible
-- Essential functions preserved
-
-**Minimum Width:**
-- Simplified interface with essential features
-- Some panels accessible via buttons/menus
-- Core functionality maintained
-
-### Panel Management
-
-**Collapsible Panels:**
-- Side panels can be collapsed for more space
-- Panel state is remembered across sessions
-- Quick toggle buttons for show/hide
-
-**Resizable Areas:**
-- Some content areas can be resized by dragging
-- Useful for adjusting transcript display size
-- Layout preferences are saved
-
-## Customization Options
-
-### Theme and Appearance
-
-**Theme Selection:**
-- **Light**: Clean, bright interface (default)
-- **Dark**: Reduced eye strain for long sessions
-- **System**: Matches your operating system theme
-
-**Interface Density:**
-- **Comfortable**: More spacing, easier to read
-- **Compact**: More content visible, less scrolling
-- **Custom**: Adjust individual spacing elements
-
-### Layout Preferences
-
-**Default Page:**
-- Choose which page opens when starting DeepTalk
-- Options: Home, Projects, Library, or last used
-
-**Panel Defaults:**
-- Set default visibility for side panels
-- Configure default sort orders
-- Set preferred view modes (grid vs list)
-
-## Keyboard Navigation
-
-### Essential Shortcuts
-
-**Navigation:**
-- `Ctrl/Cmd + 1-5`: Switch between main tabs
-- `Ctrl/Cmd + F`: Open search
-- `Esc`: Close dialogs or cancel operations
-
-**File Operations:**
-- `Ctrl/Cmd + U`: Upload new files
-- `Ctrl/Cmd + N`: Create new project
-- `Ctrl/Cmd + S`: Save current work
-
-**View Controls:**
-- `Ctrl/Cmd + +/-`: Zoom in/out
-- `F11`: Toggle fullscreen
-- `Ctrl/Cmd + R`: Refresh current view
-
-### Accessibility Features
-
-**Screen Reader Support:**
-- All interface elements properly labeled
-- Navigation landmarks for screen readers
-- Keyboard-only navigation support
-
-**Visual Accessibility:**
-- High contrast mode available
-- Adjustable font sizes
-- Color-blind friendly design choices
-
-## Tips for Efficient Navigation
-
-### Daily Workflow Optimization
-1. **Set your default page** to the one you use most often
-2. **Customize your Home page** to show relevant information
-3. **Use keyboard shortcuts** for common actions
-4. **Organize projects** logically for easy browsing
-
-### Power User Tips
-- **Learn the search syntax** for advanced filtering
-- **Use bulk operations** when managing many transcripts
-- **Customize panel layouts** for your specific workflow
-- **Set up service shortcuts** in Settings for quick access
-
-### Organization Strategies
-- **Create project templates** for common use cases
-- **Use consistent naming conventions** for easy searching
-- **Tag transcripts** with relevant metadata
-- **Regular cleanup** of completed or outdated content
-
-## Troubleshooting Interface Issues
-
-### Common Problems
-
-**Interface appears frozen:**
-- Check if processing is occurring in background
-- Try refreshing the view (Ctrl/Cmd + R)
-- Restart DeepTalk if problems persist
-
-**Missing panels or content:**
-- Check if panels are collapsed (look for expand buttons)
-- Verify you're on the correct page/tab
-- Reset layout to defaults in Settings
-
-**Slow interface response:**
-- Close other applications to free memory
-- Check if large files are being processed
-- Consider upgrading system resources
-
-### Getting Help
-- **Interface questions**: Check [FAQ](../troubleshooting/faq.md)
-- **Performance issues**: See [Common Issues](../troubleshooting/common-issues.md)
-- **Feature questions**: Browse [Features guide](../features/README.md)
-
----
-
-**Next steps**: [Learn about uploading files →](uploading-files.md)
+A tour of DeepTalk's main UI elements so you know where everything lives.
+
+## Window layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Sidebar       │          Main content area             │
+│  (navigation)  │                                        │
+│                │                                        │
+│                │                                        │
+│                │                                        │
+├────────────────┴────────────────────────────────────────┤
+│  Status bar (bottom edge)                               │
+└─────────────────────────────────────────────────────────┘
+```
+
+- **Sidebar** — primary navigation. Collapses to icons-only if you want more room.
+- **Main content** — whichever page you've navigated to.
+- **Status bar** — tiny strip at the bottom showing AI provider status (green/amber/red), active model name, and any background processing activity.
+
+## The sidebar
+
+From top to bottom:
+
+- **Dashboard** — landing page with recent transcripts, recent projects, and activity stats
+- **Upload & Process** — drag-drop zone for new files
+- **Projects** — grouped transcripts for cross-recording analysis
+- **Library** — every transcript you've made, searchable and filterable
+- **Search & Filter** — full-text and semantic search across transcripts
+- **Chat History** — past AI conversations (both single-transcript and project chats)
+- **Archive** — transcripts and projects you've archived (hidden from Library but not deleted)
+- **Trash** — soft-deleted items awaiting permanent deletion
+- **Documentation** — the docs you're reading right now, rendered in-app
+- **Settings** — all configuration
+- **About / Help** — version info, keyboard shortcuts, licenses
+
+Click the collapse toggle at the bottom of the sidebar to shrink it to an icon rail.
+
+## Dashboard
+
+The landing page. You'll see:
+
+- **Recent transcripts** — the last handful you've processed
+- **Recent projects** — quick access to active projects
+- **Activity stats** — totals for transcripts, projects, hours transcribed, etc.
+- **Quick actions** — shortcuts to Upload, Settings, Docs
+
+## Upload & Process page
+
+A big drop zone. Drag audio/video files in, or click to browse. Below the drop zone you can:
+
+- Pick a project to assign new uploads to
+- Toggle whether to start processing immediately
+- See the processing queue (files currently transcribing/analysing)
+
+Processing continues in the background when you navigate away — a toast notifies you on completion.
+
+## Library page
+
+A grid of transcript cards with:
+
+- **Title** and **date**
+- **Duration** and **speaker count**
+- **Status** badges (processing / completed / error)
+- **Star** and **rating** controls
+- **Tags** if you've added any
+
+Filter and sort controls at the top:
+
+- **Search** — find by title or content
+- **Filter** — by status, project, tag, starred, rated
+- **Sort** — by date, duration, rating, title
+- **Bulk actions** — multi-select to archive, delete, export, or add-to-project
+
+Click any card to open its detail page.
+
+## Transcript detail page
+
+Tabs along the top:
+
+- **Overview** — summary, key topics, action items, notable quotes, sentiment, emotions
+- **Transcript** — full text with speaker tags and per-sentence timestamps; click any line to jump the audio player
+- **Analysis** — deeper views: research themes, Q&A pairs, concept frequency, talk-time per speaker, filler word stats, conversation quality metrics
+- **Chat** — ask questions about this transcript
+- **Notes** — your personal notes on the recording
+
+Right-side action buttons:
+
+- **Speaker Tagging** — rename, merge, or re-tag speakers
+- **Edit Transcript** — open the sentence editor to fix recognition errors
+- **Export** — save as Markdown, TXT, JSON, or PDF
+- **Archive / Delete** — soft-delete or move to trash
+- **Audio Player Bar** — sticks to the bottom of the page while you scroll
+
+## Projects page
+
+A grid of project cards. Click into one and you'll see:
+
+- **Overview** — project-level summary and themes (generated from the combined transcripts)
+- **Transcripts** — the list of recordings in this project, with add/remove controls
+- **Insights** — cross-transcript metrics and visualisations
+- **Cross-transcript Search** — query across every recording in the project
+- **Chat** — project-scoped AI chat with access to all member transcripts
+- **Export** — bundle multi-transcript analysis into a single document
+
+See [Projects](projects.md) for the full feature set.
+
+## Settings page
+
+Five tabs:
+
+- **Transcription** — Whisper model picker
+- **Processing** — AI provider, speaker detection, transcript correction, diarisation tuning, session token usage
+- **Chat** — conversation mode (Quote Lookup / Smart Search / Full Transcript), chunking, memory
+- **AI Prompts** — customise the prompts DeepTalk sends to the AI for each task
+- **General** — storage, backups, appearance, search index
+
+Every control saves immediately. There's no Save button.
+
+## Status bar
+
+A thin strip at the bottom of the window. Elements from left to right:
+
+- **AI provider status** — green (connected), amber (cloud provider configured), red (unreachable), grey (not configured)
+- **Active provider name** and model
+- **Processing activity** — spinner and count while anything is transcribing or analysing
+- **Database location** tooltip
+
+## Keyboard shortcuts
+
+Press **`Cmd/Ctrl + ?`** at any time to open the shortcuts dialog. The most useful ones:
+
+| Shortcut | Action |
+|---|---|
+| `Cmd/Ctrl + 1..5` | Jump to Dashboard / Library / Projects / Search / Settings |
+| `Cmd/Ctrl + U` | Upload files |
+| `Cmd/Ctrl + K` | Global search |
+| `Cmd/Ctrl + N` | New project |
+| `Cmd/Ctrl + ,` | Settings |
+| `Cmd/Ctrl + Shift + C` | Open AI chat on current transcript |
+| `Esc` | Close modal / cancel |
+| `Space` | Play/pause audio (in transcript detail) |
+
+Full list: [Keyboard Shortcuts Reference](../reference/keyboard-shortcuts.md).
+
+## Light and dark theme
+
+**Settings → General → Appearance** has Light / Dark / System options. System follows your OS preference. Theme changes apply instantly.
+
+## Next steps
+
+- [Uploading Files](uploading-files.md)
+- [Managing Transcripts](managing-transcripts.md)
+- [Projects](projects.md)
+- [Settings](settings.md)
