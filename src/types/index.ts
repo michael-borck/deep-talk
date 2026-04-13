@@ -267,6 +267,21 @@ declare global {
           isLocal: boolean;
           description: string;
         }>>;
+      };
+      crypto: {
+        isAvailable: () => Promise<boolean>;
+        encrypt: (plain: string) => Promise<{
+          success: boolean;
+          encrypted?: string;
+          fallback?: boolean;
+          error?: string;
+        }>;
+        decrypt: (encrypted: string) => Promise<{
+          success: boolean;
+          plain?: string;
+          wasPlain?: boolean;
+          error?: string;
+        }>;
         getOllamaModels: (url: string) => Promise<{
           success: boolean;
           models?: any[];

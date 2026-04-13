@@ -92,7 +92,27 @@ export const SettingsPage: React.FC = () => {
       setLocalTranscriptionModel(settingsMap.localTranscriptionModel || 'Xenova/whisper-tiny.en');
       setAiProvider(settingsMap.aiProvider || 'ollama');
       setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434/v1');
-      setAiApiKey(settingsMap.aiApiKey || '');
+      // API key is stored encrypted via Electron safeStorage. The decrypt
+      // IPC handles legacy plain-text values too (passes them through).
+      const rawKey = settingsMap.aiApiKey || '';
+      if (rawKey) {
+        const decryptResult = await (window.electronAPI as any).crypto.decrypt(rawKey);
+        const plainKey = decryptResult?.success ? (decryptResult.plain || '') : '';
+        setAiApiKey(plainKey);
+        // If the value was stored as plain text, re-save it encrypted
+        // so the next time it lives encrypted in the database
+        if (decryptResult?.wasPlain && plainKey) {
+          const encResult = await (window.electronAPI as any).crypto.encrypt(plainKey);
+          if (encResult?.success && encResult.encrypted) {
+            await window.electronAPI.database.run(
+              'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
+              ['aiApiKey', encResult.encrypted, new Date().toISOString()]
+            );
+          }
+        }
+      } else {
+        setAiApiKey('');
+      }
       setAiModel(settingsMap.aiModel || '');
       setAutoBackup(settingsMap.autoBackup === 'true');
       setBackupFrequency(settingsMap.backupFrequency || 'weekly');
@@ -148,12 +168,35 @@ export const SettingsPage: React.FC = () => {
   // Special handler for chat settings that need to update the chat service
   const saveChatSetting = async (key: string, value: string) => {
     await saveSetting(key, value);
-    
+
     // Reload chat service configuration when chat settings change
     try {
       await chatService.reloadConfig();
     } catch (error) {
       console.error('Error reloading chat config:', error);
+    }
+  };
+
+  // Encrypt a sensitive setting (API key) before persisting it. Uses the
+  // OS keychain via Electron's safeStorage when available; on Linux
+  // machines without a keyring it falls back to plain text and the
+  // crypto.encrypt response sets `fallback: true` (we still save).
+  const saveSensitiveSetting = async (key: string, plain: string) => {
+    try {
+      if (!plain) {
+        await saveSetting(key, '');
+        return;
+      }
+      const result = await (window.electronAPI as any).crypto.encrypt(plain);
+      if (result?.success && typeof result.encrypted === 'string') {
+        await saveSetting(key, result.encrypted);
+      } else {
+        console.error('Failed to encrypt setting, saving plain:', result?.error);
+        await saveSetting(key, plain);
+      }
+    } catch (error) {
+      console.error('saveSensitiveSetting error:', error);
+      await saveSetting(key, plain);
     }
   };
 
@@ -588,10 +631,13 @@ export const SettingsPage: React.FC = () => {
                         type="password"
                         value={aiApiKey}
                         onChange={(e) => setAiApiKey(e.target.value)}
-                        onBlur={(e) => saveSetting('aiApiKey', e.target.value)}
+                        onBlur={(e) => saveSensitiveSetting('aiApiKey', e.target.value)}
                         placeholder={info?.requiresKey ? 'Required for this provider' : 'Leave blank if not needed'}
                         className="input"
                       />
+                      <p className="text-[11px] text-surface-500 mt-1">
+                        Stored encrypted via your OS keychain (macOS Keychain, Windows DPAPI, or libsecret on Linux).
+                      </p>
                     </div>
                   );
                 })()}

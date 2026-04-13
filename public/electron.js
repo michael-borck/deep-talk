@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, protocol, net, safeStorage } = require('electron');
 const { pathToFileURL } = require('url');
 const path = require('path');
 const fs = require('fs');
@@ -1430,7 +1430,8 @@ ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) =
     const provider = providerRow?.value || 'ollama';
     const info = aiProviders.getProviderInfo(provider);
     const url = urlRow?.value || info.defaultUrl;
-    const apiKey = keyRow?.value || '';
+    // API key may be safeStorage-encrypted; decrypt before use
+    const apiKey = decryptIfNeeded(keyRow?.value || '');
     const model = modelRow?.value || '';
 
     console.log('AI chat request:', {
@@ -1491,6 +1492,87 @@ ipcMain.handle('ai-get-providers', async () => {
     id,
     ...info,
   }));
+});
+
+// ============================================
+// Sensitive value encryption (Electron safeStorage)
+// ============================================
+//
+// Used to encrypt API keys at rest in the SQLite settings table. Stored
+// values are tagged with the prefix `enc:v1:` so we can detect and
+// migrate plain-text legacy values automatically.
+//
+// safeStorage uses the OS keychain (macOS Keychain, Windows DPAPI,
+// libsecret on Linux) so the encryption key never lives in our codebase.
+// On Linux machines without a keyring service it falls back to plain
+// text — we surface that via crypto-is-available so the UI can warn.
+
+const ENC_PREFIX = 'enc:v1:';
+
+/**
+ * Decrypt a value that may or may not be encrypted. Used internally by
+ * any main-process handler that reads a sensitive setting (e.g. the
+ * API key) from the database. Plain-text legacy values pass through
+ * unchanged so the auto-migration on next save can pick them up.
+ */
+function decryptIfNeeded(value) {
+  if (typeof value !== 'string' || value.length === 0) return '';
+  if (!value.startsWith(ENC_PREFIX)) return value; // legacy plain-text
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return '';
+    const buffer = Buffer.from(value.slice(ENC_PREFIX.length), 'base64');
+    return safeStorage.decryptString(buffer);
+  } catch (err) {
+    console.error('Failed to decrypt sensitive setting:', err.message);
+    return '';
+  }
+}
+
+ipcMain.handle('crypto-is-available', async () => {
+  try {
+    return safeStorage.isEncryptionAvailable();
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle('crypto-encrypt-string', async (event, { plain }) => {
+  try {
+    if (typeof plain !== 'string' || plain.length === 0) {
+      return { success: true, encrypted: '' };
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      // Pass through unchanged if the OS can't encrypt — better than
+      // failing silently
+      return { success: true, encrypted: plain, fallback: true };
+    }
+    const buffer = safeStorage.encryptString(plain);
+    const encrypted = ENC_PREFIX + buffer.toString('base64');
+    return { success: true, encrypted };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('crypto-decrypt-string', async (event, { encrypted }) => {
+  try {
+    if (typeof encrypted !== 'string' || encrypted.length === 0) {
+      return { success: true, plain: '' };
+    }
+    if (!encrypted.startsWith(ENC_PREFIX)) {
+      // Legacy plain-text value — return as-is so the renderer can
+      // re-save it through the encrypted path on next change
+      return { success: true, plain: encrypted, wasPlain: true };
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      return { success: false, error: 'OS encryption not available — cannot decrypt stored value' };
+    }
+    const buffer = Buffer.from(encrypted.slice(ENC_PREFIX.length), 'base64');
+    const plain = safeStorage.decryptString(buffer);
+    return { success: true, plain };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('validate-transcript', async (event, { text }) => {

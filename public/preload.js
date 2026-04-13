@@ -50,6 +50,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     aiGetProviders: () => ipcRenderer.invoke('ai-get-providers')
   },
 
+  // Sensitive value encryption (uses Electron safeStorage / OS keychain)
+  crypto: {
+    isAvailable: () => ipcRenderer.invoke('crypto-is-available'),
+    encrypt: (plain) => ipcRenderer.invoke('crypto-encrypt-string', { plain }),
+    decrypt: (encrypted) => ipcRenderer.invoke('crypto-decrypt-string', { encrypted })
+  },
+
   // Vector store operations (delegated to main process)
   vectorStore: {
     initialize: (dbPath) => ipcRenderer.invoke('vector-store-initialize', dbPath),
