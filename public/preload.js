@@ -33,7 +33,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getOllamaModels: (url) => ipcRenderer.invoke('get-ollama-models', { url }),
     getModelInfo: (options) => ipcRenderer.invoke('get-model-info', options),
     chatWithOllama: (data) => ipcRenderer.invoke('chat-with-ollama', data),
-    validateTranscript: (text) => ipcRenderer.invoke('validate-transcript', { text })
+    validateTranscript: (text) => ipcRenderer.invoke('validate-transcript', { text }),
+    // Multi-provider AI support
+    aiListModels: (provider, url, apiKey) => ipcRenderer.invoke('ai-list-models', { provider, url, apiKey }),
+    aiTestConnection: (provider, url, apiKey) => ipcRenderer.invoke('ai-test-connection', { provider, url, apiKey }),
+    aiGetProviders: () => ipcRenderer.invoke('ai-get-providers')
   },
 
   // Vector store operations (delegated to main process)

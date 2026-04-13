@@ -248,6 +248,24 @@ declare global {
           status?: number;
           error?: string;
         }>;
+        aiListModels: (provider: string, url?: string, apiKey?: string) => Promise<{
+          success: boolean;
+          models: string[];
+          error?: string;
+        }>;
+        aiTestConnection: (provider: string, url?: string, apiKey?: string) => Promise<{
+          success: boolean;
+          modelCount?: number;
+          error?: string;
+        }>;
+        aiGetProviders: () => Promise<Array<{
+          id: string;
+          name: string;
+          defaultUrl: string;
+          requiresKey: boolean;
+          isLocal: boolean;
+          description: string;
+        }>>;
         getOllamaModels: (url: string) => Promise<{
           success: boolean;
           models?: any[];

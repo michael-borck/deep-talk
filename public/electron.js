@@ -6,6 +6,7 @@ const Database = require('better-sqlite3');
 const { exec, spawn } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
+const aiProviders = require('./ai-providers');
 
 // ============================================
 // Custom protocol for streaming local audio/video files
@@ -1383,56 +1384,83 @@ ipcMain.handle('get-model-info', async (event, { url, modelName }) => {
   }
 });
 
+/**
+ * AI chat IPC handler. The name is kept as 'chat-with-ollama' for
+ * back-compat with existing renderer code, but internally it dispatches
+ * through the ai-providers module so any configured provider
+ * (Ollama, OpenAI, Anthropic, Groq, Gemini, OpenRouter, Custom) works.
+ */
 ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) => {
   try {
-    // Get AI analysis settings from database
-    const aiUrlSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiAnalysisUrl');
-    const aiModelSetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiModel');
-    
-    const aiUrl = aiUrlSetting ? aiUrlSetting.value : 'http://localhost:11434';
-    const model = aiModelSetting ? aiModelSetting.value : 'llama2';
+    const providerRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiProvider');
+    const urlRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiAnalysisUrl');
+    const keyRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiApiKey');
+    const modelRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('aiModel');
 
-    console.log('Chat request:', { aiUrl, model, promptLength: prompt.length, messageLength: message.length });
+    const provider = providerRow?.value || 'ollama';
+    const info = aiProviders.getProviderInfo(provider);
+    const url = urlRow?.value || info.defaultUrl;
+    const apiKey = keyRow?.value || '';
+    const model = modelRow?.value || '';
 
-    const response = await fetch(`${aiUrl}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          num_predict: 2048,
-          top_p: 0.9,
-          top_k: 40
-        }
-      }),
-      signal: AbortSignal.timeout(120000) // 2 minute timeout for chat
+    console.log('AI chat request:', {
+      provider,
+      url,
+      model,
+      promptLength: prompt?.length ?? 0,
+      hasKey: !!apiKey,
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return { 
-        success: true, 
-        response: data.response || 'No response generated',
-        model: model,
-        totalDuration: data.total_duration,
-        loadDuration: data.load_duration,
-        promptEvalDuration: data.prompt_eval_duration,
-        evalDuration: data.eval_duration
-      };
-    } else {
-      const errorText = await response.text();
-      console.error('Ollama API error:', response.status, errorText);
-      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
-    }
+    const result = await aiProviders.chat(provider, url, apiKey, model, prompt);
+    return {
+      success: result.success,
+      response: result.response || '',
+      error: result.error,
+      model,
+      provider,
+    };
   } catch (error) {
-    console.error('Failed to chat with Ollama:', error);
+    console.error('AI chat failed:', error);
+    return { success: false, response: '', error: error.message };
+  }
+});
+
+/**
+ * List available models for the given provider/URL/key. Used by the
+ * Settings page to populate the model dropdown.
+ */
+ipcMain.handle('ai-list-models', async (event, { provider, url, apiKey }) => {
+  try {
+    const info = aiProviders.getProviderInfo(provider);
+    const effectiveUrl = url || info.defaultUrl;
+    return await aiProviders.listModels(provider, effectiveUrl, apiKey);
+  } catch (error) {
+    return { success: false, models: [], error: error.message };
+  }
+});
+
+/**
+ * Test connection to the given provider by attempting to list models.
+ */
+ipcMain.handle('ai-test-connection', async (event, { provider, url, apiKey }) => {
+  try {
+    const info = aiProviders.getProviderInfo(provider);
+    const effectiveUrl = url || info.defaultUrl;
+    return await aiProviders.testConnection(provider, effectiveUrl, apiKey);
+  } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+/**
+ * Expose provider metadata so the renderer can build the UI without
+ * duplicating the list of providers and their defaults.
+ */
+ipcMain.handle('ai-get-providers', async () => {
+  return Object.entries(aiProviders.PROVIDERS).map(([id, info]) => ({
+    id,
+    ...info,
+  }));
 });
 
 ipcMain.handle('validate-transcript', async (event, { text }) => {

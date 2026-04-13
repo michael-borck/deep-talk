@@ -11,14 +11,28 @@ type SettingsTab = 'transcription' | 'processing' | 'chat' | 'prompts' | 'genera
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('transcription');
   const [searchQuery, setSearchQuery] = useState('');
-  const { testConnections, serviceStatus } = useContext(ServiceContext);
+  const { testConnections } = useContext(ServiceContext);
   
   // Settings state
   const [localTranscriptionModel, setLocalTranscriptionModel] = useState('Xenova/whisper-tiny.en');
   const [transcriptionModelStatus, setTranscriptionModelStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [transcriptionModelMessage, setTranscriptionModelMessage] = useState<string>('');
-  const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434');
-  const [aiModel, setAiModel] = useState('llama2');
+
+  // AI Analysis provider config
+  const [aiProvider, setAiProvider] = useState('ollama');
+  const [aiAnalysisUrl, setAiAnalysisUrl] = useState('http://localhost:11434/v1');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiModel, setAiModel] = useState('');
+  const [aiProviderList, setAiProviderList] = useState<Array<{
+    id: string;
+    name: string;
+    defaultUrl: string;
+    requiresKey: boolean;
+    isLocal: boolean;
+    description: string;
+  }>>([]);
+  const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
+  const [aiTestMessage, setAiTestMessage] = useState<string>('');
   const [autoBackup, setAutoBackup] = useState(true);
   const [backupFrequency, setBackupFrequency] = useState('weekly');
   const [theme, setTheme] = useState('system');
@@ -53,7 +67,17 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     loadSettings();
     loadDatabaseInfo();
+    loadAiProviderList();
   }, []);
+
+  const loadAiProviderList = async () => {
+    try {
+      const providers = await window.electronAPI.services.aiGetProviders();
+      setAiProviderList(providers);
+    } catch (err) {
+      console.error('Failed to load AI provider list:', err);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -67,8 +91,10 @@ export const SettingsPage: React.FC = () => {
       }, {});
 
       setLocalTranscriptionModel(settingsMap.localTranscriptionModel || 'Xenova/whisper-tiny.en');
-      setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434');
-      setAiModel(settingsMap.aiModel || 'llama2');
+      setAiProvider(settingsMap.aiProvider || 'ollama');
+      setAiAnalysisUrl(settingsMap.aiAnalysisUrl || 'http://localhost:11434/v1');
+      setAiApiKey(settingsMap.aiApiKey || '');
+      setAiModel(settingsMap.aiModel || '');
       setAutoBackup(settingsMap.autoBackup === 'true');
       setBackupFrequency(settingsMap.backupFrequency || 'weekly');
       setTheme(settingsMap.theme || 'system');
@@ -133,28 +159,76 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleTestOllamaConnection = async () => {
-    const result = await window.electronAPI.services.testConnection(aiAnalysisUrl);
-    if (result.success) {
-      alert('Successfully connected to AI analysis service');
-    } else {
-      alert(`Failed to connect: ${result.error}`);
+  // ---------- AI provider handlers ----------
+
+  const handleProviderChange = (newProvider: string) => {
+    const info = aiProviderList.find((p) => p.id === newProvider);
+    setAiProvider(newProvider);
+    saveSetting('aiProvider', newProvider);
+
+    // Auto-fill the default URL for the new provider (user can still
+    // override it, which is important for custom deployments)
+    if (info) {
+      setAiAnalysisUrl(info.defaultUrl);
+      saveSetting('aiAnalysisUrl', info.defaultUrl);
+    }
+
+    // Models from the old provider aren't valid on the new one
+    setAvailableModels([]);
+    setAiModel('');
+    saveSetting('aiModel', '');
+    setAiTestStatus('idle');
+    setAiTestMessage('');
+  };
+
+  const handleAiTestConnection = async () => {
+    setAiTestStatus('testing');
+    setAiTestMessage('');
+    try {
+      const result = await window.electronAPI.services.aiTestConnection(
+        aiProvider,
+        aiAnalysisUrl,
+        aiApiKey || undefined
+      );
+      if (result.success) {
+        setAiTestStatus('ok');
+        setAiTestMessage(`Connected — ${result.modelCount ?? 0} models available`);
+      } else {
+        setAiTestStatus('error');
+        setAiTestMessage(result.error || 'Failed to connect');
+      }
+    } catch (err) {
+      setAiTestStatus('error');
+      setAiTestMessage((err as Error).message);
     }
     await testConnections();
   };
 
   const fetchOllamaModels = async () => {
     setLoadingModels(true);
+    setAiTestMessage('');
     try {
-      const result = await window.electronAPI.services.getOllamaModels(aiAnalysisUrl);
-      if (result.success && result.models) {
-        const modelNames = result.models.map((model: any) => model.name);
-        setAvailableModels(modelNames);
+      const result = await window.electronAPI.services.aiListModels(
+        aiProvider,
+        aiAnalysisUrl,
+        aiApiKey || undefined
+      );
+      if (result.success) {
+        setAvailableModels(result.models || []);
+        if ((result.models || []).length === 0) {
+          setAiTestMessage('Connected, but no models are available on this provider.');
+          setAiTestStatus('error');
+        } else {
+          setAiTestStatus('ok');
+          setAiTestMessage(`${result.models.length} models loaded`);
+        }
       } else {
-        console.error('Failed to fetch models:', result.error);
+        setAiTestStatus('error');
+        setAiTestMessage(result.error || 'Failed to load models');
       }
     } catch (error) {
-      console.error('Error fetching models:', error);
+      setAiTestStatus('error');
+      setAiTestMessage((error as Error).message);
     } finally {
       setLoadingModels(false);
     }
@@ -448,87 +522,145 @@ export const SettingsPage: React.FC = () => {
           <div className="space-y-6">
             {/* AI Analysis Service */}
             <div className="panel">
-              <h3 className="section-title mb-4">
-                AI Analysis Service
-              </h3>
-              
+              <h3 className="section-title mb-2">AI Analysis Service</h3>
+              <p className="text-sm text-surface-600 mb-5">
+                Choose where DeepTalk sends transcripts for summarisation, sentiment, and other AI analysis. Local Ollama keeps everything on your machine; cloud providers give you access to more powerful models in exchange for sending transcripts to their servers.
+              </p>
+
               <div className="space-y-4">
+                {/* Provider picker */}
                 <div>
-                  <label className="label">
-                    Service URL
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={aiAnalysisUrl}
-                      onChange={(e) => {
-                        setAiAnalysisUrl(e.target.value);
-                        saveSetting('aiAnalysisUrl', e.target.value);
-                      }}
-                      className="input flex-1"
-                    />
-                    <button
-                      onClick={handleTestOllamaConnection}
-                      className="btn-primary"
-                    >
-                      Test
-                    </button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="label">
-                    Model
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={aiModel}
-                      onChange={(e) => setAiModel(e.target.value)}
-                      onBlur={(e) => saveSetting('aiModel', e.target.value)}
-                      placeholder="Enter model name (e.g., llama2, mistral, codellama)"
-                      className="input flex-1"
-                    />
-                    <button 
-                      onClick={fetchOllamaModels}
-                      disabled={loadingModels}
-                      className="btn-secondary"
-                    >
-                      {loadingModels ? 'Loading...' : 'Refresh'}
-                    </button>
-                  </div>
-                  {availableModels.length > 0 && (
-                    <div className="mt-2">
-                      <label className="label">
-                        Available models:
-                      </label>
-                      <div className="flex flex-wrap gap-1">
-                        {availableModels.map(model => (
-                          <button
-                            key={model}
-                            onClick={() => {
-                              setAiModel(model);
-                              saveSetting('aiModel', model);
-                            }}
-                            className="text-xs px-2 py-1 bg-surface-100 hover:bg-surface-200 rounded text-surface-700"
-                          >
-                            {model}
-                          </button>
-                        ))}
+                  <label className="label">Provider</label>
+                  <select
+                    value={aiProvider}
+                    onChange={(e) => handleProviderChange(e.target.value)}
+                    className="input-select"
+                  >
+                    {aiProviderList.length === 0 ? (
+                      <option>Loading...</option>
+                    ) : (
+                      aiProviderList.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {(() => {
+                    const info = aiProviderList.find((p) => p.id === aiProvider);
+                    if (!info) return null;
+                    return (
+                      <div className={`mt-2 text-xs p-2.5 rounded-lg border ${
+                        info.isLocal
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-amber-50 border-amber-200 text-amber-800'
+                      }`}>
+                        <span className="font-medium">{info.isLocal ? '🔒 Private' : '☁ Cloud'}</span>
+                        <span className="ml-1.5">{info.description}</span>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-surface-600">Status:</span>
-                  <div className={`w-2 h-2 rounded-full ${
-                    serviceStatus.aiAnalysis === 'connected' ? 'bg-green-500' :
-                    serviceStatus.aiAnalysis === 'error' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`} />
-                  <span className="text-sm text-surface-700 capitalize">
-                    {serviceStatus.aiAnalysis}
-                  </span>
+
+                {/* Server URL */}
+                <div>
+                  <label className="label">Server URL</label>
+                  <input
+                    type="text"
+                    value={aiAnalysisUrl}
+                    onChange={(e) => {
+                      setAiAnalysisUrl(e.target.value);
+                      saveSetting('aiAnalysisUrl', e.target.value);
+                    }}
+                    placeholder={aiProviderList.find((p) => p.id === aiProvider)?.defaultUrl}
+                    className="input"
+                  />
+                </div>
+
+                {/* API key — hidden for Ollama local */}
+                {(() => {
+                  const info = aiProviderList.find((p) => p.id === aiProvider);
+                  if (info && info.isLocal) return null;
+                  return (
+                    <div>
+                      <label className="label">
+                        API Key {info?.requiresKey ? '' : '(optional)'}
+                      </label>
+                      <input
+                        type="password"
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        onBlur={(e) => saveSetting('aiApiKey', e.target.value)}
+                        placeholder={info?.requiresKey ? 'Required for this provider' : 'Leave blank if not needed'}
+                        className="input"
+                      />
+                    </div>
+                  );
+                })()}
+
+                {/* Test + Refresh buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAiTestConnection}
+                    disabled={aiTestStatus === 'testing'}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {aiTestStatus === 'testing' ? 'Testing...' : 'Test Connection'}
+                  </button>
+                  <button
+                    onClick={fetchOllamaModels}
+                    disabled={loadingModels}
+                    className="btn-secondary"
+                  >
+                    {loadingModels ? 'Loading...' : 'Refresh Models'}
+                  </button>
+                </div>
+
+                {/* Test result message */}
+                {aiTestMessage && (
+                  <div className={`text-xs p-2.5 rounded-lg border ${
+                    aiTestStatus === 'ok'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-red-50 border-red-200 text-red-800'
+                  }`}>
+                    {aiTestMessage}
+                  </div>
+                )}
+
+                {/* Model picker */}
+                <div>
+                  <label className="label">Model</label>
+                  {availableModels.length > 0 ? (
+                    <select
+                      value={aiModel}
+                      onChange={(e) => {
+                        setAiModel(e.target.value);
+                        saveSetting('aiModel', e.target.value);
+                      }}
+                      className="input-select"
+                    >
+                      <option value="">— Select a model —</option>
+                      {availableModels.map((model) => (
+                        <option key={model} value={model}>
+                          {model}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={aiModel}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        onBlur={(e) => saveSetting('aiModel', e.target.value)}
+                        placeholder="Click 'Refresh Models' to load, or type a model name"
+                        className="input"
+                      />
+                      <p className="text-[11px] text-surface-500 mt-1">
+                        Click <span className="font-medium">Refresh Models</span> to fetch the list from the provider.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
