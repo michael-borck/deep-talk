@@ -286,11 +286,12 @@ declare global {
           hasAudio?: boolean;
           error?: string;
         }>;
-        transcribe: (audioPath: string, modelName?: string) => Promise<{
+        transcribe: (audioPath: string, modelName?: string, enableDiarisation?: boolean) => Promise<{
           success: boolean;
           text?: string;
           error?: string;
-          chunkTimings?: ChunkTimingInfo[];
+          chunkTimings?: Array<ChunkTimingInfo & { speaker?: string }>;
+          speakerTurns?: Array<{ start: number; end: number; speaker: string }>;
         }>;
         loadTranscriptionModel: (modelName?: string) => Promise<{
           success: boolean;

@@ -78,8 +78,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('extract-audio', { inputPath, outputPath }),
     getMediaInfo: (filePath) =>
       ipcRenderer.invoke('get-media-info', { filePath }),
-    transcribe: (audioPath, modelName) =>
-      ipcRenderer.invoke('local-transcription-transcribe', { audioPath, modelName }),
+    transcribe: (audioPath, modelName, enableDiarisation) =>
+      ipcRenderer.invoke('local-transcription-transcribe', { audioPath, modelName, enableDiarisation }),
     loadTranscriptionModel: (modelName) =>
       ipcRenderer.invoke('local-transcription-load-model', { modelName }),
     onTranscriptionProgress: (callback) => {

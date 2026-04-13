@@ -37,7 +37,7 @@ export const SettingsPage: React.FC = () => {
   });
   const [enableDuplicateRemoval, setEnableDuplicateRemoval] = useState(true);
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
-  const [enableSpeakerTagging, setEnableSpeakerTagging] = useState(false);
+  const [enableSpeakerDiarisation, setEnableSpeakerDiarisation] = useState(true);
   const [oneTaskAtATime, setOneTaskAtATime] = useState(true);
   
   // Chat settings
@@ -83,7 +83,7 @@ export const SettingsPage: React.FC = () => {
         }
       }
       setAnalyzeValidatedTranscript(settingsMap.analyzeValidatedTranscript !== 'false');
-      setEnableSpeakerTagging(settingsMap.enableSpeakerTagging === 'true');
+      setEnableSpeakerDiarisation(settingsMap.enableSpeakerDiarisation !== 'false');
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
       setOneTaskAtATime(settingsMap.oneTaskAtATime !== 'false');
       
@@ -602,22 +602,22 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Automatic Speaker Tagging */}
+                {/* Speaker Detection (audio-level diarisation) */}
                 <div>
                   <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
-                      checked={enableSpeakerTagging}
+                      checked={enableSpeakerDiarisation}
                       onChange={(e) => {
-                        setEnableSpeakerTagging(e.target.checked);
-                        saveSetting('enableSpeakerTagging', e.target.checked.toString());
+                        setEnableSpeakerDiarisation(e.target.checked);
+                        saveSetting('enableSpeakerDiarisation', e.target.checked.toString());
                       }}
                       className="rounded text-primary-800 focus:ring-primary-500"
                     />
-                    <span className="text-sm font-medium text-surface-700">Automatic speaker tagging</span>
+                    <span className="text-sm font-medium text-surface-700">Detect speakers from audio</span>
                   </label>
                   <p className="text-xs text-surface-500 ml-6">
-                    Automatically add speaker labels like "[Speaker 1]:" when multiple speakers are detected
+                    Identifies who is speaking using voice fingerprints — much more accurate than guessing from text. Adds about 1× the audio length to processing time. Turn off for single-speaker recordings to save time.
                   </p>
                 </div>
 

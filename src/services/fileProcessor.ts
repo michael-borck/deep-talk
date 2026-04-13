@@ -88,7 +88,27 @@ export class FileProcessor {
         ? validationResult.validatedText 
         : transcriptResult.text || '';
       const advancedAnalysisResult = await this.performAdvancedAnalysis(textForAdvancedAnalysis, callbacks.onProgress);
-      
+
+      // If the local diarisation pipeline produced real speaker turns,
+      // they override anything the LLM speaker-tagging path produced.
+      // Real audio diarisation > LLM guessing from text.
+      if (transcriptResult.speakerTurns && transcriptResult.speakerTurns.length > 0) {
+        const uniqueSpeakers = Array.from(
+          new Set(transcriptResult.speakerTurns.map(t => t.speaker))
+        );
+        const segmentCounts: Record<string, number> = {};
+        for (const turn of transcriptResult.speakerTurns) {
+          segmentCounts[turn.speaker] = (segmentCounts[turn.speaker] || 0) + 1;
+        }
+        advancedAnalysisResult.speakerCount = uniqueSpeakers.length;
+        advancedAnalysisResult.speakers = uniqueSpeakers.map((name) => ({
+          id: name,
+          name,
+          segments: segmentCounts[name] || 0,
+        }));
+        console.log(`[fileProcessor] using diarisation speakers: ${uniqueSpeakers.length} found`);
+      }
+
       callbacks.onProgress?.('analyzing', 75);
       
       // Step 4.6: Research Analysis (quotes, themes, Q&A, concepts)
@@ -207,7 +227,9 @@ export class FileProcessor {
       endTime: number;
       duration: number;
       text: string;
+      speaker?: string;
     }>;
+    speakerTurns?: Array<{ start: number; end: number; speaker: string }>;
   }> {
     try {
       // Read the chosen local Whisper model from settings (defaults to tiny.en)
@@ -217,10 +239,17 @@ export class FileProcessor {
       );
       const modelName = modelSetting?.value || 'Xenova/whisper-tiny.en';
 
+      // Speaker detection is on by default; users can opt out in Settings
+      const diariseSetting = await window.electronAPI.database.get(
+        'SELECT value FROM settings WHERE key = ?',
+        ['enableSpeakerDiarisation']
+      );
+      const enableDiarisation = diariseSetting?.value !== 'false';
+
       onProgress?.('transcribing', 25);
 
-      // Run Whisper in the main process — no external server needed
-      const result = await window.electronAPI.audio.transcribe(audioPath, modelName);
+      // Run Whisper + (optional) diarisation entirely in the main process
+      const result = await window.electronAPI.audio.transcribe(audioPath, modelName, enableDiarisation);
       
       onProgress?.('transcribing', 75);
       
@@ -802,16 +831,11 @@ Respond with ONLY a JSON object mapping ALL sentence numbers to speaker names:
         const speakerResult = await this.performSpeakerDetection(transcriptText);
         onProgress?.('analyzing', 75);
         
-        // Step 4: Speaker Tagging (if enabled and multiple speakers detected)
-        let processedText = transcriptText;
-        const speakerTaggingSetting = await window.electronAPI.database.get(
-          'SELECT value FROM settings WHERE key = ?',
-          ['enableSpeakerTagging']
-        );
-        
-        if (speakerTaggingSetting?.value === 'true' && speakerResult.speakerCount > 1) {
-          processedText = await this.performSpeakerTagging(transcriptText, speakerResult.speakers);
-        }
+        // Speaker tagging now happens at the audio level via the local
+        // diarisation pipeline (pyannote + wespeaker) — see processFile.
+        // The LLM-based fallback below is left in place but no longer
+        // called from the default path.
+        const processedText = transcriptText;
         onProgress?.('analyzing', 85);
         
         return {

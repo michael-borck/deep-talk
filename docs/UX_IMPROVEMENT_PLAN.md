@@ -1,7 +1,7 @@
 # DeepTalk UX Improvement Plan
 
 **Created:** 2026-04-13
-**Status:** Tier 1 + Tier 2 + Tier 3 complete. Tier 4 in progress — local transcription has replaced the Speaches dependency. Diarisation still on the LLM-based fallback (next phase). Build verified clean.
+**Status:** Tier 1 + Tier 2 + Tier 3 complete. Tier 4 Phase 1 + Phase 2 complete — DeepTalk now runs Whisper transcription AND speaker diarisation entirely in-process. No external server, no LLM guessing speakers from text. Build verified clean.
 
 ## Background
 
@@ -153,12 +153,30 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
     - Removed: Speaches server URL field, bearer key field, free-text model name input, Test button, Refresh models button, status indicator, audio chunk size slider
     - Removed state: `speechToTextUrl`, `speechToTextKey`, `speechToTextModel`, `availableSttModels`, `loadingSttModels`, `audioChunkSize`
     - Removed functions: `fetchSttModels`, the speaches branch of `handleTestConnection`
-- **Phase 2 — Local diarisation (next):**
-  - Add pyannote-segmentation + wespeaker-voxceleb embedding via transformers.js
-  - Cluster embeddings → speaker labels per audio segment
-  - Align with whisper segments by timestamp
-  - Delete the entire LLM-based speaker tagging pipeline (`fileProcessor.ts` ~600-770)
-  - Speaker tagging modal stays for renaming/merging only
+- **Phase 2 — Local diarisation (done 2026-04-14):**
+  - Validated with two spike scripts (`scripts/spike-diarisation-full.js`):
+    - `hello.mp3` (1.07s, 1 speaker) → correctly identified 1 speaker, 1 turn
+    - `sample.wav` (30s, 2 speakers) → correctly identified 2 speakers, 10 turns with overlapping speech detected
+  - Migrated transformers.js from `@xenova/transformers` v2 to `@huggingface/transformers` v4 — v3+ added native PyAnnoteFeatureExtractor support which v2 lacked. Both packages currently coexist; @xenova will be removed in a follow-up cleanup.
+  - New `electron.js` diarisation module (~250 lines):
+    - `getDiarisationModels()` lazy-loads `onnx-community/pyannote-segmentation-3.0` (~6 MB) + `onnx-community/wespeaker-voxceleb-resnet34-LM` (~25 MB), cached in `userData/models/`
+    - `segmentWindow()` runs pyannote on a 5-second window, decodes the powerset class indices into per-frame active-speaker arrays
+    - `framesToTurns()` converts frame-level activations into `[start, end, localSpeaker]` turns
+    - `embedTurn()` runs wespeaker on a turn's audio slice, producing a 256-d voice embedding (pads to ≥250 ms for stability)
+    - `clusterTurns()` does agglomerative cosine clustering at threshold 0.5 to assign global speaker IDs
+    - `diariseAudio()` ties it all together — windowed segmentation, per-turn embedding, clustering
+    - `alignSpeakersToChunks()` joins diarisation turns to whisper text chunks by timestamp overlap
+  - `local-transcription-transcribe` IPC now accepts `enableDiarisation` flag (default true), runs both pipelines, and returns chunk timings with `speaker` populated plus a `speakerTurns` array
+  - `createSentenceSegmentsFromChunks()` propagates the speaker field per sentence so the existing `transcript_segments.speaker` column gets populated
+  - `fileProcessor.processFile()` overrides `advancedAnalysisResult.speakers` and `speakerCount` with the real diarisation output when present, so the database write uses real audio-derived speakers
+  - LLM speaker tagging in `performAdvancedAnalysis` is now a no-op — the call to `performSpeakerTagging` is removed from the default path. The legacy methods (`performSpeakerTagging`, the speaker prompts) are dead code, scheduled for deletion in a follow-up cleanup commit
+  - Settings → Processing tab: replaced the `Automatic speaker tagging` checkbox with `Detect speakers from audio` (default ON), with non-jargon copy explaining the tradeoff
+  - Build verified clean.
+- **Cleanup remaining for full Tier 4:**
+  - Delete the dead LLM speaker tagging methods in `fileProcessor.ts` (~150 lines)
+  - Delete the speaker_count, speaker_segments, speaker_tagging prompt definitions
+  - Remove `@xenova/transformers` from package.json once nothing imports it
+  - Drop the orphaned `enableSpeakerTagging` setting row (or migrate it)
 
 ### 4.1 Decide on project-level analysis
 - `projectAnalysisService.ts` computes theme evolution, speaker interactions, sentiment trends, cross-transcript patterns
@@ -188,4 +206,5 @@ Pure algorithmic, no LLM calls, high perceived value. Reference: `/Users/michael
 - **2026-04-13** — Tier 2 complete: ported talk-buddy's algorithmic conversation analysis, reframed for DeepTalk's audience. New `conversationMetricsService.ts` (pure, no LLM). Three new cards: ConversationQualityCard, FillerWordsCard, TalkTimeCard. Surfaces appear on both Overview and Analysis tabs. Build verified.
 - **2026-04-14** — Tier 3 complete: audio playback synced to transcript (useAudioPlayer hook + AudioPlayerBar component, click segments to seek, auto-scroll playing segment), DOCX/PDF export (new exportService using docx + jspdf), advanced settings collapsed under reusable Collapsible component. Build verified.
 - **2026-04-14** — Tier 4 Phase 1 complete: dropped the Speaches dependency entirely. Whisper now runs in-process via @xenova/transformers (already installed). Validated end-to-end with the spike script — `hello.mp3` transcribed correctly in ~700 ms at 1.5x realtime with the tiny.en model. Settings page rewritten with a simple model picker (tiny.en/base.en/small.en) and a "Download now" button. ~400 lines of legacy Speaches code deleted from electron.js. Build verified clean. Spike script kept in `scripts/spike-whisper.js` as a reproducible validation tool.
-- **Next:** Tier 4 Phase 2 — replace LLM-based speaker tagging with real audio diarisation using pyannote-segmentation + wespeaker via transformers.js. Then 4.1/4.2 — delete dead project-level analysis code, collapse dual analysis paths.
+- **2026-04-14** — Tier 4 Phase 2 complete: real audio-level speaker diarisation. Pyannote-segmentation-3.0 + wespeaker-voxceleb-resnet34-LM running in-process via @huggingface/transformers v4 (had to upgrade from @xenova v2 because v2 lacked the PyAnnoteFeatureExtractor). Validated on a real 30-second 2-speaker file — pipeline correctly identified both speakers and produced 10 turns including overlap detection. Algorithm: pyannote per 5s window → frame-level powerset classes → per-turn 256-d wespeaker embedding → agglomerative cosine clustering at threshold 0.5 → align by timestamp with whisper segments. Spike kept in `scripts/spike-diarisation-full.js`. LLM speaker tagging is now a dead-code no-op in the default path; will be deleted in a focused cleanup commit. Settings now has a single "Detect speakers from audio" toggle in plain language. Build verified clean.
+- **Next:** Cleanup pass — delete dead LLM speaker tagging methods, remove @xenova/transformers, drop orphaned settings rows. Then 4.1/4.2 from the original plan: project-level analysis dead code, dual analysis path consolidation.

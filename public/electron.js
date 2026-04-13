@@ -18,6 +18,20 @@ const DEFAULT_WHISPER_MODEL = 'Xenova/whisper-tiny.en';
 let whisperPipeline = null;
 let whisperPipelineModel = null;
 
+// Lazy import: @huggingface/transformers is ESM-only and bigger than we
+// want to load on app startup. Cache the module after first import.
+let huggingfaceTransformers = null;
+async function getTransformers() {
+  if (huggingfaceTransformers) return huggingfaceTransformers;
+  huggingfaceTransformers = await import('@huggingface/transformers');
+  // Cache models in Electron user data so they survive reinstalls and
+  // don't pollute the working directory
+  huggingfaceTransformers.env.cacheDir = path.join(app.getPath('userData'), 'models');
+  huggingfaceTransformers.env.allowLocalModels = false;
+  huggingfaceTransformers.env.allowRemoteModels = true;
+  return huggingfaceTransformers;
+}
+
 async function getWhisperPipeline(modelName, progressCallback) {
   if (whisperPipeline && whisperPipelineModel === modelName) {
     return whisperPipeline;
@@ -27,13 +41,7 @@ async function getWhisperPipeline(modelName, progressCallback) {
   whisperPipeline = null;
   whisperPipelineModel = null;
 
-  const { pipeline, env } = await import('@xenova/transformers');
-
-  // Cache models in Electron user data so they survive reinstalls and
-  // don't pollute the working directory
-  env.cacheDir = path.join(app.getPath('userData'), 'models');
-  env.allowLocalModels = false;
-  env.allowRemoteModels = true;
+  const { pipeline, env } = await getTransformers();
 
   console.log(`[whisper] loading pipeline: ${modelName} (cache: ${env.cacheDir})`);
   const t0 = Date.now();
@@ -79,6 +87,275 @@ function decodeAudioToFloat32(audioPath) {
       );
       resolve(float32);
     });
+  });
+}
+
+// ============================================
+// Local speaker diarisation (pyannote + wespeaker)
+// ============================================
+//
+// Pipeline:
+//   1. pyannote-segmentation-3.0 finds speech regions and local speaker
+//      activity in 5-second windows. Each frame is classified into a
+//      "powerset" of up to 3 simultaneous speakers.
+//   2. wespeaker-voxceleb-resnet34-LM produces a 256-d voice embedding
+//      for each turn.
+//   3. Agglomerative clustering on cosine similarity assigns global
+//      speaker IDs across the whole audio.
+//
+// All models cached locally. No external server, no LLM guessing from
+// text — speakers come from the actual audio.
+
+const SEGMENTATION_MODEL = 'onnx-community/pyannote-segmentation-3.0';
+const EMBEDDING_MODEL = 'onnx-community/wespeaker-voxceleb-resnet34-LM';
+const PA_WINDOW_SECONDS = 5;
+const SAMPLE_RATE = 16000;
+
+// pyannote-segmentation-3.0 powerset → active speaker indices
+const POWERSET = [
+  [],         // 0: silence
+  [0],        // 1: speaker 0 only
+  [1],        // 2: speaker 1 only
+  [2],        // 3: speaker 2 only
+  [0, 1],     // 4: speakers 0 + 1
+  [0, 2],     // 5: speakers 0 + 2
+  [1, 2],     // 6: speakers 1 + 2
+];
+
+let segmentationModel = null;
+let segmentationProcessor = null;
+let embeddingModel = null;
+let embeddingProcessor = null;
+
+async function getDiarisationModels(progressCallback) {
+  if (segmentationModel && embeddingModel) {
+    return { segmentationModel, segmentationProcessor, embeddingModel, embeddingProcessor };
+  }
+
+  const { AutoProcessor, AutoModel } = await getTransformers();
+
+  if (!segmentationModel) {
+    console.log(`[diarise] loading segmentation: ${SEGMENTATION_MODEL}`);
+    const t0 = Date.now();
+    segmentationProcessor = await AutoProcessor.from_pretrained(SEGMENTATION_MODEL, {
+      progress_callback: progressCallback,
+    });
+    segmentationModel = await AutoModel.from_pretrained(SEGMENTATION_MODEL, {
+      progress_callback: progressCallback,
+    });
+    console.log(`[diarise] segmentation ready in ${Date.now() - t0} ms`);
+  }
+
+  if (!embeddingModel) {
+    console.log(`[diarise] loading embedding: ${EMBEDDING_MODEL}`);
+    const t0 = Date.now();
+    embeddingProcessor = await AutoProcessor.from_pretrained(EMBEDDING_MODEL, {
+      progress_callback: progressCallback,
+    });
+    embeddingModel = await AutoModel.from_pretrained(EMBEDDING_MODEL, {
+      progress_callback: progressCallback,
+    });
+    console.log(`[diarise] embedding ready in ${Date.now() - t0} ms`);
+  }
+
+  return { segmentationModel, segmentationProcessor, embeddingModel, embeddingProcessor };
+}
+
+function argmax(arr) {
+  let bestIdx = 0;
+  let bestVal = arr[0];
+  for (let i = 1; i < arr.length; i++) {
+    if (arr[i] > bestVal) { bestVal = arr[i]; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+function cosineSimilarity(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-12);
+}
+
+async function segmentWindow(audio) {
+  const inputs = await segmentationProcessor(audio);
+  const outputs = await segmentationModel(inputs);
+  const logits = outputs.logits;
+  const [, F, C] = logits.dims;
+  const data = logits.data;
+
+  const frames = [];
+  for (let f = 0; f < F; f++) {
+    const start = f * C;
+    const slice = data.subarray(start, start + C);
+    frames.push(POWERSET[argmax(slice)]);
+  }
+  return frames;
+}
+
+function framesToTurns(frames, windowSeconds, windowStart) {
+  const turns = [];
+  const framesPerSecond = frames.length / windowSeconds;
+
+  for (let speaker = 0; speaker < 3; speaker++) {
+    let inTurn = false;
+    let startFrame = 0;
+    for (let f = 0; f < frames.length; f++) {
+      const active = frames[f].includes(speaker);
+      if (active && !inTurn) {
+        inTurn = true;
+        startFrame = f;
+      } else if (!active && inTurn) {
+        inTurn = false;
+        turns.push({
+          start: windowStart + startFrame / framesPerSecond,
+          end: windowStart + f / framesPerSecond,
+          localSpeaker: speaker,
+        });
+      }
+    }
+    if (inTurn) {
+      turns.push({
+        start: windowStart + startFrame / framesPerSecond,
+        end: windowStart + frames.length / framesPerSecond,
+        localSpeaker: speaker,
+      });
+    }
+  }
+  return turns;
+}
+
+async function embedTurn(audioSlice) {
+  // wespeaker needs at least ~250 ms of audio for a stable embedding
+  let input = audioSlice;
+  const minSamples = Math.ceil(SAMPLE_RATE * 0.25);
+  if (input.length < minSamples) {
+    const padded = new Float32Array(minSamples);
+    padded.set(input);
+    input = padded;
+  }
+  const inputs = await embeddingProcessor(input);
+  const outputs = await embeddingModel(inputs);
+  const tensor = outputs.embeddings || outputs.last_hidden_state || Object.values(outputs)[0];
+  return Array.from(tensor.data);
+}
+
+function clusterTurns(turns, embeddings, threshold = 0.5) {
+  if (turns.length === 0) return [];
+  if (turns.length === 1) return [0];
+
+  const clusters = turns.map((_, i) => [i]);
+  const centroids = embeddings.map((e) => e.slice());
+
+  while (clusters.length > 1) {
+    let bestI = -1, bestJ = -1, bestSim = -1;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const sim = cosineSimilarity(centroids[i], centroids[j]);
+        if (sim > bestSim) { bestSim = sim; bestI = i; bestJ = j; }
+      }
+    }
+    if (bestSim < threshold) break;
+
+    const merged = clusters[bestI].concat(clusters[bestJ]);
+    const newCentroid = new Array(centroids[bestI].length).fill(0);
+    for (const turnIdx of merged) {
+      for (let k = 0; k < newCentroid.length; k++) {
+        newCentroid[k] += embeddings[turnIdx][k];
+      }
+    }
+    for (let k = 0; k < newCentroid.length; k++) {
+      newCentroid[k] /= merged.length;
+    }
+    clusters[bestI] = merged;
+    centroids[bestI] = newCentroid;
+    clusters.splice(bestJ, 1);
+    centroids.splice(bestJ, 1);
+  }
+
+  const labels = new Array(turns.length);
+  for (let c = 0; c < clusters.length; c++) {
+    for (const turnIdx of clusters[c]) {
+      labels[turnIdx] = c;
+    }
+  }
+  return labels;
+}
+
+/**
+ * Run the full diarisation pipeline on already-decoded audio.
+ * Returns an array of { start, end, speaker } turns where `speaker` is
+ * a string label like "Speaker 0", "Speaker 1", ...
+ */
+async function diariseAudio(audio, progressCallback) {
+  await getDiarisationModels(progressCallback);
+
+  const audioSeconds = audio.length / SAMPLE_RATE;
+  const allTurns = [];
+  const windowSamples = PA_WINDOW_SECONDS * SAMPLE_RATE;
+
+  for (let start = 0; start < audio.length; start += windowSamples) {
+    const slice = audio.subarray(start, Math.min(start + windowSamples, audio.length));
+    let windowAudio = slice;
+    if (slice.length < windowSamples) {
+      windowAudio = new Float32Array(windowSamples);
+      windowAudio.set(slice);
+    }
+    const frames = await segmentWindow(windowAudio);
+    const windowTurns = framesToTurns(frames, PA_WINDOW_SECONDS, start / SAMPLE_RATE);
+    for (const t of windowTurns) {
+      if (t.start < audioSeconds) {
+        t.end = Math.min(t.end, audioSeconds);
+        if (t.end > t.start + 0.05) allTurns.push(t); // skip ultra-short turns
+      }
+    }
+  }
+
+  if (allTurns.length === 0) {
+    return [];
+  }
+
+  console.log(`[diarise] computing ${allTurns.length} embeddings...`);
+  const embeddings = [];
+  for (const turn of allTurns) {
+    const startSample = Math.floor(turn.start * SAMPLE_RATE);
+    const endSample = Math.floor(turn.end * SAMPLE_RATE);
+    embeddings.push(await embedTurn(audio.subarray(startSample, endSample)));
+  }
+
+  const labels = clusterTurns(allTurns, embeddings, 0.5);
+  return allTurns.map((t, i) => ({
+    start: t.start,
+    end: t.end,
+    speaker: `Speaker ${labels[i] + 1}`,
+  }));
+}
+
+/**
+ * Assign a speaker to each whisper text segment by finding the
+ * diarisation turn it overlaps with most. Returns the same chunkTimings
+ * array with `speaker` populated.
+ */
+function alignSpeakersToChunks(chunkTimings, diarisationTurns) {
+  if (!diarisationTurns || diarisationTurns.length === 0) {
+    return chunkTimings;
+  }
+  return chunkTimings.map((chunk) => {
+    let bestSpeaker = null;
+    let bestOverlap = 0;
+    for (const turn of diarisationTurns) {
+      const overlapStart = Math.max(chunk.startTime, turn.start);
+      const overlapEnd = Math.min(chunk.endTime, turn.end);
+      const overlap = overlapEnd - overlapStart;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestSpeaker = turn.speaker;
+      }
+    }
+    return { ...chunk, speaker: bestSpeaker || undefined };
   });
 }
 
@@ -1165,15 +1442,16 @@ ipcMain.handle('local-transcription-load-model', async (event, { modelName }) =>
   }
 });
 
-ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, modelName }) => {
+ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, modelName, enableDiarisation }) => {
   try {
     const target = modelName || DEFAULT_WHISPER_MODEL;
+    const wantSpeakers = enableDiarisation !== false; // default ON
 
     if (!fs.existsSync(audioPath)) {
       throw new Error(`Audio file not found: ${audioPath}`);
     }
 
-    console.log('[local-transcription] starting:', audioPath, 'with', target);
+    console.log('[local-transcription] starting:', audioPath, 'with', target, '| diarisation:', wantSpeakers);
     const totalStart = Date.now();
 
     const sendProgress = (data) => {
@@ -1207,7 +1485,7 @@ ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, mode
 
     // Map whisper segments to the ChunkTimingInfo shape that
     // sentenceSegmentsService.createSegmentsFromChunks expects
-    const chunkTimings = (result.chunks || []).map((c, i) => {
+    let chunkTimings = (result.chunks || []).map((c, i) => {
       const start = Array.isArray(c.timestamp) ? (c.timestamp[0] ?? 0) : 0;
       const end = Array.isArray(c.timestamp) ? (c.timestamp[1] ?? start) : start;
       return {
@@ -1219,12 +1497,27 @@ ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, mode
       };
     });
 
+    // ----- Optional: speaker diarisation -----
+    let diarisationTurns = [];
+    if (wantSpeakers) {
+      try {
+        const diariseStart = Date.now();
+        diarisationTurns = await diariseAudio(audio, sendProgress);
+        console.log(`[local-transcription] diarisation: ${diarisationTurns.length} turns in ${Date.now() - diariseStart} ms`);
+        chunkTimings = alignSpeakersToChunks(chunkTimings, diarisationTurns);
+      } catch (diariseErr) {
+        // Diarisation failures should not block transcription
+        console.error('[local-transcription] diarisation failed (continuing without speakers):', diariseErr.message);
+      }
+    }
+
     console.log(`[local-transcription] complete in ${Date.now() - totalStart} ms (${chunkTimings.length} chunks)`);
 
     return {
       success: true,
       text: (result.text || '').trim(),
       chunkTimings,
+      speakerTurns: diarisationTurns,
     };
   } catch (error) {
     console.error('[local-transcription] error:', error);
@@ -1303,6 +1596,7 @@ function createSentenceSegmentsFromChunks(transcriptId, chunkTimings, version = 
         text: sentence,
         startTime: currentTime,
         endTime: Math.min(endTime, chunk.endTime || currentTime + estimatedDuration),
+        speaker: chunk.speaker || null,
         confidence: calculateConfidence(sentence, wordCount, estimatedDuration),
         version,
         sourceChunkIndex: chunk.chunkIndex,
