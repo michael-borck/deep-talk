@@ -5,6 +5,9 @@ import { StatusBar } from './StatusBar';
 import { AboutDialog } from './AboutDialog';
 import { LicensesModal } from './LicensesModal';
 import { ToastContainer } from './ToastContainer';
+import { WelcomeModal } from './WelcomeModal';
+
+const WELCOME_SEEN_KEY = 'deeptalk:welcomeSeenV1';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -18,6 +21,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   });
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [showLicensesModal, setShowLicensesModal] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    // Show the welcome modal on first launch only. The key is versioned
+    // so we can re-show it after a major release if we ever want to.
+    try {
+      return localStorage.getItem(WELCOME_SEEN_KEY) !== '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleWelcomeClose = () => {
+    try {
+      localStorage.setItem(WELCOME_SEEN_KEY, '1');
+    } catch { /* ignore quota errors */ }
+    setShowWelcome(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
@@ -110,6 +129,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Global toast notifications */}
       <ToastContainer />
+
+      {/* First-run welcome modal — shows once until dismissed */}
+      <WelcomeModal isOpen={showWelcome} onClose={handleWelcomeClose} />
     </div>
   );
 };

@@ -298,26 +298,10 @@ export const LibraryPage: React.FC = () => {
         </div>
       )}
 
-      {/* Pagination */}
-      {filteredTranscripts.length > 20 && (
-        <div className="mt-8 flex justify-center">
-          <nav className="flex gap-1">
-            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
-              Previous
-            </button>
-            <button className="btn-primary px-3 py-2">
-              1
-            </button>
-            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
-              3
-            </button>
-            <button className="px-3 py-2 text-sm text-surface-500 hover:text-surface-800 rounded-lg hover:bg-surface-100 transition-colors">
-              Next
-            </button>
-          </nav>
+      {/* Footer count — gives you a sense of how many results you're scrolling through */}
+      {filteredTranscripts.length > 0 && (
+        <div className="mt-8 text-center text-xs text-surface-400">
+          {filteredTranscripts.length} transcript{filteredTranscripts.length !== 1 ? 's' : ''}
         </div>
       )}
     </div>
