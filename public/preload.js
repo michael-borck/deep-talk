@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     aiTestConnection: (provider, url, apiKey) => ipcRenderer.invoke('ai-test-connection', { provider, url, apiKey }),
     aiGetProviders: () => ipcRenderer.invoke('ai-get-providers'),
     aiGetUsageStats: () => ipcRenderer.invoke('ai-get-usage-stats'),
-    aiResetUsageStats: () => ipcRenderer.invoke('ai-reset-usage-stats')
+    aiResetUsageStats: (scope) => ipcRenderer.invoke('ai-reset-usage-stats', { scope })
   },
 
   // Sensitive value encryption (uses Electron safeStorage / OS keychain)

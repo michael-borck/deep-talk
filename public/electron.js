@@ -1529,9 +1529,11 @@ ipcMain.handle('ai-get-providers', async () => {
 // Session usage tracking (in-memory, not persisted)
 // ============================================
 //
-// Accumulates token counts per provider for the lifetime of the current
-// app session so users can see how much they're spending on hosted
-// providers. Resets on app restart or explicitly via the Settings page.
+// Session usage is an in-memory counter that resets on app restart.
+// Lifetime usage is persisted in the settings table under the key
+// 'aiLifetimeUsage' as a single JSON blob, so users can track total
+// spend across restarts. Both accumulate simultaneously on every
+// recordUsage() call.
 
 const sessionUsage = {
   startedAt: Date.now(),
@@ -1539,38 +1541,108 @@ const sessionUsage = {
   byProvider: {}, // provider -> { promptTokens, completionTokens, totalTokens, requests, lastModel }
 };
 
+const LIFETIME_USAGE_KEY = 'aiLifetimeUsage';
+
+function loadLifetimeUsage() {
+  try {
+    if (!db) return null;
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(LIFETIME_USAGE_KEY);
+    if (!row?.value) return null;
+    return JSON.parse(row.value);
+  } catch (err) {
+    console.warn('[usage] failed to load lifetime usage:', err.message);
+    return null;
+  }
+}
+
+function saveLifetimeUsage(usage) {
+  try {
+    if (!db) return;
+    db.prepare(
+      'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)'
+    ).run(LIFETIME_USAGE_KEY, JSON.stringify(usage), new Date().toISOString());
+  } catch (err) {
+    console.warn('[usage] failed to save lifetime usage:', err.message);
+  }
+}
+
+function emptyUsage() {
+  return {
+    startedAt: Date.now(),
+    totals: { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 },
+    byProvider: {},
+  };
+}
+
 function recordUsage(provider, model, usage) {
   if (!usage) return;
   const p = Number(usage.promptTokens) || 0;
   const c = Number(usage.completionTokens) || 0;
   const t = Number(usage.totalTokens) || p + c;
+
+  // Session counter
   sessionUsage.totals.promptTokens += p;
   sessionUsage.totals.completionTokens += c;
   sessionUsage.totals.totalTokens += t;
   sessionUsage.totals.requests += 1;
-  const bucket = sessionUsage.byProvider[provider] || {
+  const sBucket = sessionUsage.byProvider[provider] || {
     promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0, lastModel: '',
   };
-  bucket.promptTokens += p;
-  bucket.completionTokens += c;
-  bucket.totalTokens += t;
-  bucket.requests += 1;
-  if (model) bucket.lastModel = model;
-  sessionUsage.byProvider[provider] = bucket;
+  sBucket.promptTokens += p;
+  sBucket.completionTokens += c;
+  sBucket.totalTokens += t;
+  sBucket.requests += 1;
+  if (model) sBucket.lastModel = model;
+  sessionUsage.byProvider[provider] = sBucket;
+
+  // Lifetime counter (persisted)
+  const lifetime = loadLifetimeUsage() || emptyUsage();
+  lifetime.totals.promptTokens += p;
+  lifetime.totals.completionTokens += c;
+  lifetime.totals.totalTokens += t;
+  lifetime.totals.requests += 1;
+  const lBucket = lifetime.byProvider[provider] || {
+    promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0, lastModel: '',
+  };
+  lBucket.promptTokens += p;
+  lBucket.completionTokens += c;
+  lBucket.totalTokens += t;
+  lBucket.requests += 1;
+  if (model) lBucket.lastModel = model;
+  lifetime.byProvider[provider] = lBucket;
+  saveLifetimeUsage(lifetime);
 }
 
 ipcMain.handle('ai-get-usage-stats', async () => {
+  const lifetime = loadLifetimeUsage();
   return {
-    startedAt: sessionUsage.startedAt,
-    totals: { ...sessionUsage.totals },
-    byProvider: { ...sessionUsage.byProvider },
+    session: {
+      startedAt: sessionUsage.startedAt,
+      totals: { ...sessionUsage.totals },
+      byProvider: { ...sessionUsage.byProvider },
+    },
+    lifetime: lifetime || {
+      startedAt: Date.now(),
+      totals: { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 },
+      byProvider: {},
+    },
   };
 });
 
-ipcMain.handle('ai-reset-usage-stats', async () => {
-  sessionUsage.startedAt = Date.now();
-  sessionUsage.totals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 };
-  sessionUsage.byProvider = {};
+ipcMain.handle('ai-reset-usage-stats', async (event, { scope } = {}) => {
+  if (scope === 'lifetime') {
+    saveLifetimeUsage(emptyUsage());
+  } else if (scope === 'both') {
+    sessionUsage.startedAt = Date.now();
+    sessionUsage.totals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 };
+    sessionUsage.byProvider = {};
+    saveLifetimeUsage(emptyUsage());
+  } else {
+    // Default: session only (matches existing behaviour)
+    sessionUsage.startedAt = Date.now();
+    sessionUsage.totals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 };
+    sessionUsage.byProvider = {};
+  }
   return { success: true };
 });
 

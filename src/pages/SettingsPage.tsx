@@ -58,12 +58,13 @@ export const SettingsPage: React.FC = () => {
   const [diaClusterThreshold, setDiaClusterThreshold] = useState(0.50);
   const [diaNoiseMinTotalSeconds, setDiaNoiseMinTotalSeconds] = useState(3.0);
 
-  // AI usage / cost tracking (session-scoped)
-  const [usageStats, setUsageStats] = useState<{
+  // AI usage / cost tracking (both session and lifetime)
+  type UsageBlock = {
     startedAt: number;
     totals: { promptTokens: number; completionTokens: number; totalTokens: number; requests: number };
     byProvider: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; requests: number; lastModel: string }>;
-  } | null>(null);
+  };
+  const [usageStats, setUsageStats] = useState<{ session: UsageBlock; lifetime: UsageBlock } | null>(null);
 
 
   // Chat settings
@@ -92,9 +93,9 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const resetUsageStats = async () => {
+  const resetUsageStats = async (scope: 'session' | 'lifetime' | 'both' = 'session') => {
     try {
-      await window.electronAPI.services.aiResetUsageStats();
+      await window.electronAPI.services.aiResetUsageStats(scope);
       await loadUsageStats();
     } catch (err) {
       console.error('Failed to reset usage stats:', err);
@@ -744,54 +745,89 @@ export const SettingsPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Session token usage */}
+                {/* AI token usage (session + lifetime) */}
                 <div className="border-t border-surface-200 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-surface-700">Session token usage</h4>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={loadUsageStats}
-                        className="text-[11px] text-surface-500 hover:text-surface-700"
-                      >
-                        Refresh
-                      </button>
-                      <button
-                        type="button"
-                        onClick={resetUsageStats}
-                        className="text-[11px] text-surface-500 hover:text-surface-700"
-                      >
-                        Reset
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-surface-700">AI token usage</h4>
+                    <button
+                      type="button"
+                      onClick={loadUsageStats}
+                      className="text-[11px] text-surface-500 hover:text-surface-700"
+                    >
+                      Refresh
+                    </button>
                   </div>
-                  {!usageStats || usageStats.totals.requests === 0 ? (
-                    <p className="text-xs text-surface-500">
-                      No AI requests yet this session. Totals reset when DeepTalk restarts.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="text-xs text-surface-600">
-                        <span className="font-semibold text-surface-900">{usageStats.totals.totalTokens.toLocaleString()}</span> tokens
-                        across <span className="font-semibold text-surface-900">{usageStats.totals.requests}</span> request{usageStats.totals.requests === 1 ? '' : 's'}
-                        {' '}(<span className="text-surface-500">{usageStats.totals.promptTokens.toLocaleString()} in / {usageStats.totals.completionTokens.toLocaleString()} out</span>)
-                      </div>
-                      <div className="space-y-1">
-                        {Object.entries(usageStats.byProvider).map(([pid, s]) => (
-                          <div key={pid} className="flex items-baseline justify-between text-[11px] text-surface-600 border-l-2 border-primary-200 pl-2">
-                            <span>
-                              <span className="font-medium text-surface-800">{pid}</span>
-                              {s.lastModel && <span className="text-surface-400"> · {s.lastModel}</span>}
-                            </span>
-                            <span className="text-surface-500">{s.totalTokens.toLocaleString()} tokens · {s.requests} req</span>
+
+                  {(() => {
+                    const renderBlock = (
+                      label: string,
+                      block: UsageBlock | undefined,
+                      scopeLabel: string,
+                      onReset: () => void,
+                      emptyHint: string
+                    ) => (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-surface-500">{label}</span>
+                          <button
+                            type="button"
+                            onClick={onReset}
+                            className="text-[11px] text-surface-400 hover:text-surface-700"
+                          >
+                            Reset {scopeLabel}
+                          </button>
+                        </div>
+                        {!block || block.totals.requests === 0 ? (
+                          <p className="text-xs text-surface-500">{emptyHint}</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="text-xs text-surface-600">
+                              <span className="font-semibold text-surface-900">{block.totals.totalTokens.toLocaleString()}</span> tokens
+                              across <span className="font-semibold text-surface-900">{block.totals.requests}</span> request{block.totals.requests === 1 ? '' : 's'}
+                              {' '}(<span className="text-surface-500">{block.totals.promptTokens.toLocaleString()} in / {block.totals.completionTokens.toLocaleString()} out</span>)
+                            </div>
+                            <div className="space-y-1">
+                              {Object.entries(block.byProvider).map(([pid, s]) => (
+                                <div key={pid} className="flex items-baseline justify-between text-[11px] text-surface-600 border-l-2 border-primary-200 pl-2">
+                                  <span>
+                                    <span className="font-medium text-surface-800">{pid}</span>
+                                    {s.lastModel && <span className="text-surface-400"> · {s.lastModel}</span>}
+                                  </span>
+                                  <span className="text-surface-500">{s.totalTokens.toLocaleString()} tokens · {s.requests} req</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                      <p className="text-[11px] text-surface-400">
-                        Local providers (Ollama) report no cost. Hosted providers may charge per token — check your provider's pricing page.
-                      </p>
-                    </div>
-                  )}
+                    );
+
+                    return (
+                      <div className="space-y-4">
+                        {renderBlock(
+                          'This session',
+                          usageStats?.session,
+                          'session',
+                          () => resetUsageStats('session'),
+                          'No AI requests yet this session. Resets when DeepTalk restarts.'
+                        )}
+                        {renderBlock(
+                          'Lifetime',
+                          usageStats?.lifetime,
+                          'lifetime',
+                          () => {
+                            if (confirm('Reset the lifetime token counter to zero? This cannot be undone.')) {
+                              resetUsageStats('lifetime');
+                            }
+                          },
+                          'No AI requests recorded yet. Persists across app restarts.'
+                        )}
+                        <p className="text-[11px] text-surface-400">
+                          Local providers (Ollama) report no cost. Hosted providers may charge per token — check your provider's pricing page.
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1515,10 +1551,27 @@ export const SettingsPage: React.FC = () => {
               <h3 className="section-title mb-4">
                 Privacy
               </h3>
-              <p className="text-sm text-surface-600">
-                DeepTalk stores all data locally on your computer. No data is sent to external services
-                except for transcription and analysis processing through your configured services.
-              </p>
+              <div className="text-sm text-surface-600 space-y-2">
+                <p>
+                  DeepTalk stores all data locally on your computer in a SQLite database.
+                  Transcription and speaker detection run entirely on your machine via
+                  Whisper, pyannote, and wespeaker — no network calls after the first
+                  model download.
+                </p>
+                <p>
+                  AI analysis and chat depend on the provider you pick in Settings →
+                  Processing. If you use <span className="font-medium">Ollama (local)</span>,
+                  nothing leaves your machine. If you pick a cloud provider (OpenAI,
+                  Anthropic, Groq, Gemini, OpenRouter, or a custom endpoint), transcripts
+                  are sent to that provider for analysis — watch for the "☁ Cloud" badge
+                  in the AI section to confirm which mode you're in.
+                </p>
+                <p>
+                  API keys are encrypted at rest via your OS keychain (macOS Keychain,
+                  Windows DPAPI, libsecret on Linux). On Linux without a keyring service,
+                  DeepTalk falls back to plain text and warns you.
+                </p>
+              </div>
             </div>
           </div>
         );

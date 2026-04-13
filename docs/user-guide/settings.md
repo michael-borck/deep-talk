@@ -66,9 +66,14 @@ Adds about 1× the audio length to processing time. Turn it off for single-speak
 
 **Advanced diarisation tuning** (collapsible) — exposes the pipeline's tunables as sliders: cluster similarity threshold, median filter frames, min turn duration, min gap to split, noise cluster minimum. Defaults are validated across clean, noisy, and multi-speaker recordings — only touch these if the pipeline misbehaves on a specific file. Click **Reset to defaults** to revert.
 
-### Session token usage
+### AI token usage
 
-A live counter of the tokens your AI provider has consumed since DeepTalk launched. Totals break down by provider and model. Reset manually, or let it reset automatically when you relaunch the app. Local providers (Ollama) report tokens but no cost.
+Two counters of how many tokens your AI provider has consumed, both broken down by provider and model:
+
+- **This session** — resets when DeepTalk restarts, or manually via the Reset session button
+- **Lifetime** — persisted across restarts; reset only when you explicitly click Reset lifetime (with a confirmation)
+
+Local providers (Ollama) report tokens but no cost. Hosted providers may charge per token — check your provider's pricing page.
 
 ### Transcript correction
 
