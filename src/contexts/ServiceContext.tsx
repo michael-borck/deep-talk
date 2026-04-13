@@ -35,7 +35,7 @@ export const ServiceProvider: React.FC<ServiceProviderProps> = ({ children }) =>
 
   const testConnections = async () => {
     try {
-      // Speech-to-text now runs locally via @xenova/transformers — no
+      // Speech-to-text now runs locally via @huggingface/transformers — no
       // server to test. Treat it as always available; the model will be
       // downloaded lazily on first transcription.
       const aiUrl = await window.electronAPI.database.get(

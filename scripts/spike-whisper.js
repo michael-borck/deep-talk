@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Spike: prove that @xenova/transformers can transcribe a local audio file
- * inside Node.js without any external server.
+ * Spike: prove that @huggingface/transformers can transcribe a local
+ * audio file inside Node.js without any external server.
  *
  * Usage:
  *   node scripts/spike-whisper.js /path/to/audio.mp3
@@ -9,14 +9,14 @@
  * What it does:
  *   1. Spawns the bundled ffmpeg-static to decode the input file to raw
  *      16 kHz mono PCM Float32 (the format Whisper expects).
- *   2. Dynamically imports @xenova/transformers (ESM-only) from CJS.
+ *   2. Dynamically imports @huggingface/transformers (ESM-only) from CJS.
  *   3. Loads the whisper-tiny.en pipeline (~75 MB, downloaded on first run
  *      and cached under .cache/huggingface/hub in the cwd).
  *   4. Runs transcription with timestamps.
  *   5. Prints the result.
  *
- * If this works, we know the in-process Whisper approach is viable and
- * we can integrate it properly into the Electron main process.
+ * Kept in the repo as a reproducible regression test for the Whisper
+ * pipeline that powers the in-app local transcription.
  */
 
 const { spawn } = require('child_process');
@@ -69,9 +69,9 @@ function decodeAudioToFloat32(audioPath) {
 // ---------- Transcription ----------
 
 async function transcribe(audioPath) {
-  // Dynamic import — transformers.js v2 is ESM-only and we're in CJS land.
+  // Dynamic import — transformers.js v4 is ESM-only and we're in CJS land.
   console.log('[transformers.js] loading library...');
-  const tx = await import('@xenova/transformers');
+  const tx = await import('@huggingface/transformers');
   const { pipeline, env } = tx;
 
   // Allow downloading models from the Hugging Face Hub

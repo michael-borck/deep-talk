@@ -36,7 +36,7 @@ protocol.registerSchemesAsPrivileged([
 // Local Whisper transcription (transformers.js)
 // ============================================
 //
-// Whisper runs in-process via @xenova/transformers. No external server,
+// Whisper runs in-process via @huggingface/transformers. No external server,
 // no network calls after the model is cached. The pipeline is loaded
 // lazily on first transcription and kept in memory across requests.
 
