@@ -1483,6 +1483,33 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Onboarding */}
+            <div className="panel">
+              <h3 className="section-title mb-4">
+                Onboarding
+              </h3>
+              <div className="space-y-3">
+                <p className="text-sm text-surface-600">
+                  The welcome screen shows on first launch. If you dismissed it with
+                  "Don't show this again", you can bring it back here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem('deeptalk:welcomeSeenV1');
+                      alert('Welcome screen will show on next launch.');
+                    } catch (err) {
+                      console.error('Failed to reset welcome screen:', err);
+                    }
+                  }}
+                  className="btn-secondary"
+                >
+                  Show welcome screen on next launch
+                </button>
+              </div>
+            </div>
+
             {/* Privacy */}
             <div className="panel">
               <h3 className="section-title mb-4">

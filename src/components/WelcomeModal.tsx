@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Mic, BrainCircuit, Lock, BookOpen } from 'lucide-react';
 
 interface WelcomeModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (dontShowAgain: boolean) => void;
 }
 
 const FEATURES = [
@@ -32,11 +32,13 @@ const FEATURES = [
 
 export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   if (!isOpen) return null;
 
+  const handleSkip = () => onClose(dontShowAgain);
   const handleGetStarted = () => {
-    onClose();
+    onClose(dontShowAgain);
     navigate('/docs/getting-started/quick-start');
   };
 
@@ -52,7 +54,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleSkip}
             className="text-surface-400 hover:text-surface-700 transition-colors flex-shrink-0"
             title="Close"
           >
@@ -80,12 +82,18 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) =
 
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-3 pt-4 border-t border-surface-100">
-          <p className="text-xs text-surface-500">
-            You can always reach the docs from the sidebar later.
-          </p>
+          <label className="flex items-center gap-2 text-xs text-surface-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+              className="rounded text-primary-800 focus:ring-primary-500"
+            />
+            Don't show this again
+          </label>
           <div className="flex gap-2">
             <button
-              onClick={onClose}
+              onClick={handleSkip}
               className="px-4 py-2 text-sm text-surface-600 hover:bg-surface-50 rounded-lg transition-colors"
             >
               Skip for now

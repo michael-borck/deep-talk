@@ -31,10 +31,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     }
   });
 
-  const handleWelcomeClose = () => {
-    try {
-      localStorage.setItem(WELCOME_SEEN_KEY, '1');
-    } catch { /* ignore quota errors */ }
+  const handleWelcomeClose = (dontShowAgain: boolean) => {
+    // Only persist the "seen" flag when the user explicitly opts in.
+    // "Skip for now" closes the modal for this session but leaves it
+    // ready to show on next launch, which matches user expectations.
+    if (dontShowAgain) {
+      try {
+        localStorage.setItem(WELCOME_SEEN_KEY, '1');
+      } catch { /* ignore quota errors */ }
+    }
     setShowWelcome(false);
   };
 
