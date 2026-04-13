@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { AboutDialog } from './AboutDialog';
 import { LicensesModal } from './LicensesModal';
+import { ToastContainer } from './ToastContainer';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -93,6 +94,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         isOpen={showLicensesModal}
         onClose={() => setShowLicensesModal(false)}
       />
+
+      {/* Global toast notifications */}
+      <ToastContainer />
     </div>
   );
 };

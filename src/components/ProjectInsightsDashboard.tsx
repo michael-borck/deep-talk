@@ -260,10 +260,38 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
               </div>
             )}
 
+            {/* Project Action Items — surfaced from mergedActionItems
+                across all transcripts. Computed by analyzeProject but
+                previously never displayed. */}
+            {detailedAnalysis?.mergedActionItems && detailedAnalysis.mergedActionItems.length > 0 && (
+              <div>
+                <h3 className="text-lg font-medium text-surface-900 mb-3">Project Action Items</h3>
+                <p className="text-xs text-surface-500 mb-3">
+                  Action items collected from every transcript in this project.
+                </p>
+                <ul className="space-y-2">
+                  {detailedAnalysis.mergedActionItems.slice(0, 20).map((item: string, index: number) => (
+                    <li
+                      key={index}
+                      className="flex items-start gap-2 p-2.5 rounded-lg border border-surface-200 bg-white"
+                    >
+                      <span className="text-accent-500 mt-1 flex-shrink-0">▸</span>
+                      <span className="text-sm text-surface-700">{item}</span>
+                    </li>
+                  ))}
+                  {detailedAnalysis.mergedActionItems.length > 20 && (
+                    <li className="text-xs text-surface-500 text-center pt-1">
+                      +{detailedAnalysis.mergedActionItems.length - 20} more action items
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
             {/* Key Insights */}
             {project.key_insights && project.key_insights.length > 0 && (
               <div>
-                <h3 className="text-lg font-medium text-surface-900 mb-3">💡 Key Insights</h3>
+                <h3 className="text-lg font-medium text-surface-900 mb-3">Key Insights</h3>
                 <ul className="space-y-2">
                   {project.key_insights.map((insight, index) => (
                     <li key={index} className="flex items-start gap-2">
@@ -420,6 +448,23 @@ export const ProjectInsightsDashboard: React.FC<ProjectInsightsDashboardProps> =
                                 </span>
                               ))}
                             </div>
+                          </div>
+                        )}
+                        {/* Key quotes — populated by projectAnalysisService
+                            but previously never rendered. */}
+                        {Array.isArray(data.keyQuotes) && data.keyQuotes.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-surface-100">
+                            <div className="text-xs text-surface-500 mb-1.5">Notable quotes:</div>
+                            <ul className="space-y-1.5">
+                              {data.keyQuotes.slice(0, 3).map((quote: string, i: number) => (
+                                <li
+                                  key={i}
+                                  className="text-xs text-surface-700 italic border-l-2 border-accent-300 pl-2 leading-snug"
+                                >
+                                  &ldquo;{quote}&rdquo;
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                       </div>

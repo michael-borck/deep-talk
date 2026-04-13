@@ -4,6 +4,7 @@ import { ProcessingQueue } from '../components/ProcessingQueue';
 import { ServiceContext } from '../contexts/ServiceContext';
 import { TranscriptContext } from '../contexts/TranscriptContext';
 import { useProjects } from '../contexts/ProjectContext';
+import { useToast } from '../contexts/ToastContext';
 import { generateId } from '../utils/helpers';
 import { fileProcessor } from '../services/fileProcessor';
 
@@ -11,6 +12,7 @@ export const UploadPage: React.FC = () => {
   const { processingQueue, addToProcessingQueue, updateProcessingItem } = useContext(ServiceContext);
   const { loadTranscripts } = useContext(TranscriptContext);
   const { projects, createProject, addTranscriptToProject } = useProjects();
+  const { showToast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [showNewProject, setShowNewProject] = useState(false);
@@ -110,6 +112,7 @@ export const UploadPage: React.FC = () => {
   };
 
   const startProcessing = async (processingItemId: string, transcriptId: string, filePath: string) => {
+    const fileName = filePath.split('/').pop() || filePath;
     try {
       updateProcessingItem(processingItemId, { status: 'transcribing' });
 
@@ -125,6 +128,12 @@ export const UploadPage: React.FC = () => {
           updateProcessingItem(processingItemId, {
             status: 'error',
             error_message: error.message
+          });
+          showToast({
+            kind: 'error',
+            title: 'Processing failed',
+            body: `${fileName}: ${error.message}`,
+            duration: 0, // sticky — user should see what went wrong
           });
           await loadTranscripts();
         },
@@ -144,6 +153,13 @@ export const UploadPage: React.FC = () => {
             }
           }
 
+          showToast({
+            kind: 'success',
+            title: 'Transcript ready',
+            body: fileName,
+            duration: 6000,
+          });
+
           await loadTranscripts();
         }
       });
@@ -152,6 +168,12 @@ export const UploadPage: React.FC = () => {
       updateProcessingItem(processingItemId, {
         status: 'error',
         error_message: (error as Error).message
+      });
+      showToast({
+        kind: 'error',
+        title: 'Processing failed',
+        body: `${fileName}: ${(error as Error).message}`,
+        duration: 0,
       });
       await loadTranscripts();
     }

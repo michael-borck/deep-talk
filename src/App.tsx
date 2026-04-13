@@ -17,6 +17,7 @@ import ShortcutsModal from './components/ShortcutsModal';
 import { ServiceProvider } from './contexts/ServiceContext';
 import { TranscriptProvider } from './contexts/TranscriptContext';
 import { ProjectProvider } from './contexts/ProjectContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 const App: React.FC = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   }, [showShortcuts]);
 
   return (
+    <ToastProvider>
     <ServiceProvider>
       <TranscriptProvider>
         <ProjectProvider>
@@ -68,6 +70,7 @@ const App: React.FC = () => {
         </ProjectProvider>
       </TranscriptProvider>
     </ServiceProvider>
+    </ToastProvider>
   );
 };
 
