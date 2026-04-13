@@ -267,6 +267,12 @@ declare global {
           isLocal: boolean;
           description: string;
         }>>;
+        aiGetUsageStats: () => Promise<{
+          startedAt: number;
+          totals: { promptTokens: number; completionTokens: number; totalTokens: number; requests: number };
+          byProvider: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; requests: number; lastModel: string }>;
+        }>;
+        aiResetUsageStats: () => Promise<{ success: boolean }>;
       };
       crypto: {
         isAvailable: () => Promise<boolean>;

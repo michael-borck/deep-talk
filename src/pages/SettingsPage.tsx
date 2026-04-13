@@ -52,7 +52,20 @@ export const SettingsPage: React.FC = () => {
   const [enableDuplicateRemoval, setEnableDuplicateRemoval] = useState(true);
   const [analyzeValidatedTranscript, setAnalyzeValidatedTranscript] = useState(true);
   const [enableSpeakerDiarisation, setEnableSpeakerDiarisation] = useState(true);
-  
+  const [diaMedianFilterFrames, setDiaMedianFilterFrames] = useState(11);
+  const [diaMinDurationOn, setDiaMinDurationOn] = useState(0.50);
+  const [diaMinDurationOff, setDiaMinDurationOff] = useState(0.20);
+  const [diaClusterThreshold, setDiaClusterThreshold] = useState(0.50);
+  const [diaNoiseMinTotalSeconds, setDiaNoiseMinTotalSeconds] = useState(3.0);
+
+  // AI usage / cost tracking (session-scoped)
+  const [usageStats, setUsageStats] = useState<{
+    startedAt: number;
+    totals: { promptTokens: number; completionTokens: number; totalTokens: number; requests: number };
+    byProvider: Record<string, { promptTokens: number; completionTokens: number; totalTokens: number; requests: number; lastModel: string }>;
+  } | null>(null);
+
+
   // Chat settings
   const [chatContextChunks, setChatContextChunks] = useState(4);
   const [chatMemoryLimit, setChatMemoryLimit] = useState(20);
@@ -67,7 +80,26 @@ export const SettingsPage: React.FC = () => {
     loadSettings();
     loadDatabaseInfo();
     loadAiProviderList();
+    loadUsageStats();
   }, []);
+
+  const loadUsageStats = async () => {
+    try {
+      const stats = await window.electronAPI.services.aiGetUsageStats();
+      setUsageStats(stats);
+    } catch (err) {
+      // IPC may not be available in web build — silently ignore
+    }
+  };
+
+  const resetUsageStats = async () => {
+    try {
+      await window.electronAPI.services.aiResetUsageStats();
+      await loadUsageStats();
+    } catch (err) {
+      console.error('Failed to reset usage stats:', err);
+    }
+  };
 
   const loadAiProviderList = async () => {
     try {
@@ -129,6 +161,11 @@ export const SettingsPage: React.FC = () => {
       }
       setAnalyzeValidatedTranscript(settingsMap.analyzeValidatedTranscript !== 'false');
       setEnableSpeakerDiarisation(settingsMap.enableSpeakerDiarisation !== 'false');
+      if (settingsMap.diaMedianFilterFrames) setDiaMedianFilterFrames(parseInt(settingsMap.diaMedianFilterFrames) || 11);
+      if (settingsMap.diaMinDurationOn) setDiaMinDurationOn(parseFloat(settingsMap.diaMinDurationOn) || 0.50);
+      if (settingsMap.diaMinDurationOff) setDiaMinDurationOff(parseFloat(settingsMap.diaMinDurationOff) || 0.20);
+      if (settingsMap.diaClusterThreshold) setDiaClusterThreshold(parseFloat(settingsMap.diaClusterThreshold) || 0.50);
+      if (settingsMap.diaNoiseMinTotalSeconds) setDiaNoiseMinTotalSeconds(parseFloat(settingsMap.diaNoiseMinTotalSeconds) || 3.0);
       setEnableDuplicateRemoval(settingsMap.enableDuplicateRemoval !== 'false');
       
       // Load chat settings
@@ -706,6 +743,56 @@ export const SettingsPage: React.FC = () => {
                     </>
                   )}
                 </div>
+
+                {/* Session token usage */}
+                <div className="border-t border-surface-200 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-surface-700">Session token usage</h4>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={loadUsageStats}
+                        className="text-[11px] text-surface-500 hover:text-surface-700"
+                      >
+                        Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetUsageStats}
+                        className="text-[11px] text-surface-500 hover:text-surface-700"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                  {!usageStats || usageStats.totals.requests === 0 ? (
+                    <p className="text-xs text-surface-500">
+                      No AI requests yet this session. Totals reset when DeepTalk restarts.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-xs text-surface-600">
+                        <span className="font-semibold text-surface-900">{usageStats.totals.totalTokens.toLocaleString()}</span> tokens
+                        across <span className="font-semibold text-surface-900">{usageStats.totals.requests}</span> request{usageStats.totals.requests === 1 ? '' : 's'}
+                        {' '}(<span className="text-surface-500">{usageStats.totals.promptTokens.toLocaleString()} in / {usageStats.totals.completionTokens.toLocaleString()} out</span>)
+                      </div>
+                      <div className="space-y-1">
+                        {Object.entries(usageStats.byProvider).map(([pid, s]) => (
+                          <div key={pid} className="flex items-baseline justify-between text-[11px] text-surface-600 border-l-2 border-primary-200 pl-2">
+                            <span>
+                              <span className="font-medium text-surface-800">{pid}</span>
+                              {s.lastModel && <span className="text-surface-400"> · {s.lastModel}</span>}
+                            </span>
+                            <span className="text-surface-500">{s.totalTokens.toLocaleString()} tokens · {s.requests} req</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-surface-400">
+                        Local providers (Ollama) report no cost. Hosted providers may charge per token — check your provider's pricing page.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -795,6 +882,136 @@ export const SettingsPage: React.FC = () => {
                   <p className="text-xs text-surface-500 ml-6">
                     Identifies who is speaking using voice fingerprints — much more accurate than guessing from text. Adds about 1× the audio length to processing time. Turn off for single-speaker recordings to save time.
                   </p>
+
+                  {enableSpeakerDiarisation && (
+                    <div className="ml-6 mt-3">
+                      <Collapsible title="Advanced diarisation tuning" defaultOpen={false}>
+                        <div className="space-y-4 pt-2">
+                          <p className="text-xs text-surface-500">
+                            Defaults are validated across clean, noisy, and multi-speaker recordings. Only change these if speakers are being merged or split incorrectly.
+                          </p>
+
+                          <div>
+                            <label className="block text-xs font-medium text-surface-700 mb-1">
+                              Cluster similarity threshold ({diaClusterThreshold.toFixed(2)})
+                            </label>
+                            <input
+                              type="range"
+                              min="0.30"
+                              max="0.80"
+                              step="0.01"
+                              value={diaClusterThreshold}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setDiaClusterThreshold(v);
+                                saveSetting('diaClusterThreshold', String(v));
+                              }}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-surface-500">Higher = more strict (more distinct speakers). Lower = more lenient (merges similar voices).</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-surface-700 mb-1">
+                              Median filter frames ({diaMedianFilterFrames})
+                            </label>
+                            <input
+                              type="range"
+                              min="3"
+                              max="25"
+                              step="2"
+                              value={diaMedianFilterFrames}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value);
+                                setDiaMedianFilterFrames(v);
+                                saveSetting('diaMedianFilterFrames', String(v));
+                              }}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-surface-500">Smooths frame-level jitter. Larger = smoother but may miss fast speaker changes.</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-surface-700 mb-1">
+                                Min turn duration ({diaMinDurationOn.toFixed(2)}s)
+                              </label>
+                              <input
+                                type="range"
+                                min="0.10"
+                                max="2.00"
+                                step="0.05"
+                                value={diaMinDurationOn}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setDiaMinDurationOn(v);
+                                  saveSetting('diaMinDurationOn', String(v));
+                                }}
+                                className="w-full"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-surface-700 mb-1">
+                                Min gap to split ({diaMinDurationOff.toFixed(2)}s)
+                              </label>
+                              <input
+                                type="range"
+                                min="0.05"
+                                max="1.00"
+                                step="0.05"
+                                value={diaMinDurationOff}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setDiaMinDurationOff(v);
+                                  saveSetting('diaMinDurationOff', String(v));
+                                }}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-surface-700 mb-1">
+                              Noise cluster minimum ({diaNoiseMinTotalSeconds.toFixed(1)}s)
+                            </label>
+                            <input
+                              type="range"
+                              min="0.5"
+                              max="10.0"
+                              step="0.5"
+                              value={diaNoiseMinTotalSeconds}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setDiaNoiseMinTotalSeconds(v);
+                                saveSetting('diaNoiseMinTotalSeconds', String(v));
+                              }}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-surface-500">Speaker clusters with less total speech than this get absorbed into a neighbour. Raise to aggressively suppress one-off noise, lower to preserve brief speakers.</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDiaMedianFilterFrames(11);
+                              setDiaMinDurationOn(0.50);
+                              setDiaMinDurationOff(0.20);
+                              setDiaClusterThreshold(0.50);
+                              setDiaNoiseMinTotalSeconds(3.0);
+                              saveSetting('diaMedianFilterFrames', '11');
+                              saveSetting('diaMinDurationOn', '0.50');
+                              saveSetting('diaMinDurationOff', '0.20');
+                              saveSetting('diaClusterThreshold', '0.50');
+                              saveSetting('diaNoiseMinTotalSeconds', '3.0');
+                            }}
+                            className="text-xs text-primary-700 hover:underline"
+                          >
+                            Reset to defaults
+                          </button>
+                        </div>
+                      </Collapsible>
+                    </div>
+                  )}
                 </div>
 
                 {/* Remove Duplicate Sentences */}

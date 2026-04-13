@@ -47,7 +47,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Multi-provider AI support
     aiListModels: (provider, url, apiKey) => ipcRenderer.invoke('ai-list-models', { provider, url, apiKey }),
     aiTestConnection: (provider, url, apiKey) => ipcRenderer.invoke('ai-test-connection', { provider, url, apiKey }),
-    aiGetProviders: () => ipcRenderer.invoke('ai-get-providers')
+    aiGetProviders: () => ipcRenderer.invoke('ai-get-providers'),
+    aiGetUsageStats: () => ipcRenderer.invoke('ai-get-usage-stats'),
+    aiResetUsageStats: () => ipcRenderer.invoke('ai-reset-usage-stats')
   },
 
   // Sensitive value encryption (uses Electron safeStorage / OS keychain)

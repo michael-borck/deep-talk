@@ -211,7 +211,13 @@ async function openaiChat(url, apiKey, model, prompt, options) {
   }
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content || '';
-  return { success: true, response: content };
+  const u = data?.usage || {};
+  const usage = {
+    promptTokens: u.prompt_tokens ?? 0,
+    completionTokens: u.completion_tokens ?? 0,
+    totalTokens: u.total_tokens ?? ((u.prompt_tokens ?? 0) + (u.completion_tokens ?? 0)),
+  };
+  return { success: true, response: content, usage };
 }
 
 async function anthropicChat(url, apiKey, model, prompt, options) {
@@ -244,7 +250,13 @@ async function anthropicChat(url, apiKey, model, prompt, options) {
     .filter((b) => b && b.type === 'text')
     .map((b) => b.text)
     .join('');
-  return { success: true, response: content };
+  const u = data?.usage || {};
+  const usage = {
+    promptTokens: u.input_tokens ?? 0,
+    completionTokens: u.output_tokens ?? 0,
+    totalTokens: (u.input_tokens ?? 0) + (u.output_tokens ?? 0),
+  };
+  return { success: true, response: content, usage };
 }
 
 // ============================================

@@ -140,11 +140,38 @@ const SAMPLE_RATE = 16000;
 
 // Diarisation tunables — empirically validated on a 30s clean conversation,
 // a 5-min noisy 5-speaker file, and a 14-min structured interview.
-const DIA_MEDIAN_FILTER_FRAMES = 11;       // median filter window (smooths frame-level jitter)
-const DIA_MIN_DURATION_ON = 0.50;          // turns shorter than this are reassigned to nearest neighbour
-const DIA_MIN_DURATION_OFF = 0.20;         // gaps shorter than this within a channel get merged
-const DIA_CLUSTER_THRESHOLD = 0.50;        // cosine similarity merge threshold
-const DIA_NOISE_MIN_TOTAL_SECONDS = 3.0;   // clusters totalling less than this are reassigned to nearest substantial cluster
+// These defaults are overridable per-install via the Settings page;
+// loadDiarisationSettings() refreshes them from the DB before each run.
+const DIA_DEFAULTS = {
+  medianFilterFrames: 11,
+  minDurationOn: 0.50,
+  minDurationOff: 0.20,
+  clusterThreshold: 0.50,
+  noiseMinTotalSeconds: 3.0,
+};
+let DIA_MEDIAN_FILTER_FRAMES = DIA_DEFAULTS.medianFilterFrames;
+let DIA_MIN_DURATION_ON = DIA_DEFAULTS.minDurationOn;
+let DIA_MIN_DURATION_OFF = DIA_DEFAULTS.minDurationOff;
+let DIA_CLUSTER_THRESHOLD = DIA_DEFAULTS.clusterThreshold;
+let DIA_NOISE_MIN_TOTAL_SECONDS = DIA_DEFAULTS.noiseMinTotalSeconds;
+
+function loadDiarisationSettings() {
+  try {
+    if (!db) return;
+    const read = (key, fallback) => {
+      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+      const n = row?.value != null ? Number(row.value) : NaN;
+      return Number.isFinite(n) ? n : fallback;
+    };
+    DIA_MEDIAN_FILTER_FRAMES = Math.max(1, Math.round(read('diaMedianFilterFrames', DIA_DEFAULTS.medianFilterFrames)));
+    DIA_MIN_DURATION_ON = read('diaMinDurationOn', DIA_DEFAULTS.minDurationOn);
+    DIA_MIN_DURATION_OFF = read('diaMinDurationOff', DIA_DEFAULTS.minDurationOff);
+    DIA_CLUSTER_THRESHOLD = read('diaClusterThreshold', DIA_DEFAULTS.clusterThreshold);
+    DIA_NOISE_MIN_TOTAL_SECONDS = read('diaNoiseMinTotalSeconds', DIA_DEFAULTS.noiseMinTotalSeconds);
+  } catch (err) {
+    console.warn('[diarise] failed to load tunables, using defaults:', err.message);
+  }
+}
 
 // pyannote-segmentation-3.0 powerset → active speaker indices
 const POWERSET = [
@@ -1443,10 +1470,14 @@ ipcMain.handle('chat-with-ollama', async (event, { prompt, message, context }) =
     });
 
     const result = await aiProviders.chat(provider, url, apiKey, model, prompt);
+    if (result.success && result.usage) {
+      recordUsage(provider, model, result.usage);
+    }
     return {
       success: result.success,
       response: result.response || '',
       error: result.error,
+      usage: result.usage,
       model,
       provider,
     };
@@ -1492,6 +1523,55 @@ ipcMain.handle('ai-get-providers', async () => {
     id,
     ...info,
   }));
+});
+
+// ============================================
+// Session usage tracking (in-memory, not persisted)
+// ============================================
+//
+// Accumulates token counts per provider for the lifetime of the current
+// app session so users can see how much they're spending on hosted
+// providers. Resets on app restart or explicitly via the Settings page.
+
+const sessionUsage = {
+  startedAt: Date.now(),
+  totals: { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 },
+  byProvider: {}, // provider -> { promptTokens, completionTokens, totalTokens, requests, lastModel }
+};
+
+function recordUsage(provider, model, usage) {
+  if (!usage) return;
+  const p = Number(usage.promptTokens) || 0;
+  const c = Number(usage.completionTokens) || 0;
+  const t = Number(usage.totalTokens) || p + c;
+  sessionUsage.totals.promptTokens += p;
+  sessionUsage.totals.completionTokens += c;
+  sessionUsage.totals.totalTokens += t;
+  sessionUsage.totals.requests += 1;
+  const bucket = sessionUsage.byProvider[provider] || {
+    promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0, lastModel: '',
+  };
+  bucket.promptTokens += p;
+  bucket.completionTokens += c;
+  bucket.totalTokens += t;
+  bucket.requests += 1;
+  if (model) bucket.lastModel = model;
+  sessionUsage.byProvider[provider] = bucket;
+}
+
+ipcMain.handle('ai-get-usage-stats', async () => {
+  return {
+    startedAt: sessionUsage.startedAt,
+    totals: { ...sessionUsage.totals },
+    byProvider: { ...sessionUsage.byProvider },
+  };
+});
+
+ipcMain.handle('ai-reset-usage-stats', async () => {
+  sessionUsage.startedAt = Date.now();
+  sessionUsage.totals = { promptTokens: 0, completionTokens: 0, totalTokens: 0, requests: 0 };
+  sessionUsage.byProvider = {};
+  return { success: true };
 });
 
 // ============================================
@@ -1823,6 +1903,7 @@ ipcMain.handle('local-transcription-transcribe', async (event, { audioPath, mode
     let diarisationTurns = [];
     if (wantSpeakers) {
       try {
+        loadDiarisationSettings();
         const diariseStart = Date.now();
         diarisationTurns = await diariseAudio(audio, sendProgress);
         console.log(`[local-transcription] diarisation: ${diarisationTurns.length} turns in ${Date.now() - diariseStart} ms`);
